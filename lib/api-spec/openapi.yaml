@@ -1,22 +1,35 @@
 openapi: 3.1.0
 info:
-  # Do not change the title, if the title changes, the import paths will be broken
   title: Api
   version: 0.1.0
-  description: API specification
+  description: PawPlay API specification
 servers:
   - url: /api
     description: Base API path
 tags:
   - name: health
     description: Health operations
+  - name: Auth
+    description: Browser and mobile authentication endpoints.
+  - name: dogs
+    description: Dog management
+  - name: commands
+    description: Command library
+  - name: sessions
+    description: Training sessions
+  - name: family
+    description: Family management
+  - name: achievements
+    description: Achievement tracking
+  - name: notifications
+    description: Push notifications
+
 paths:
   /healthz:
     get:
       operationId: healthCheck
       tags: [health]
       summary: Health check
-      description: Returns server health status
       responses:
         "200":
           description: Healthy
@@ -24,7 +37,508 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+
+  /auth/user:
+    get:
+      tags: [Auth]
+      operationId: getCurrentAuthUser
+      summary: Get the currently authenticated user
+      parameters:
+        - $ref: '#/components/parameters/AuthorizationSessionHeader'
+        - $ref: '#/components/parameters/SessionCookie'
+      responses:
+        '200':
+          description: Auth status resolved successfully.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthUserEnvelope'
+
+  /login:
+    get:
+      tags: [Auth]
+      operationId: beginBrowserLogin
+      summary: Start the browser OIDC login flow
+      parameters:
+        - name: returnTo
+          in: query
+          required: false
+          schema:
+            type: string
+      responses:
+        '302':
+          description: Redirect to the OIDC authorization endpoint.
+
+  /callback:
+    get:
+      tags: [Auth]
+      operationId: handleBrowserLoginCallback
+      summary: Complete the browser OIDC login flow
+      parameters:
+        - name: code
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: state
+          in: query
+          required: false
+          schema:
+            type: string
+      responses:
+        '302':
+          description: Redirect on success or failure.
+
+  /logout:
+    get:
+      tags: [Auth]
+      operationId: logoutBrowserSession
+      summary: Clear the session and begin OIDC logout
+      parameters:
+        - $ref: '#/components/parameters/AuthorizationSessionHeader'
+        - $ref: '#/components/parameters/SessionCookie'
+      responses:
+        '302':
+          description: Redirect to OIDC logout URL.
+
+  /mobile-auth/token-exchange:
+    post:
+      tags: [Auth]
+      operationId: exchangeMobileAuthorizationCode
+      summary: Exchange a mobile OIDC code for a session token
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MobileTokenExchangeRequest'
+      responses:
+        '200':
+          description: Session created.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MobileTokenExchangeSuccess'
+        '400':
+          description: Invalid fields.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '500':
+          description: Token exchange failed.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+
+  /mobile-auth/logout:
+    post:
+      tags: [Auth]
+      operationId: logoutMobileSession
+      summary: Delete a mobile session token
+      parameters:
+        - $ref: '#/components/parameters/AuthorizationSessionHeader'
+      responses:
+        '200':
+          description: Logout processed.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LogoutSuccess'
+
+  /dogs:
+    post:
+      tags: [dogs]
+      operationId: createDog
+      summary: Create a new dog
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateDogBody'
+      responses:
+        '201':
+          description: Dog created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DogResponse'
+
+  /dogs/{dogId}:
+    get:
+      tags: [dogs]
+      operationId: getDog
+      summary: Get a dog by ID
+      parameters:
+        - name: dogId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Dog found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DogResponse'
+    patch:
+      tags: [dogs]
+      operationId: updateDog
+      summary: Update a dog
+      parameters:
+        - name: dogId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateDogBody'
+      responses:
+        '200':
+          description: Dog updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DogResponse'
+
+  /dogs/{dogId}/commands:
+    get:
+      tags: [commands]
+      operationId: getDogCommands
+      summary: Get commands for a dog
+      parameters:
+        - name: dogId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Commands
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CommandsResponse'
+    post:
+      tags: [commands]
+      operationId: addDogCommand
+      summary: Add a command to a dog
+      parameters:
+        - name: dogId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AddCommandBody'
+      responses:
+        '201':
+          description: Command added
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CommandResponse'
+
+  /commands/{dogId}/{name}:
+    patch:
+      tags: [commands]
+      operationId: updateCommand
+      summary: Update a command
+      parameters:
+        - name: dogId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: name
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateCommandBody'
+      responses:
+        '200':
+          description: Command updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CommandResponse'
+
+  /sessions:
+    post:
+      tags: [sessions]
+      operationId: createSession
+      summary: Save a training session
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateSessionBody'
+      responses:
+        '201':
+          description: Session saved
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SessionResponse'
+    get:
+      tags: [sessions]
+      operationId: getSessions
+      summary: Get sessions for a dog or user
+      parameters:
+        - name: dogId
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: userId
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Sessions list
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SessionsResponse'
+
+  /family:
+    post:
+      tags: [family]
+      operationId: createFamily
+      summary: Create a family
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateFamilyBody'
+      responses:
+        '201':
+          description: Family created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FamilyResponse'
+
+  /family/join/{code}:
+    post:
+      tags: [family]
+      operationId: joinFamily
+      summary: Join a family by invite code
+      parameters:
+        - name: code
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Joined family
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FamilyResponse'
+
+  /family/{familyId}/leaderboard:
+    get:
+      tags: [family]
+      operationId: getFamilyLeaderboard
+      summary: Get family leaderboard
+      parameters:
+        - name: familyId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Leaderboard data
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LeaderboardResponse'
+
+  /family/{familyId}/calendar:
+    get:
+      tags: [family]
+      operationId: getFamilyCalendar
+      summary: Get family calendar data for a month
+      parameters:
+        - name: familyId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: month
+          in: query
+          required: true
+          schema:
+            type: integer
+        - name: year
+          in: query
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Calendar data
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CalendarResponse'
+
+  /family/{familyId}/yearly-chart:
+    get:
+      tags: [family]
+      operationId: getFamilyYearlyChart
+      summary: Get yearly training chart data
+      parameters:
+        - name: familyId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: year
+          in: query
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Yearly chart data
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/YearlyChartResponse'
+
+  /users/{userId}:
+    get:
+      tags: [family]
+      operationId: getPawplayUser
+      summary: Get a PawPlay user profile
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: User found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PawplayUserResponse'
+    patch:
+      tags: [family]
+      operationId: updatePawplayUser
+      summary: Update PawPlay user profile
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdatePawplayUserBody'
+      responses:
+        '200':
+          description: User updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PawplayUserResponse'
+
+  /users/{userId}/push-token:
+    patch:
+      tags: [notifications]
+      operationId: updatePushToken
+      summary: Update push token for a user
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdatePushTokenBody'
+      responses:
+        '200':
+          description: Token updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+
+  /dogs/{dogId}/achievements:
+    get:
+      tags: [achievements]
+      operationId: getDogAchievements
+      summary: Get achievements for a dog
+      parameters:
+        - name: dogId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Achievements list
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AchievementsResponse'
+
 components:
+  parameters:
+    AuthorizationSessionHeader:
+      name: Authorization
+      in: header
+      required: false
+      description: Opaque session token — `Bearer <sid>`.
+      schema:
+        type: string
+    SessionCookie:
+      name: sid
+      in: cookie
+      required: false
+      description: Browser session cookie.
+      schema:
+        type: string
+
   schemas:
     HealthStatus:
       type: object
@@ -34,3 +548,408 @@ components:
       required:
         - status
 
+    AuthUser:
+      type: object
+      required: [id, email, firstName, lastName, profileImageUrl]
+      properties:
+        id:
+          type: string
+        email:
+          type: [string, 'null']
+        firstName:
+          type: [string, 'null']
+        lastName:
+          type: [string, 'null']
+        profileImageUrl:
+          type: [string, 'null']
+
+    AuthUserEnvelope:
+      type: object
+      required: [user]
+      properties:
+        user:
+          oneOf:
+            - $ref: '#/components/schemas/AuthUser'
+            - type: 'null'
+
+    MobileTokenExchangeRequest:
+      type: object
+      required: [code, code_verifier, redirect_uri, state]
+      properties:
+        code:
+          type: string
+          minLength: 1
+        code_verifier:
+          type: string
+          minLength: 1
+        redirect_uri:
+          type: string
+          minLength: 1
+        state:
+          type: string
+          minLength: 1
+        nonce:
+          type: string
+          minLength: 1
+
+    MobileTokenExchangeSuccess:
+      type: object
+      required: [token]
+      properties:
+        token:
+          type: string
+
+    LogoutSuccess:
+      type: object
+      required: [success]
+      properties:
+        success:
+          type: boolean
+
+    ErrorEnvelope:
+      type: object
+      required: [error]
+      properties:
+        error:
+          type: string
+
+    SuccessResponse:
+      type: object
+      required: [success]
+      properties:
+        success:
+          type: boolean
+
+    DogResponse:
+      type: object
+      required: [id, familyId, name, level, xp, createdAt]
+      properties:
+        id:
+          type: string
+        familyId:
+          type: string
+        name:
+          type: string
+        age:
+          type: [number, 'null']
+        breed:
+          type: [string, 'null']
+        avatarUrl:
+          type: [string, 'null']
+        level:
+          type: integer
+        xp:
+          type: integer
+        createdAt:
+          type: string
+
+    CreateDogBody:
+      type: object
+      required: [name, familyId]
+      properties:
+        name:
+          type: string
+        familyId:
+          type: string
+        age:
+          type: number
+        breed:
+          type: string
+
+    UpdateDogBody:
+      type: object
+      properties:
+        name:
+          type: string
+        age:
+          type: number
+        breed:
+          type: string
+        avatarUrl:
+          type: string
+
+    CommandResponse:
+      type: object
+      required: [id, dogId, name, level, trainingSessionsCount, qbSuccessesCount, qbSessionsWithSuccess, addedAt]
+      properties:
+        id:
+          type: string
+        dogId:
+          type: string
+        name:
+          type: string
+        level:
+          type: integer
+        trainingSessionsCount:
+          type: integer
+        qbSuccessesCount:
+          type: integer
+        qbSessionsWithSuccess:
+          type: integer
+        lastUsedAt:
+          type: [string, 'null']
+        addedAt:
+          type: string
+
+    CommandsResponse:
+      type: object
+      required: [commands]
+      properties:
+        commands:
+          type: array
+          items:
+            $ref: '#/components/schemas/CommandResponse'
+
+    AddCommandBody:
+      type: object
+      required: [name]
+      properties:
+        name:
+          type: string
+
+    UpdateCommandBody:
+      type: object
+      properties:
+        level:
+          type: integer
+        trainingSessionsCount:
+          type: integer
+        qbSuccessesCount:
+          type: integer
+        qbSessionsWithSuccess:
+          type: integer
+
+    SessionResponse:
+      type: object
+      required: [id, dogId, userId, mode, rawScore, participationPoints, bonuses, commandsUsed, completed, createdAt]
+      properties:
+        id:
+          type: string
+        dogId:
+          type: string
+        userId:
+          type: string
+        mode:
+          type: string
+        difficulty:
+          type: [string, 'null']
+        rawScore:
+          type: integer
+        participationPoints:
+          type: integer
+        bonuses:
+          type: array
+          items:
+            type: object
+            additionalProperties: true
+        commandsUsed:
+          type: array
+          items:
+            type: object
+            additionalProperties: true
+        durationSeconds:
+          type: [integer, 'null']
+        completed:
+          type: boolean
+        createdAt:
+          type: string
+
+    SessionsResponse:
+      type: object
+      required: [sessions]
+      properties:
+        sessions:
+          type: array
+          items:
+            $ref: '#/components/schemas/SessionResponse'
+
+    CreateSessionBody:
+      type: object
+      required: [dogId, mode, rawScore, participationPoints, bonuses, commandsUsed, completed]
+      properties:
+        dogId:
+          type: string
+        mode:
+          type: string
+        difficulty:
+          type: string
+        rawScore:
+          type: integer
+        participationPoints:
+          type: integer
+        bonuses:
+          type: array
+          items:
+            type: object
+            additionalProperties: true
+        commandsUsed:
+          type: array
+          items:
+            type: object
+            additionalProperties: true
+        durationSeconds:
+          type: integer
+        completed:
+          type: boolean
+
+    FamilyResponse:
+      type: object
+      required: [id, createdBy, inviteCode, memberIds, createdAt]
+      properties:
+        id:
+          type: string
+        createdBy:
+          type: string
+        inviteCode:
+          type: string
+        memberIds:
+          type: array
+          items:
+            type: string
+        createdAt:
+          type: string
+
+    CreateFamilyBody:
+      type: object
+      properties:
+        placeholder:
+          type: string
+
+    LeaderboardEntry:
+      type: object
+      required: [userId, displayName, totalPoints, sessionCount]
+      properties:
+        userId:
+          type: string
+        displayName:
+          type: string
+        totalPoints:
+          type: integer
+        sessionCount:
+          type: integer
+        profileImageUrl:
+          type: [string, 'null']
+
+    LeaderboardResponse:
+      type: object
+      required: [entries]
+      properties:
+        entries:
+          type: array
+          items:
+            $ref: '#/components/schemas/LeaderboardEntry'
+
+    CalendarDayData:
+      type: object
+      required: [date, trainedByMe, trainedByFamily, sessionCount]
+      properties:
+        date:
+          type: string
+        trainedByMe:
+          type: boolean
+        trainedByFamily:
+          type: boolean
+        sessionCount:
+          type: integer
+
+    CalendarResponse:
+      type: object
+      required: [days, totalSessions, totalHours, avgScore]
+      properties:
+        days:
+          type: array
+          items:
+            $ref: '#/components/schemas/CalendarDayData'
+        totalSessions:
+          type: integer
+        totalHours:
+          type: number
+        avgScore:
+          type: number
+
+    MonthChartData:
+      type: object
+      required: [month, hours, sessions]
+      properties:
+        month:
+          type: integer
+        hours:
+          type: number
+        sessions:
+          type: integer
+
+    YearlyChartResponse:
+      type: object
+      required: [months, totalHours, bestMonth]
+      properties:
+        months:
+          type: array
+          items:
+            $ref: '#/components/schemas/MonthChartData'
+        totalHours:
+          type: number
+        bestMonth:
+          type: [string, 'null']
+
+    PawplayUserResponse:
+      type: object
+      required: [id]
+      properties:
+        id:
+          type: string
+        displayName:
+          type: [string, 'null']
+        email:
+          type: [string, 'null']
+        familyId:
+          type: [string, 'null']
+        role:
+          type: [string, 'null']
+        expoPushToken:
+          type: [string, 'null']
+
+    UpdatePawplayUserBody:
+      type: object
+      properties:
+        displayName:
+          type: string
+        familyId:
+          type: string
+        expoPushToken:
+          type: string
+
+    UpdatePushTokenBody:
+      type: object
+      required: [expoPushToken, platform]
+      properties:
+        expoPushToken:
+          type: string
+        platform:
+          type: string
+
+    AchievementResponse:
+      type: object
+      required: [id, dogId, type, earnedAt]
+      properties:
+        id:
+          type: string
+        dogId:
+          type: string
+        userId:
+          type: [string, 'null']
+        type:
+          type: string
+        metadata:
+          type: object
+          additionalProperties: true
+        earnedAt:
+          type: string
+
+    AchievementsResponse:
+      type: object
+      required: [achievements]
+      properties:
+        achievements:
+          type: array
+          items:
+            $ref: '#/components/schemas/AchievementResponse'

@@ -1,0 +1,8 @@
+uploads = []
+outputs = []
+
+[[generated]]
+id = "RTXp6Y7vXvGojCabrUaU0"
+uri = "file://artifacts/pawplay/assets/images/icon.png"
+type = "image"
+title = "pawplay app icon"

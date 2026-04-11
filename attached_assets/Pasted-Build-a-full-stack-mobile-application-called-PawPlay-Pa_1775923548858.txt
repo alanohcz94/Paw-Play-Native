@@ -1,0 +1,566 @@
+Build a full-stack mobile application called PawPlay.
+
+PawPlay is a gamified dog training app for pawrents (pet owners,
+not professional dog trainers). The app turns daily dog training
+into a game for the whole family using randomised command
+sequences, scoring, streaks, and family leaderboards.
+
+═══════════════════════════════════════════════════════════════
+TECH STACK
+═══════════════════════════════════════════════════════════════
+
+Frontend    : React Native + Expo SDK 51
+Navigation  : Expo Router v3 (file-based routing)
+Animations  : React Native Reanimated 2
+Gestures    : React Native Gesture Handler
+State       : Zustand
+Backend     : Node.js + Express
+Database    : Replit Database (built-in)
+Auth        : Replit Auth (built-in)
+Storage     : Replit Object Storage (dog profile photos)
+Charts      : Victory Native
+Haptics     : Expo Haptics
+Push Notif  : Expo Notifications + Expo Push Service
+
+═══════════════════════════════════════════════════════════════
+FONTS
+═══════════════════════════════════════════════════════════════
+
+Display / Game commands : Fredoka One
+  - Used for: app name, command words during challenge
+    (SIT, DOWN, COME, STAY etc)
+  - Load via @expo-google-fonts/fredoka-one
+
+All UI text : Nunito
+  - Weights: 400 / 700 / 800 / 900
+  - Load via @expo-google-fonts/nunito
+
+═══════════════════════════════════════════════════════════════
+COLOUR TOKENS
+═══════════════════════════════════════════════════════════════
+
+peach        : #FF8B6A    peach-light  : #FFF0EA
+peach-mid    : #FFD6C8    mint         : #3DB884
+mint-light   : #E8F8F1    mint-mid     : #C8F0E0
+lavender     : #8B68FF    lav-light    : #F0ECFF
+lav-mid      : #E4D9FF    lemon        : #F5C400
+lemon-light  : #FFFBE0    sky          : #3DA0F5
+sky-light    : #EBF5FF    cream        : #FFFAF4
+bg           : #F7F3EF    border       : #EDE6DE
+dark         : #2D2D2D    muted        : #6B6B6B
+
+═══════════════════════════════════════════════════════════════
+DATA MODELS
+Store all data in Replit Database using these key structures
+═══════════════════════════════════════════════════════════════
+
+user:{userId}
+  id, replit_id, display_name, email,
+  family_id, role (adult/child/guest),
+  expo_push_token, created_at
+
+family:{familyId}
+  id, created_by, invite_code, member_ids[], created_at
+
+dog:{dogId}
+  id, family_id, name, age, breed,
+  avatar_url, level, xp, created_at
+
+command:{dogId}:{commandName}
+  dog_id, name, level (1/2/3),
+  training_sessions_count,
+  qb_successes_count,
+  qb_sessions_with_success,
+  last_used_at, added_at
+
+session:{sessionId}
+  id, dog_id, user_id,
+  mode (quickbites/training/challenge),
+  difficulty (easy/medium/expert),
+  raw_score, participation_points,
+  bonuses[], commands_used[],
+  duration_seconds, completed, created_at
+
+achievement:{dogId}:{type}
+  dog_id, user_id, type, metadata{}, earned_at
+
+push_token:{userId}
+  user_id, expo_push_token, platform, updated_at
+
+═══════════════════════════════════════════════════════════════
+APP ENTRY FLOW
+═══════════════════════════════════════════════════════════════
+
+1. User opens app for the first time
+2. A short demo Quick Bites session runs immediately
+   - No login required
+   - Dog name is "Buddy"
+   - Commands: Sit, Down, Come
+   - Difficulty: Easy
+   - 3 commands only
+   - Fully playable with real scoring
+   - All state is local only — nothing saved to database
+3. Demo end screen shows score + message:
+   "Great session! Sign in to save Buddy's progress
+    and start your real training journey."
+   Buttons: "Create Account" and "Sign In"
+4. Replit Auth handles sign in / sign up
+5. New user check:
+   YES → Onboarding flow (4 screens below)
+   NO  → Go directly to Dashboard
+
+ONBOARDING SCREENS (new users only):
+  A: Dog name (required) + Dog age (required)
+  B: Command library — pick commands dog already knows
+     from preset list of 7 (optional, skippable)
+     Commands: Sit, Down, Stay, Come, Heel, Place, Leave it
+  C: Add family member — invite by email (optional, skippable)
+  D: All done — celebration animation → Dashboard
+
+═══════════════════════════════════════════════════════════════
+SCREENS TO BUILD
+═══════════════════════════════════════════════════════════════
+
+── DASHBOARD ─────────────────────────────────────────────────
+- Top bar: hamburger menu left + dog name greeting centre
+  + streak pill right e.g. "🔥 7d" (peach background)
+- Stats row: 3 cards
+    Sessions this week (peach-light background)
+    Total training hours (mint-light background)
+    Total participation points (lemon-light background)
+- Week progression bar:
+    "X of 7 days this week"
+    Filled lavender progress bar
+- Monthly calendar preview strip:
+    Mini 7-column grid showing current week only
+    Colour-coded dots per day (see calendar screen)
+    Tap to open full Monthly Calendar screen
+- Family leaderboard card (sky-light background):
+    Ranked list of family members + scores
+    Crown emoji on top scorer
+- Floating Action Button bottom right:
+    Peach circle with play icon
+    Taps directly to Quick Start setup screen
+
+── MONTHLY CALENDAR ──────────────────────────────────────────
+- Full month grid (7 columns x 5 rows)
+- Day cell states:
+    Trained (current user)    → solid mint dot
+    Trained (family member)   → solid peach dot
+    Multiple trainers          → solid lemon dot
+    Missed                     → light gray background
+    Today                      → peach outlined border
+    Future                     → faded ghost text
+- Colour legend below grid
+- Summary bar: total sessions / total hours / avg score
+- Insight card (lavender-light):
+    Best day this month
+    Most active family member
+
+── YEARLY CHART ──────────────────────────────────────────────
+- 12 vertical bars January through December
+- Y-axis shows total training hours
+- Past months: solid peach bars
+- Current month: bright peach + shadow highlight
+- Future months: dashed empty outline
+- Bars animate upward on mount with staggered delay per bar
+- Tap any bar: tooltip showing month name / hours / sessions
+- Stats row above: total hours YTD / best month / trend arrow
+- Insight card below chart (lavender-light):
+    e.g. "April is your best month — up 10% from March!"
+
+── QUICK START SETUP ─────────────────────────────────────────
+- Header: "Quick Bites 🎲"
+- Subtitle: "Randomised command sequence"
+- How to play box (mint-light, left border mint):
+    Brief rule: hold when dog complies, beat the timer,
+    skipping costs points
+- Difficulty selector: 3 pills side by side
+    Easy   (mint border + bg when selected)   6s window
+    Medium (lemon border + bg when selected)  4s window
+    Expert (peach border + bg when selected)  2s window
+    Only one selectable at a time
+- Sequence list: 5 rows
+    Command name (bold) + assigned duration on right (peach)
+    Light border separating rows
+- Two buttons at bottom:
+    "🔀 Shuffle" ghost button (regenerates sequence)
+    "Let's Go! 🐾" primary peach button
+
+── CHALLENGE ACTIVE ──────────────────────────────────────────
+- Top bar:
+    Left: "X of 5" command counter
+    Right: score pill (lemon background, dark text)
+- Progress pips: 5 horizontal pills below top bar
+    Completed = peach filled
+    Remaining = light gray
+- Difficulty label: small uppercase lavender text above command
+- Command word: Fredoka One, 52px, centred, full screen
+- Timer bar: full width below command word
+    Fills left to right during comply window
+    Green while within window
+    Turns red when window exceeded
+- Timer text below bar: "Xs remaining" or "Xs over" in red
+- HOLD button: large circle centred on screen
+    Outer ring: peach-mid border (3px)
+    Inner circle: solid peach fill
+    "HOLD" text: white, Nunito 900, letter-spaced
+    Press and hold when dog begins to comply
+    Release when behaviour complete = mark done
+- "skip command" text link below button (small, muted, underlined)
+- Haptics:
+    Light tap when command appears
+    Strong tap on mark done
+    Error pattern on skip
+
+── END SCREEN ────────────────────────────────────────────────
+- Dog name + "Session Complete!" heading
+- Confetti animation on arrival
+- Large participation points score (Fredoka One 48px, peach)
+- "Participation Points" label below score (muted, small)
+- Points breakdown list:
+    Each command row: name + result icon + points earned/lost
+    Green for positive, red for negative
+- Bonuses section: chips for each bonus earned (lavender-light)
+- Streak update: "🔥 X day streak!" if maintained
+  or "Streak reset" if broken (with encouragement copy)
+- Difficulty bonus note if Medium or Expert was played
+- Expert negative score shown in red with copy:
+    "Tough session — Expert is meant to be hard. Come back
+     stronger!"
+- Two buttons:
+    "Play Again" (peach, primary)
+    "Go Home" (ghost)
+
+── GAMES HUB ─────────────────────────────────────────────────
+- Header: "Games 🎮"
+- Subtitle: "Choose your training style"
+- Three mode cards:
+    Quick Bites (peach-light background)
+      Icon: lightning bolt in peach circle
+      Description: "Random sequence · 2–5 min"
+      Arrow right chevron
+
+    Training (mint-light background)
+      Icon: open book in mint circle
+      Description: "Learn + practice commands"
+      Arrow right chevron
+
+    Obedience Challenge (lemon-light background)
+      LOCKED state (default until gate met):
+        Animated progress ring: "X of 7 commands Reliable"
+        Lock icon instead of arrow
+        Tapping opens bottom sheet modal:
+          Lists commands not yet at Level 3
+          Each with a "Train Now" button linking to
+          Training Mode pre-loaded with that command
+      UNLOCKED state (7 commands at Level 3):
+        "NEW" badge on card
+        Fully tappable → opens challenge setup
+
+── TRAINING MODE ─────────────────────────────────────────────
+Config screen:
+- Command picker: scrollable list from dog's library
+- Reward type: 3 chips Treats (default) / Play / Praise
+- Variable reward schedule toggle (default OFF)
+  Tooltip below toggle (always visible, small muted text):
+  "Keeps your dog guessing — builds stronger habits over
+   time. Best for dogs with a solid foundation."
+- Rep counter: minus / number / plus, range 3 to 10
+- "Start Training" button (peach)
+
+Session screen — FIXED SCHEDULE (toggle OFF):
+  1. "Ready" → command displayed
+  2. Dog complies → pawrent taps "Mark Done"
+  3. Reward animation shown immediately
+  4. Release → inter-trial wait timer shown (random 7–12s)
+  5. Next rep when timer ends
+  6. "Reset" button if dog does not comply → re-cues
+  7. Repeats until rep count complete
+
+Session screen — VARIABLE SCHEDULE (toggle ON):
+  Same flow except:
+  - After mark done: "Hold reward — wait" shown
+  - Reward delivered on every 5th success only
+  - 5th success triggers reward burst animation
+  - Between successes: "Keep going — reward coming!" shown
+
+- Rep progress shown: "Rep X of Y"
+- End: session saved, command level recalculated
+
+── OBEDIENCE CHALLENGE ───────────────────────────────────────
+- Rules screen with mode selector:
+    Practice (not saved to leaderboard)
+    Challenge (leaderboard eligible)
+- Same game loop as Quick Bites but:
+    All Level 3 commands tested (not just 5)
+    Structured sequence (no shuffle)
+    No skipping (costs full -20 pts if attempted)
+    Abort button top right always visible
+- End screen same as Quick Bites end screen
+
+── PROFILE ───────────────────────────────────────────────────
+- Dog avatar: circular, peach border
+  Tap to upload from camera roll via Replit Object Storage
+- Dog name / age / breed below avatar (editable on tap)
+- Level badge pill: "Lv.X · [Title]" in lavender-light
+- Stats row: current streak / total sessions / badge count
+- Command library section heading + chips:
+    Level 1 Learning    → empty outline chip (gray border)
+    Level 2 Practising  → half-filled mint background chip
+    Level 3 Reliable    → solid mint chip
+    "+" button to add commands from preset list
+- Achievements grid:
+    Unlocked badges: full colour
+    Locked badges: gray, still visible (shows what's earnable)
+- Session history:
+    Scrollable list of past sessions
+    Each row: date / mode / difficulty / score / family member
+
+── SETTINGS ──────────────────────────────────────────────────
+- Notification toggle ON/OFF
+  Covers: achievements, leaderboard updates, milestones
+- Reminder toggle ON/OFF (daily training nudge)
+- Reminder time picker (visible when reminder toggle is ON)
+- Family section:
+    Current family members listed
+    Invite code shown (copy button)
+    "Invite family member" button
+- Account section:
+    Display name (editable)
+    Sign out button
+
+── SIDE DRAWER MENU ──────────────────────────────────────────
+- User display name + email at top
+- Navigation links: Profile / Games / Settings
+- App version at bottom
+
+═══════════════════════════════════════════════════════════════
+SCORING ENGINE
+Implement as a pure utility function: calculateScore()
+═══════════════════════════════════════════════════════════════
+
+Session total = 100 participation points
+Commands per session = 5
+Base points per command = 20
+
+COMPLY WINDOWS BY DIFFICULTY:
+  easy   = 6 seconds    completion bonus = 0
+  medium = 4 seconds    completion bonus = +10
+  expert = 2 seconds    completion bonus = +25
+
+SCORING RULES PER COMMAND:
+  Complete within window        = +20 pts
+  Exceed window (no skip)       = -1 pt per second over
+  Skip (no exceed)              = -20 pts
+  Skip after exceeding window   = -20 pts AND -1 pt per
+                                  second already accumulated
+
+SCORE FLOORS:
+  easy   = display floor 0 (never show negative to user)
+  medium = display floor 0 (never show negative to user)
+  expert = no floor (negatives shown in red)
+
+Always store the TRUE raw score in the database.
+Apply the floor only at the display layer.
+
+BONUS EVALUATION (run after all 5 commands complete):
+  perfect_round   all 5 within window + 0 skips → +20 pts
+  speed_demon     all under half the window      → +5 per cmd
+  combo_streak    3+ consecutive within window   → x1.5 on those
+  clean_sweep     0 skips total                  → +10 pts
+  first_cue       no resets on any command        → +3 per cmd
+  difficulty_bonus medium → +10 | expert → +25
+  family_record   beats leaderboard top score     → crown badge
+                  + push notification to all family members
+
+BONUS CAP: total bonus points cannot exceed +50 per session
+
+PARTICIPATION POINTS (what user sees):
+  easy + medium = max(0, raw_score + bonuses)
+  expert        = raw_score + bonuses (can be negative)
+
+═══════════════════════════════════════════════════════════════
+COMMAND LEVEL SYSTEM
+Run evaluateCommandLevel() after every session is saved
+═══════════════════════════════════════════════════════════════
+
+Level 1 — Learning
+  Condition : command exists in library
+  Obedience gate : NO
+
+Level 2 — Practising
+  Condition : training_sessions_count >= 5
+  Obedience gate : NO
+
+Level 3 — Reliable
+  Condition : qb_successes_count >= 10
+              AND qb_sessions_with_success >= 3
+  Obedience gate : YES
+
+When a command levels up:
+  - Update level in Replit Database
+  - Trigger level-up animation on profile command chip
+  - Send push notification: "Sit just reached Reliable! 🎉"
+
+OBEDIENCE CHALLENGE GATE:
+  Count commands at Level 3 for this dog
+  If count >= 7 → challenge is unlocked
+  Progress ring shows: "X of 7 commands Reliable"
+
+BASIC COMMAND LIST (v1 — 7 commands):
+  Sit, Down, Stay, Come, Heel, Place, Leave it
+
+═══════════════════════════════════════════════════════════════
+BACKEND API ROUTES
+═══════════════════════════════════════════════════════════════
+
+All routes protected by Replit Auth middleware except /health
+and /demo (demo session needs no auth)
+
+GET  /api/health
+
+DOGS
+  POST   /api/dogs
+  GET    /api/dogs/:id
+  PATCH  /api/dogs/:id
+  POST   /api/dogs/:id/avatar
+
+COMMANDS
+  GET    /api/dogs/:id/commands
+  POST   /api/dogs/:id/commands
+  PATCH  /api/commands/:dogId/:name
+  DELETE /api/commands/:dogId/:name
+
+SESSIONS
+  POST   /api/sessions
+  GET    /api/sessions?dogId=&userId=
+  GET    /api/sessions/:id
+
+LEADERBOARD + CHARTS
+  GET    /api/family/:id/leaderboard
+  GET    /api/family/:id/calendar?month=&year=
+  GET    /api/family/:id/yearly-chart?year=
+
+FAMILY
+  POST   /api/family
+  POST   /api/family/join/:code
+  GET    /api/family/:id/members
+
+ACHIEVEMENTS
+  GET    /api/dogs/:id/achievements
+  POST   /api/achievements
+
+NOTIFICATIONS
+  POST   /api/notify/family-record
+  POST   /api/notify/level-up
+  PATCH  /api/users/:id/push-token
+
+═══════════════════════════════════════════════════════════════
+CRITICAL IMPLEMENTATION NOTES
+═══════════════════════════════════════════════════════════════
+
+1. The HOLD button timer must use Reanimated 2 shared values
+   running on the native thread. Do NOT use setTimeout or
+   React setState for the countdown. This is non-negotiable —
+   timer accuracy is core to fair scoring.
+
+2. The demo session (before login) must be entirely local state.
+   Zero API calls. Zero database writes. Nothing is saved.
+
+3. Raw score is always stored in the database.
+   Score floor (0 for easy/medium) is a display-only rule.
+   Apply it only when rendering the score to the user.
+
+4. evaluateCommandLevel() must run server-side after every
+   POST /api/sessions. The app refetches commands after
+   saving a session to pick up any level changes.
+
+5. Fredoka One must be fully loaded before the Challenge Active
+   screen renders the command word. Show a loading state if
+   the font is not ready — do not fall back to system font.
+
+6. Family invite uses a 6-character alphanumeric code generated
+   on family creation. Share via the invite code in Settings.
+
+7. Variable reward schedule default is OFF for all new users.
+   The tooltip is always visible below the toggle whether
+   it is on or off.
+
+8. Always On must be enabled in Replit Deployments so the
+   backend never sleeps between mobile API calls.
+
+═══════════════════════════════════════════════════════════════
+BUILD ORDER — stop and confirm after each step
+═══════════════════════════════════════════════════════════════
+
+STEP 1 — Backend foundation
+  Express server + Replit Auth middleware
+  Replit Database connection + all data model helpers
+  GET /api/health returns 200
+  → STOP. Confirm server is running before continuing.
+
+STEP 2 — Auth + onboarding
+  Replit Auth sign in / sign up flow
+  Demo session screen (local state only, no auth)
+  Onboarding screens A through D
+  Create user + family + dog on onboarding complete
+  → STOP. Test full auth and onboarding flow.
+
+STEP 3 — Core game loop
+  Quick Start setup screen with difficulty selector
+  Challenge Active screen:
+    Reanimated 2 timer (native thread)
+    Press-and-hold HOLD button (Gesture Handler)
+    Real-time score display
+    Progress pips
+    Skip mechanic with penalty
+  calculateScore() utility function (all rules + bonuses)
+  End screen with full breakdown
+  POST /api/sessions saving the result
+  → STOP. Test on real device via Expo Go.
+  → The hold mechanic must feel accurate before step 4.
+
+STEP 4 — Dashboard
+  All stats pulling from real session data
+  Week progression bar
+  Monthly calendar preview strip
+  Family leaderboard
+  Floating Action Button
+
+STEP 5 — Command library + levels
+  Profile screen command chips with level states
+  evaluateCommandLevel() running after every session
+  Level-up animation + push notification
+  Obedience Challenge gate + animated progress ring
+  Locked state modal with Train Now buttons
+
+STEP 6 — Training mode
+  Configuration screen (all options including variable toggle)
+  Fixed schedule session loop
+  Variable schedule session loop
+  Session saved + command level updated on complete
+
+STEP 7 — Data views
+  Monthly calendar full screen (all cell states)
+  Yearly bar chart (Victory Native, animated)
+
+STEP 8 — Obedience Challenge
+  Rules + mode selection screen
+  Full command sequence game loop
+  Practice vs Challenge mode logic
+
+STEP 9 — Notifications
+  Expo push token saved on login
+  Daily reminder notification
+  Family record push to all members
+  Level-up notification
+
+STEP 10 — Polish
+  All empty states
+  Loading skeletons on dashboard
+  Error handling on every API call
+  Confetti on end screen (Expo)
+  All haptic patterns
+  Streak broken animation
+  Full command level-up celebration screen
