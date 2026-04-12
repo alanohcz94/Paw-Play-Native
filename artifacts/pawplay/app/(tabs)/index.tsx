@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useCallback } from "react";
 import {
   View,
   Text,
@@ -8,7 +8,7 @@ import {
   Platform,
   RefreshControl,
 } from "react-native";
-import { router } from "expo-router";
+import { router, useFocusEffect } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Feather } from "@expo/vector-icons";
 import { useColors } from "@/hooks/useColors";
@@ -111,9 +111,11 @@ export default function DashboardScreen() {
     }
   };
 
-  useEffect(() => {
-    loadData();
-  }, [dog?.id, familyId]);
+  useFocusEffect(
+    useCallback(() => {
+      loadData();
+    }, [dog?.id, familyId])
+  );
 
   const onRefresh = async () => {
     setRefreshing(true);
@@ -127,6 +129,11 @@ export default function DashboardScreen() {
     (sum, s) => sum + (s.participationPoints || 0),
     0,
   );
+
+  const todaySessions = sessions.filter((s) => {
+    const d = new Date(s.createdAt);
+    return d.toDateString() === new Date().toDateString();
+  });
 
   const topPaddingStyle = {
     paddingTop: insets.top + (Platform.OS === "web" ? 67 : 16),
@@ -190,6 +197,51 @@ export default function DashboardScreen() {
             value={totalPoints}
             bg={colors.lemonLight}
           />
+        </View>
+
+        {/* Today history log */}
+        <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
+          <View style={styles.cardHeader}>
+            <Text style={[styles.cardTitle, { color: colors.dark, fontFamily: "Nunito_900Black" }]}>
+              Today
+            </Text>
+            {todaySessions.length > 0 && (
+              <View style={[styles.countBadge, { backgroundColor: colors.peachLight }]}>
+                <Text style={[styles.countBadgeText, { color: colors.peach, fontFamily: "Nunito_900Black" }]}>
+                  {todaySessions.length}
+                </Text>
+              </View>
+            )}
+          </View>
+          {todaySessions.length === 0 ? (
+            <Text style={[styles.cardSubtitle, { color: colors.mutedForeground, fontFamily: "Nunito_400Regular" }]}>
+              No activity yet today
+            </Text>
+          ) : (
+            todaySessions.map((s: any, i: number) => {
+              const isQB = s.mode === "quickbites" || s.mode === "challenge";
+              const modeLabel = isQB ? "Quick Bites" : "Training";
+              const modeIcon = isQB ? "zap" : "book-open";
+              return (
+                <View key={s.id ?? i} style={[styles.historyRow, i > 0 && { borderTopWidth: 1, borderTopColor: colors.border }]}>
+                  <Feather name={modeIcon as any} size={16} color={isQB ? colors.peach : colors.mint} />
+                  <Text style={[styles.historyLabel, { color: colors.dark, fontFamily: "Nunito_700Bold" }]}>
+                    {modeLabel}
+                  </Text>
+                  {s.difficulty && (
+                    <View style={[styles.diffChip, { backgroundColor: colors.lavLight }]}>
+                      <Text style={[styles.diffChipText, { color: colors.lavender, fontFamily: "Nunito_700Bold" }]}>
+                        {s.difficulty}
+                      </Text>
+                    </View>
+                  )}
+                  <Text style={[styles.historyPts, { color: colors.mutedForeground, fontFamily: "Nunito_700Bold" }]}>
+                    {s.participationPoints > 0 ? `+${s.participationPoints} pts` : ""}
+                  </Text>
+                </View>
+              );
+            })
+          )}
         </View>
 
         <View
@@ -439,6 +491,13 @@ const styles = StyleSheet.create({
   emptyCard: { borderRadius: 20, padding: 24, alignItems: "center", gap: 8 },
   emptyTitle: { fontSize: 18 },
   emptyText: { fontSize: 14, textAlign: "center", lineHeight: 22 },
+  countBadge: { paddingHorizontal: 8, paddingVertical: 3, borderRadius: 12 },
+  countBadgeText: { fontSize: 13 },
+  historyRow: { flexDirection: "row", alignItems: "center", gap: 8, paddingVertical: 10 },
+  historyLabel: { flex: 1, fontSize: 14 },
+  diffChip: { paddingHorizontal: 8, paddingVertical: 3, borderRadius: 10 },
+  diffChipText: { fontSize: 11, textTransform: "capitalize" as const },
+  historyPts: { fontSize: 13 },
   fab: {
     position: "absolute",
     bottom: 90,

@@ -13,7 +13,41 @@ import Animated, {
   useSharedValue, useAnimatedStyle, withSequence, withTiming,
 } from "react-native-reanimated";
 
-type TrainingPhase = "ready" | "countdown" | "reward" | "waiting" | "complete";
+// Workflow: ready → marking → countdown? → reward → releasing → waiting → ready
+type TrainingPhase = "ready" | "marking" | "countdown" | "reward" | "releasing" | "waiting" | "complete";
+
+const REWARD_YES_MESSAGES = [
+  (marker: string, dogName: string) => `${marker}! Great job — reward time!`,
+  (_marker: string, _dog: string) => "Nice work! Give that treat!",
+  (_marker: string, dogName: string) => `Jackpot for ${dogName}!`,
+  (marker: string, _dog: string) => `${marker}! That deserves a reward!`,
+];
+
+const REWARD_HOLD_MESSAGES = [
+  "Good effort — hold the reward this time",
+  "Not this rep — keep it random!",
+  "Save the treat — stay unpredictable",
+  "Skip the reward this round — nice work though!",
+];
+
+const END_MESSAGES = [
+  "Fantastic session — you're both on a roll!",
+  "Your dog is lucky to have such a dedicated handler!",
+  "Consistency builds champions — great work today!",
+  "Every rep counts. You showed up and that matters!",
+  "Look at that progress — keep the momentum going!",
+  "Your dog is learning and loving it — great session!",
+  "Short sessions, big results. Well done!",
+  "That's how it's done — one rep at a time!",
+  "Amazing effort from both of you today!",
+  "Another great session in the books — keep it up!",
+  "You and your dog are a great team!",
+  "Building those habits one session at a time — keep going!",
+];
+
+function pickRandom<T>(arr: T[]): T {
+  return arr[Math.floor(Math.random() * arr.length)];
+}
 
 export default function TrainingActiveScreen() {
   const colors = useColors();
@@ -35,9 +69,12 @@ export default function TrainingActiveScreen() {
   const [interTrialCountdown, setInterTrialCountdown] = useState<number | null>(null);
   const [rewardResult, setRewardResult] = useState<"reward" | "hold" | null>(null);
   const [decisionCountdown, setDecisionCountdown] = useState<number | null>(null);
+  const [rewardMessage, setRewardMessage] = useState("");
   const [resetCount, setResetCount] = useState(0);
+
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const endMessageRef = useRef(pickRandom(END_MESSAGES));
   const shakeX = useSharedValue(0);
 
   const commandShakeStyle = useAnimatedStyle(() => ({
@@ -51,81 +88,97 @@ export default function TrainingActiveScreen() {
     if (intervalRef.current) clearInterval(intervalRef.current);
   };
 
-  const handleReleaseCue = useCallback(() => {
+  const startReleasingPhase = () => {
+    setPhase("releasing");
+    timerRef.current = setTimeout(() => {
+      startInterTrialWait();
+    }, 1800);
+  };
+
+  const startInterTrialWait = () => {
+    const waitTime = Math.floor(Math.random() * 10) + 1;
+    setInterTrialCountdown(waitTime);
+    setPhase("waiting");
+
+    let remaining = waitTime;
+    intervalRef.current = setInterval(() => {
+      remaining--;
+      setInterTrialCountdown(remaining);
+      if (remaining <= 0) {
+        clearInterval(intervalRef.current!);
+        setCurrentRep((r) => r + 1);
+        setInterTrialCountdown(null);
+        setRewardResult(null);
+        setDecisionCountdown(null);
+        setResetCount(0);
+        setPhase("ready");
+      }
+    }, 1000);
+  };
+
+  const handleComply = useCallback(() => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
     const newCompleted = completedReps + 1;
     setCompletedReps(newCompleted);
 
-    if (variableSchedule) {
-      const countdownDuration = Math.floor(Math.random() * 2) + 1;
-      setDecisionCountdown(countdownDuration);
-      setPhase("countdown");
-
-      let remaining = countdownDuration;
-      intervalRef.current = setInterval(() => {
-        remaining--;
-        setDecisionCountdown(remaining);
-        if (remaining <= 0) {
-          clearInterval(intervalRef.current!);
-          const reward = Math.random() < 0.40;
-          setRewardResult(reward ? "reward" : "hold");
-          setPhase("reward");
-
-          if (reward) {
-            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-          }
-
-          if (currentRep >= reps) {
-            timerRef.current = setTimeout(() => {
-              setPhase("complete");
-              saveSession(newCompleted);
-            }, 2000);
-            return;
-          }
-
-          startInterTrialWait(newCompleted);
-        }
-      }, 1000);
-    } else {
-      setRewardResult("reward");
-      setPhase("reward");
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-
-      if (currentRep >= reps) {
-        timerRef.current = setTimeout(() => {
-          setPhase("complete");
-          saveSession(newCompleted);
-        }, 2000);
-        return;
-      }
-
-      startInterTrialWait(newCompleted);
-    }
-  }, [currentRep, reps, completedReps, variableSchedule]);
-
-  const startInterTrialWait = (_completedCount: number) => {
-    const waitTime = Math.floor(Math.random() * 10) + 1;
+    // Phase: marking — brief flash showing the marker cue
+    setPhase("marking");
 
     timerRef.current = setTimeout(() => {
-      setInterTrialCountdown(waitTime);
-      setPhase("waiting");
+      if (variableSchedule) {
+        // Phase: countdown — deciding reward
+        const countdownDuration = Math.floor(Math.random() * 2) + 1;
+        setDecisionCountdown(countdownDuration);
+        setPhase("countdown");
 
-      let remaining = waitTime;
-      intervalRef.current = setInterval(() => {
-        remaining--;
-        setInterTrialCountdown(remaining);
-        if (remaining <= 0) {
-          clearInterval(intervalRef.current!);
-          setCurrentRep((r) => r + 1);
-          setInterTrialCountdown(null);
-          setRewardResult(null);
-          setDecisionCountdown(null);
-          setResetCount(0);
-          setPhase("ready");
-        }
-      }, 1000);
-    }, 2000);
-  };
+        let remaining = countdownDuration;
+        intervalRef.current = setInterval(() => {
+          remaining--;
+          setDecisionCountdown(remaining);
+          if (remaining <= 0) {
+            clearInterval(intervalRef.current!);
+            const reward = Math.random() < 0.40;
+            const isReward = reward;
+            setRewardResult(isReward ? "reward" : "hold");
+            if (isReward) {
+              setRewardMessage(pickRandom(REWARD_YES_MESSAGES)(markerCue, dog?.name ?? "your dog"));
+              Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+            } else {
+              setRewardMessage(pickRandom(REWARD_HOLD_MESSAGES));
+            }
+            setPhase("reward");
+
+            // After showing reward, move to releasing or complete
+            timerRef.current = setTimeout(() => {
+              if (newCompleted >= reps) {
+                endMessageRef.current = pickRandom(END_MESSAGES);
+                setPhase("complete");
+                saveSession(newCompleted);
+              } else {
+                startReleasingPhase();
+              }
+            }, 1800);
+          }
+        }, 1000);
+      } else {
+        // Always reward
+        setRewardResult("reward");
+        setRewardMessage(pickRandom(REWARD_YES_MESSAGES)(markerCue, dog?.name ?? "your dog"));
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+        setPhase("reward");
+
+        timerRef.current = setTimeout(() => {
+          if (newCompleted >= reps) {
+            endMessageRef.current = pickRandom(END_MESSAGES);
+            setPhase("complete");
+            saveSession(newCompleted);
+          } else {
+            startReleasingPhase();
+          }
+        }, 1800);
+      }
+    }, 700);
+  }, [currentRep, reps, completedReps, variableSchedule, markerCue, dog?.name]);
 
   const handleReset = () => {
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
@@ -162,37 +215,38 @@ export default function TrainingActiveScreen() {
     }
   };
 
-  const encouragements = [
-    "Great work today!",
-    "Your dog is getting stronger!",
-    "Consistency is key - keep it up!",
-    "Amazing effort from both of you!",
-    "Practice makes perfect!",
-  ];
-
+  // Complete screen
   if (phase === "complete") {
-    const msg = encouragements[Math.floor(Math.random() * encouragements.length)];
     return (
       <View style={[styles.container, { backgroundColor: colors.background, paddingTop: insets.top + (Platform.OS === "web" ? 67 : 0) }]}>
         <View style={[styles.doneCircle, { backgroundColor: colors.mintLight }]}>
           <Feather name="check" size={48} color={colors.mint} />
         </View>
-        <Text style={[styles.doneTitle, { color: colors.dark, fontFamily: "FredokaOne_400Regular" }]}>Session Complete!</Text>
-        <Text style={[styles.doneCommand, { color: colors.peach, fontFamily: "Nunito_900Black" }]}>{command}</Text>
+        <Text style={[styles.doneTitle, { color: colors.dark, fontFamily: "FredokaOne_400Regular" }]}>
+          Session Complete!
+        </Text>
+        <Text style={[styles.doneCommand, { color: colors.peach, fontFamily: "Nunito_900Black" }]}>
+          {command}
+        </Text>
         <Text style={[styles.doneStats, { color: colors.mutedForeground, fontFamily: "Nunito_700Bold" }]}>
           {completedReps} of {reps} reps completed
         </Text>
         <View style={[styles.encourageBox, { backgroundColor: colors.mintLight }]}>
-          <Text style={[styles.encourageText, { color: colors.mint, fontFamily: "Nunito_700Bold" }]}>{msg}</Text>
+          <Text style={[styles.encourageText, { color: colors.mint, fontFamily: "Nunito_700Bold" }]}>
+            {endMessageRef.current}
+          </Text>
         </View>
         <View style={[styles.rewardReminder, { backgroundColor: colors.peachLight, borderColor: colors.peach }]}>
           <Text style={[styles.rewardReminderText, { color: colors.dark, fontFamily: "Nunito_700Bold" }]}>
-            🎉 Remember to give {dog?.name ?? "your dog"} a reward! Always end on a good note.
+            Remember to end on a good note with {dog?.name ?? "your dog"}!
           </Text>
         </View>
         <TouchableOpacity
           style={[styles.doneBtn, { backgroundColor: colors.peach }]}
-          onPress={() => router.replace({ pathname: "/training-active", params: { command, rewardType, variableSchedule: vsParam ?? "0", reps: String(reps) } })}
+          onPress={() => {
+            endMessageRef.current = pickRandom(END_MESSAGES);
+            router.replace({ pathname: "/training-active", params: { command, rewardType, variableSchedule: vsParam ?? "0", reps: String(reps) } });
+          }}
           activeOpacity={0.85}
         >
           <Text style={[styles.doneBtnText, { fontFamily: "Nunito_900Black" }]}>Train Again</Text>
@@ -214,56 +268,97 @@ export default function TrainingActiveScreen() {
         <Feather name="x" size={22} color={colors.mutedForeground} />
       </TouchableOpacity>
 
-      <Text style={[styles.repProgress, { color: colors.mutedForeground, fontFamily: "Nunito_700Bold" }]}>Rep {currentRep} of {reps}</Text>
+      <Text style={[styles.repProgress, { color: colors.mutedForeground, fontFamily: "Nunito_700Bold" }]}>
+        Rep {currentRep} of {reps}
+      </Text>
 
       <View style={styles.pipsRow}>
         {Array.from({ length: reps }).map((_, i) => (
-          <View key={i} style={[styles.pip, { backgroundColor: i < currentRep - 1 ? colors.mint : i === currentRep - 1 ? colors.mintMid : colors.muted }]} />
+          <View
+            key={i}
+            style={[styles.pip, {
+              backgroundColor:
+                i < currentRep - 1 ? colors.mint :
+                i === currentRep - 1 ? colors.mintMid :
+                colors.muted,
+            }]}
+          />
         ))}
       </View>
 
       <Animated.View style={commandShakeStyle}>
-        <Text style={[styles.commandWord, { color: colors.dark, fontFamily: "FredokaOne_400Regular" }]}>{command}</Text>
+        <Text style={[styles.commandWord, { color: colors.dark, fontFamily: "FredokaOne_400Regular" }]}>
+          {command}
+        </Text>
       </Animated.View>
 
+      {/* Marking phase — marker cue flash */}
+      {phase === "marking" && (
+        <View style={[styles.waitBox, { backgroundColor: colors.mintLight }]}>
+          <Text style={styles.rewardEmoji}>✓</Text>
+          <Text style={[styles.waitText, { color: colors.mint, fontFamily: "Nunito_900Black" }]}>
+            {markerCue}!
+          </Text>
+        </View>
+      )}
+
+      {/* Countdown phase — variable schedule deciding */}
       {phase === "countdown" && decisionCountdown !== null && (
         <View style={[styles.waitBox, { backgroundColor: colors.lemonLight }]}>
-          <Text style={[styles.waitText, { color: colors.lemon, fontFamily: "Nunito_900Black" }]}>Deciding... {decisionCountdown}s</Text>
+          <Text style={[styles.waitText, { color: colors.lemon, fontFamily: "Nunito_900Black" }]}>
+            Deciding… {decisionCountdown}s
+          </Text>
         </View>
       )}
 
+      {/* Reward phase */}
       {phase === "reward" && rewardResult === "reward" && (
         <View style={[styles.waitBox, { backgroundColor: colors.mintLight }]}>
-          <Text style={[styles.rewardEmoji]}>🎉</Text>
+          <Text style={styles.rewardEmoji}>🎉</Text>
           <Text style={[styles.waitText, { color: colors.mint, fontFamily: "Nunito_900Black" }]}>
-            {markerCue}! Good reward — good boy!
+            {rewardMessage}
           </Text>
         </View>
       )}
-
       {phase === "reward" && rewardResult === "hold" && (
         <View style={[styles.waitBox, { backgroundColor: "#fef2f2" }]}>
-          <Text style={[styles.rewardEmoji]}>✋</Text>
+          <Text style={styles.rewardEmoji}>✋</Text>
           <Text style={[styles.waitText, { color: "#ef4444", fontFamily: "Nunito_900Black" }]}>
-            Hold reward — not this time
+            {rewardMessage}
           </Text>
         </View>
       )}
 
-      {phase === "waiting" && interTrialCountdown !== null && (
-        <View style={[styles.waitBox, { backgroundColor: colors.mintLight }]}>
-          <Text style={[styles.waitText, { color: colors.mint, fontFamily: "Nunito_900Black" }]}>Next rep in {interTrialCountdown}s...</Text>
+      {/* Releasing phase — cue the dog */}
+      {phase === "releasing" && (
+        <View style={[styles.waitBox, { backgroundColor: colors.peachLight, borderColor: colors.peach, borderWidth: 1.5 }]}>
+          <Text style={styles.rewardEmoji}>🐾</Text>
+          <Text style={[styles.waitText, { color: colors.peach, fontFamily: "Nunito_900Black" }]}>
+            Say "{releaseCue}"!
+          </Text>
         </View>
       )}
 
+      {/* Waiting phase — next rep countdown */}
+      {phase === "waiting" && interTrialCountdown !== null && (
+        <View style={[styles.waitBox, { backgroundColor: colors.mintLight }]}>
+          <Text style={[styles.waitText, { color: colors.mint, fontFamily: "Nunito_900Black" }]}>
+            Next rep in {interTrialCountdown}s…
+          </Text>
+        </View>
+      )}
+
+      {/* Actions — only shown in ready phase */}
       {phase === "ready" && (
         <View style={styles.actions}>
           <TouchableOpacity
             style={[styles.markDoneBtn, { backgroundColor: colors.mint }]}
-            onPress={handleReleaseCue}
+            onPress={handleComply}
             activeOpacity={0.85}
           >
-            <Text style={[styles.markDoneText, { fontFamily: "Nunito_900Black" }]}>{releaseCue}</Text>
+            <Text style={[styles.markDoneText, { fontFamily: "Nunito_900Black" }]}>
+              {markerCue}
+            </Text>
           </TouchableOpacity>
           <TouchableOpacity
             style={[styles.resetBtn, { borderColor: colors.border }]}
@@ -271,7 +366,9 @@ export default function TrainingActiveScreen() {
             activeOpacity={0.8}
           >
             <Feather name="refresh-cw" size={20} color={colors.mutedForeground} />
-            <Text style={[styles.resetText, { color: colors.mutedForeground, fontFamily: "Nunito_700Bold" }]}>Reset</Text>
+            <Text style={[styles.resetText, { color: colors.mutedForeground, fontFamily: "Nunito_700Bold" }]}>
+              Reset
+            </Text>
           </TouchableOpacity>
         </View>
       )}
@@ -286,19 +383,39 @@ const styles = StyleSheet.create({
   pipsRow: { flexDirection: "row", gap: 6, width: "100%", marginBottom: 48 },
   pip: { height: 6, flex: 1, borderRadius: 3 },
   commandWord: { fontSize: 56, textAlign: "center", marginBottom: 32 },
-  waitBox: { borderRadius: 16, paddingHorizontal: 24, paddingVertical: 16, marginBottom: 32, alignItems: "center", gap: 8 },
+  waitBox: { borderRadius: 16, paddingHorizontal: 24, paddingVertical: 16, marginBottom: 32, alignItems: "center", gap: 8, width: "100%" },
   waitText: { fontSize: 18, textAlign: "center" },
   rewardEmoji: { fontSize: 36 },
   actions: { gap: 14, width: "100%" },
-  markDoneBtn: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 10, paddingVertical: 20, borderRadius: 20, shadowColor: "#3DB884", shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 10, elevation: 6 },
+  markDoneBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 10,
+    paddingVertical: 20,
+    borderRadius: 20,
+    shadowColor: "#3DB884",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 10,
+    elevation: 6,
+  },
   markDoneText: { color: "#fff", fontSize: 20 },
-  resetBtn: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, paddingVertical: 16, borderRadius: 16, borderWidth: 1.5 },
+  resetBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    paddingVertical: 16,
+    borderRadius: 16,
+    borderWidth: 1.5,
+  },
   resetText: { fontSize: 16 },
   doneCircle: { width: 120, height: 120, borderRadius: 60, alignItems: "center", justifyContent: "center", marginBottom: 24 },
   doneTitle: { fontSize: 36, marginBottom: 8 },
   doneCommand: { fontSize: 22, marginBottom: 8 },
   doneStats: { fontSize: 18, marginBottom: 16 },
-  encourageBox: { borderRadius: 16, paddingHorizontal: 24, paddingVertical: 16, marginBottom: 32, width: "100%" },
+  encourageBox: { borderRadius: 16, paddingHorizontal: 24, paddingVertical: 16, marginBottom: 16, width: "100%" },
   encourageText: { fontSize: 16, textAlign: "center", lineHeight: 24 },
   rewardReminder: { borderRadius: 16, padding: 16, marginBottom: 24, borderWidth: 1.5, width: "100%" },
   rewardReminderText: { fontSize: 15, textAlign: "center", lineHeight: 22 },

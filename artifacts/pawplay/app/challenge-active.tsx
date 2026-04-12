@@ -35,6 +35,7 @@ export default function ChallengeActiveScreen() {
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const holdTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const capturedElapsed = useRef(0);
+  const skippedRef = useRef(false);
   const [displayTime, setDisplayTime] = useState(windowSec);
   const [windowExceeded, setWindowExceeded] = useState(false);
 
@@ -86,6 +87,7 @@ export default function ChallengeActiveScreen() {
     setMaxPoints(20);
     setPointsFlash(null);
     setBonusBubble(null);
+    skippedRef.current = false;
     startTimer();
     return () => {
       clearInterval(intervalRef.current!);
@@ -157,7 +159,7 @@ export default function ChallengeActiveScreen() {
     clearInterval(intervalRef.current!);
     capturedElapsed.current = elapsedRef.current;
 
-    const holdDuration = Math.floor(Math.random() * 3) + 1;
+    const holdDuration = Math.floor(Math.random() * 8) + 1;
     setHoldCountdown(holdDuration);
 
     let remaining = holdDuration;
@@ -215,6 +217,8 @@ export default function ChallengeActiveScreen() {
   };
 
   const handleSkip = () => {
+    if (skippedRef.current) return;
+    skippedRef.current = true;
     clearInterval(intervalRef.current!);
     clearInterval(holdTimerRef.current!);
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);

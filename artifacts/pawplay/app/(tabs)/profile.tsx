@@ -1,10 +1,12 @@
-import React, { useState, useRef } from "react";
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Platform, TextInput, Alert, Image, Animated as RNAnimated } from "react-native";
+import React, { useState } from "react";
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Platform, TextInput, Alert, Image } from "react-native";
+import { router } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Feather } from "@expo/vector-icons";
 import { useColors } from "@/hooks/useColors";
 import { useApp } from "@/context/AppContext";
 import { useAuth } from "@/lib/auth";
+import { ALL_COMMANDS } from "@/utils/scoring";
 
 type MasteryLevel = "added" | "learning" | "reliable";
 
@@ -38,73 +40,29 @@ function CommandChip({ name, mastery, colors: appColors }: { name: string; maste
 }
 
 const ACHIEVEMENT_TYPES = [
-  { type: "first_session", label: "Starter", icon: "star", description: "Completed your first training session", unlock: "Complete 1 Quick Bites session" },
-  { type: "streak_7", label: "7-Day Streak", icon: "zap", description: "Trained with your dog 7 days in a row", unlock: "Train every day for 7 consecutive days" },
-  { type: "streak_30", label: "30-Day Streak", icon: "award", description: "A month of consistent daily training", unlock: "Train every day for 30 consecutive days" },
-  { type: "perfect_round", label: "Perfect Round", icon: "target", description: "Flawless session — every command on time", unlock: "Complete all 5 commands within the comply window with zero skips" },
-  { type: "speed_demon", label: "Speed Demon", icon: "wind", description: "Lightning fast responses from your dog", unlock: "Complete every command in under half the comply window" },
-  { type: "family_champion", label: "Family Champ", icon: "trophy", description: "Top of the family leaderboard", unlock: "Beat all family members' session scores" },
-  { type: "reliable_handler", label: "Reliable Handler", icon: "shield", description: "Your first command reached expert level", unlock: "Get any command to Level 3 — Reliable" },
-  { type: "full_pack", label: "Full Pack", icon: "package", description: "All basic commands mastered", unlock: "Get all 7 basic commands to Level 3 — Reliable" },
-  { type: "month_pawfect", label: "Month Pawfect", icon: "calendar", description: "Trained every single day this month", unlock: "Complete a session every day in a calendar month" },
+  { type: "first_session" },
+  { type: "streak_7" },
+  { type: "streak_30" },
+  { type: "reliable_handler" },
+  { type: "full_pack" },
+  { type: "perfect_round" },
+  { type: "speed_demon" },
+  { type: "family_champion" },
+  { type: "month_pawfect" },
 ];
-
-function AchievementBadge({ ach, unlocked, colors }: { ach: typeof ACHIEVEMENT_TYPES[0]; unlocked: boolean; colors: any }) {
-  const [showInfo, setShowInfo] = useState(false);
-  const scaleAnim = useRef(new RNAnimated.Value(1)).current;
-
-  const handlePress = () => {
-    if (unlocked) {
-      RNAnimated.sequence([
-        RNAnimated.spring(scaleAnim, { toValue: 1.2, useNativeDriver: true, friction: 3 }),
-        RNAnimated.spring(scaleAnim, { toValue: 1, useNativeDriver: true, friction: 3 }),
-      ]).start();
-    } else {
-      RNAnimated.sequence([
-        RNAnimated.timing(scaleAnim, { toValue: 0.95, duration: 50, useNativeDriver: true }),
-        RNAnimated.timing(scaleAnim, { toValue: 1.05, duration: 50, useNativeDriver: true }),
-        RNAnimated.timing(scaleAnim, { toValue: 0.95, duration: 50, useNativeDriver: true }),
-        RNAnimated.timing(scaleAnim, { toValue: 1, duration: 50, useNativeDriver: true }),
-      ]).start();
-      setShowInfo(!showInfo);
-    }
-  };
-
-  return (
-    <View style={styles.achievementWrapper}>
-      <TouchableOpacity onPress={handlePress} activeOpacity={0.7}>
-        <RNAnimated.View style={[
-          styles.achievementBadge,
-          {
-            backgroundColor: unlocked ? colors.mintLight : colors.card,
-            borderColor: unlocked ? colors.mint : colors.border,
-            transform: [{ scale: scaleAnim }],
-          },
-        ]}>
-          <Feather name={ach.icon as any} size={24} color={unlocked ? colors.mint : colors.mutedForeground} />
-          <Text style={[styles.achievementLabel, { color: unlocked ? colors.mint : colors.mutedForeground, fontFamily: "Nunito_700Bold" }]}>{ach.label}</Text>
-          {!unlocked && <Feather name="lock" size={10} color={colors.mutedForeground} />}
-        </RNAnimated.View>
-      </TouchableOpacity>
-      {showInfo && !unlocked && (
-        <View style={[styles.unlockPanel, { backgroundColor: colors.card, borderColor: colors.border }]}>
-          <Text style={[styles.unlockDesc, { color: colors.dark, fontFamily: "Nunito_700Bold" }]}>{ach.description}</Text>
-          <Text style={[styles.unlockHow, { color: colors.mutedForeground, fontFamily: "Nunito_400Regular" }]}>{ach.unlock}</Text>
-        </View>
-      )}
-    </View>
-  );
 }
 
 export default function ProfileScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
-  const { dog, commands, streak, setDog } = useApp();
+  const { dog, commands, streak, setDog, setCommands } = useApp();
   const { user } = useAuth();
   const [editMode, setEditMode] = useState(false);
   const [releaseCue, setReleaseCue] = useState(dog?.releaseCue ?? "Free");
   const [markerCue, setMarkerCue] = useState(dog?.markerCue ?? "Yes");
   const [uploading, setUploading] = useState(false);
+  const [showAddCommands, setShowAddCommands] = useState(false);
+  const [addingCommand, setAddingCommand] = useState<string | null>(null);
 
   const apiBase = process.env.EXPO_PUBLIC_DOMAIN ? `https://${process.env.EXPO_PUBLIC_DOMAIN}` : "";
 
@@ -195,6 +153,31 @@ export default function ProfileScreen() {
     }
   };
 
+  const handleAddCommand = async (name: string) => {
+    if (!dog?.id || addingCommand) return;
+    setAddingCommand(name);
+    try {
+      const { getItemAsync } = await import("expo-secure-store");
+      const token = await getItemAsync("auth_session_token");
+      await fetch(`${apiBase}/api/dogs/${dog.id}/commands`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ name }),
+      });
+      const cmdsRes = await fetch(`${apiBase}/api/dogs/${dog.id}/commands`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (cmdsRes.ok) {
+        const { commands: updated } = await cmdsRes.json();
+        setCommands(updated);
+      }
+    } catch (e) {
+      Alert.alert("Error", "Could not add command. Please try again.");
+    } finally {
+      setAddingCommand(null);
+    }
+  };
+
   return (
     <ScrollView
       style={[styles.container, { backgroundColor: colors.background }]}
@@ -279,7 +262,47 @@ export default function ProfileScreen() {
         </View>
       )}
 
-      <Text style={[styles.sectionTitle, { color: colors.dark, fontFamily: "Nunito_900Black" }]}>Command Library</Text>
+      <View style={styles.sectionHeader}>
+        <Text style={[styles.sectionTitle, { color: colors.dark, fontFamily: "Nunito_900Black", marginBottom: 0 }]}>Command Library</Text>
+        <TouchableOpacity onPress={() => setShowAddCommands((v) => !v)} activeOpacity={0.7}>
+          <Text style={[styles.editBtn, { color: colors.peach, fontFamily: "Nunito_700Bold" }]}>
+            {showAddCommands ? "Done" : "Add +"}
+          </Text>
+        </TouchableOpacity>
+      </View>
+
+      {showAddCommands && (() => {
+        const ownedNames = new Set(commands.map((c) => c.name));
+        const available = ALL_COMMANDS.filter((cmd) => !ownedNames.has(cmd));
+        return available.length === 0 ? (
+          <View style={[styles.emptyCard, { backgroundColor: colors.mintLight, marginBottom: 14 }]}>
+            <Text style={[styles.emptyText, { color: colors.mint, fontFamily: "Nunito_700Bold" }]}>
+              All commands added!
+            </Text>
+          </View>
+        ) : (
+          <View style={[styles.addCommandPanel, { backgroundColor: colors.card, borderColor: colors.border }]}>
+            <Text style={[styles.addCommandHint, { color: colors.mutedForeground, fontFamily: "Nunito_400Regular" }]}>
+              Tap a command to add it to your list
+            </Text>
+            <View style={styles.commandsGrid}>
+              {available.map((cmd) => (
+                <TouchableOpacity
+                  key={cmd}
+                  style={[styles.commandChip, { backgroundColor: colors.peachLight, borderColor: colors.peach, borderWidth: 1.5, opacity: addingCommand === cmd ? 0.5 : 1 }]}
+                  onPress={() => handleAddCommand(cmd)}
+                  disabled={!!addingCommand}
+                  activeOpacity={0.75}
+                >
+                  <Text style={[styles.commandChipText, { color: colors.peach, fontFamily: "Nunito_700Bold" }]}>
+                    {addingCommand === cmd ? "Adding…" : `+ ${cmd}`}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          </View>
+        );
+      })()}
 
       {level3Count > 0 && (
         <View style={[styles.obedienceGate, { backgroundColor: colors.skyLight, borderColor: "#3B82F6" }]}>
@@ -315,12 +338,22 @@ export default function ProfileScreen() {
         ))}
       </View>
 
-      <Text style={[styles.sectionTitle, { color: colors.dark, fontFamily: "Nunito_900Black" }]}>Achievements</Text>
-      <View style={styles.achievementsGrid}>
-        {ACHIEVEMENT_TYPES.map((ach) => (
-          <AchievementBadge key={ach.type} ach={ach} unlocked={unlockedAchievements.has(ach.type)} colors={colors} />
-        ))}
-      </View>
+      <TouchableOpacity
+        style={[styles.achievementsNav, { backgroundColor: colors.card, borderColor: colors.border }]}
+        onPress={() => router.push("/achievements")}
+        activeOpacity={0.8}
+      >
+        <View style={styles.achievementsNavLeft}>
+          <Feather name="award" size={20} color={colors.lavender} />
+          <View>
+            <Text style={[styles.sectionTitle, { color: colors.dark, fontFamily: "Nunito_900Black", marginBottom: 2 }]}>Achievements</Text>
+            <Text style={[styles.achievementsNavSub, { color: colors.mutedForeground, fontFamily: "Nunito_400Regular" }]}>
+              {unlockedAchievements.size} of {ACHIEVEMENT_TYPES.length} unlocked
+            </Text>
+          </View>
+        </View>
+        <Feather name="chevron-right" size={20} color={colors.mutedForeground} />
+      </TouchableOpacity>
     </ScrollView>
   );
 }
@@ -364,13 +397,19 @@ const styles = StyleSheet.create({
   legendItem: { flexDirection: "row", alignItems: "center", gap: 4 },
   legendDot: { width: 10, height: 10, borderRadius: 5 },
   legendText: { fontSize: 11 },
-  emptyCard: { borderRadius: 16, padding: 20, marginBottom: 28 },
+  emptyCard: { borderRadius: 16, padding: 20, marginBottom: 12 },
   emptyText: { fontSize: 14, textAlign: "center", lineHeight: 22 },
-  achievementsGrid: { flexDirection: "row", flexWrap: "wrap", gap: 10, marginBottom: 28 },
-  achievementWrapper: { width: "30%" },
-  achievementBadge: { alignItems: "center", padding: 14, borderRadius: 16, gap: 8, borderWidth: 1 },
-  achievementLabel: { fontSize: 11, textAlign: "center" },
-  unlockPanel: { borderRadius: 12, padding: 10, marginTop: 4, borderWidth: 1 },
-  unlockDesc: { fontSize: 12, marginBottom: 4 },
-  unlockHow: { fontSize: 11, lineHeight: 16 },
+  addCommandPanel: { borderRadius: 16, padding: 16, borderWidth: 1, marginBottom: 16 },
+  addCommandHint: { fontSize: 13, marginBottom: 10 },
+  achievementsNav: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    borderRadius: 16,
+    padding: 16,
+    borderWidth: 1,
+    marginBottom: 28,
+  },
+  achievementsNavLeft: { flexDirection: "row", alignItems: "center", gap: 12 },
+  achievementsNavSub: { fontSize: 13 },
 });

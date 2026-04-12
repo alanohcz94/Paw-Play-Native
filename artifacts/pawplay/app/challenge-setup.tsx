@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   View, Text, StyleSheet, TouchableOpacity, ScrollView, Platform,
 } from "react-native";
@@ -10,13 +10,14 @@ import { useApp } from "@/context/AppContext";
 import { ALL_COMMANDS, DIFFICULTY_WINDOW } from "@/utils/scoring";
 import type { Difficulty } from "@/utils/scoring";
 
-function shuffleArray<T>(arr: T[]): T[] {
-  const a = [...arr];
-  for (let i = a.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [a[i], a[j]] = [a[j], a[i]];
-  }
-  return a;
+function sampleWithReplacement(pool: string[], count: number): string[] {
+  return Array.from({ length: count }, () => pool[Math.floor(Math.random() * pool.length)]);
+}
+
+function getCommandCount(diff: Difficulty): number {
+  if (diff === "medium") return Math.random() < 0.5 ? 6 : 7;
+  if (diff === "expert") return Math.floor(Math.random() * 3) + 6; // 6-8
+  return 5;
 }
 
 export default function ChallengeSetupScreen() {
@@ -25,15 +26,21 @@ export default function ChallengeSetupScreen() {
   const { commands } = useApp();
   const [difficulty, setDifficulty] = useState<Difficulty>("easy");
 
-  const pool = commands.length >= 5 ? commands.map((c) => c.name) : ALL_COMMANDS;
-  const generateHolds = (count: number) => Array.from({ length: count }, () => Math.floor(Math.random() * 3) + 1);
-  const [sequence, setSequence] = useState<string[]>(() => shuffleArray(pool).slice(0, 5));
-  const [holdDurations, setHoldDurations] = useState<number[]>(() => generateHolds(5));
+  const pool = commands.length >= 1 ? commands.map((c) => c.name) : ALL_COMMANDS;
+  const generateHolds = (count: number) => Array.from({ length: count }, () => Math.floor(Math.random() * 8) + 1);
+  const [sequence, setSequence] = useState<string[]>(() => sampleWithReplacement(pool, getCommandCount("easy")));
+  const [holdDurations, setHoldDurations] = useState<number[]>(() => generateHolds(getCommandCount("easy")));
 
   const shuffle = () => {
-    setSequence(shuffleArray(pool).slice(0, 5));
-    setHoldDurations(generateHolds(5));
+    const count = getCommandCount(difficulty);
+    setSequence(sampleWithReplacement(pool, count));
+    setHoldDurations(generateHolds(count));
   };
+
+  useEffect(() => {
+    shuffle();
+  }, [difficulty]);
+
   const window = DIFFICULTY_WINDOW[difficulty];
 
   const difficultyOptions: { key: Difficulty; label: string; color: string; bg: string }[] = [
