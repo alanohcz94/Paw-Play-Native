@@ -1,7 +1,7 @@
 import { Router, type Request, type Response } from "express";
 import { db } from "@workspace/db";
 import { sessionsRecordTable, commandsTable } from "@workspace/db";
-import { and, eq, inArray, sql } from "drizzle-orm";
+import { and, eq, sql, gte, lte } from "drizzle-orm";
 
 const router = Router();
 
@@ -41,17 +41,34 @@ router.post("/sessions", async (req: Request, res: Response) => {
   }).returning();
 
   if (completed && commandsUsed && commandsUsed.length > 0) {
-    const commandNames: string[] = commandsUsed.map((c: { name: string }) => c.name);
-    const successNames: string[] = commandsUsed.filter((c: { success: boolean }) => c.success).map((c: { name: string }) => c.name);
-    const hasSuccess = successNames.length > 0;
+    type CmdEntry = { name: string; success?: boolean; count?: number };
+    const entries: CmdEntry[] = commandsUsed;
+    const hasSuccess = entries.some((c) => c.success);
 
-    for (const name of commandNames) {
-      const [existing] = await db.select().from(commandsTable).where(and(eq(commandsTable.dogId, dogId), eq(commandsTable.name, name)));
+    // Group entries by command name and sum counts so we can do one DB update per command
+    const byName: Record<string, { totalCount: number; anySuccess: boolean }> = {};
+    for (const entry of entries) {
+      const n = entry.name;
+      if (!byName[n]) byName[n] = { totalCount: 0, anySuccess: false };
+      byName[n].totalCount += entry.count ?? 1;
+      if (entry.success) byName[n].anySuccess = true;
+    }
+
+    for (const [name, agg] of Object.entries(byName)) {
+      const [existing] = await db.select().from(commandsTable)
+        .where(and(eq(commandsTable.dogId, dogId), eq(commandsTable.name, name)));
       if (!existing) continue;
-      const isSuccess = successNames.includes(name);
-      const newTrainingCount = mode === "training" ? existing.trainingSessionsCount + 1 : existing.trainingSessionsCount;
-      const newQbSuccesses = (mode === "quickbites" || mode === "challenge") && isSuccess ? existing.qbSuccessesCount + 1 : existing.qbSuccessesCount;
-      const newQbSessionsWithSuccess = (mode === "quickbites" || mode === "challenge") && hasSuccess ? existing.qbSessionsWithSuccess + 1 : existing.qbSessionsWithSuccess;
+
+      const repCount = agg.totalCount;
+      const newTrainingCount = mode === "training"
+        ? existing.trainingSessionsCount + repCount
+        : existing.trainingSessionsCount;
+      const newQbSuccesses = (mode === "quickbites" || mode === "challenge") && agg.anySuccess
+        ? existing.qbSuccessesCount + repCount
+        : existing.qbSuccessesCount;
+      const newQbSessionsWithSuccess = (mode === "quickbites" || mode === "challenge") && hasSuccess
+        ? existing.qbSessionsWithSuccess + 1
+        : existing.qbSessionsWithSuccess;
       const newLevel = evaluateCommandLevel({
         trainingSessionsCount: newTrainingCount,
         qbSuccessesCount: newQbSuccesses,
@@ -75,11 +92,17 @@ router.get("/sessions", async (req: Request, res: Response) => {
     res.status(401).json({ error: "Unauthorized" });
     return;
   }
-  const { dogId, userId, limit } = req.query;
-  let query = db.select().from(sessionsRecordTable);
+  const { dogId, userId, limit, date } = req.query;
   const conditions = [];
   if (dogId) conditions.push(eq(sessionsRecordTable.dogId, dogId as string));
   if (userId) conditions.push(eq(sessionsRecordTable.userId, userId as string));
+  if (date) {
+    // date = "YYYY-MM-DD", match full day in UTC
+    const dayStart = new Date(`${date}T00:00:00.000Z`);
+    const dayEnd = new Date(`${date}T23:59:59.999Z`);
+    conditions.push(gte(sessionsRecordTable.createdAt, dayStart));
+    conditions.push(lte(sessionsRecordTable.createdAt, dayEnd));
+  }
 
   const sessions = await db.select().from(sessionsRecordTable)
     .where(conditions.length === 1 ? conditions[0] : conditions.length > 1 ? and(...conditions) : undefined)

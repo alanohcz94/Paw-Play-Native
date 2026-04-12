@@ -14,7 +14,7 @@ const ACHIEVEMENT_TYPES = [
     label: "Starter",
     icon: "star",
     description: "Completed your first training session",
-    unlock: "Complete 1 Quick Bites session",
+    unlock: "Complete 1 Quick Bites or Training session",
   },
   {
     type: "streak_7",
@@ -29,6 +29,20 @@ const ACHIEVEMENT_TYPES = [
     icon: "award",
     description: "A month of consistent daily training",
     unlock: "Train every day for 30 consecutive days",
+  },
+  {
+    type: "amazing_student",
+    label: "Amazing Student",
+    icon: "book",
+    description: "100 reps on any single command — your dog is a natural!",
+    unlock: "Reach 100 combined reps on any one command",
+  },
+  {
+    type: "distinction_student",
+    label: "Distinction Student",
+    icon: "book-open",
+    description: "100 reps on every basic command — top of the class!",
+    unlock: "Reach 100 combined reps on all 7 basic commands",
   },
   {
     type: "perfect_round",
@@ -55,14 +69,14 @@ const ACHIEVEMENT_TYPES = [
     type: "reliable_handler",
     label: "Reliable Handler",
     icon: "shield",
-    description: "Your first command reached expert level",
+    description: "Your first command reached Reliable level",
     unlock: "Get any command to Level 3 — Reliable",
   },
   {
     type: "full_pack",
     label: "Full Pack",
     icon: "package",
-    description: "All basic commands mastered",
+    description: "All basic commands mastered — Obedience Challenge unlocked!",
     unlock: "Get all 7 basic commands to Level 3 — Reliable",
   },
   {
@@ -74,11 +88,14 @@ const ACHIEVEMENT_TYPES = [
   },
 ];
 
+const BASIC_COMMANDS = ["Sit", "Down", "Stay", "Come", "Heel", "Place", "Leave it"];
+
 function getProgress(
   type: string,
   streak: number,
   level3Count: number,
-  hasAnySessions: boolean
+  hasAnySessions: boolean,
+  commands: Array<{ name: string; trainingSessionsCount: number; qbSuccessesCount: number }>
 ): number {
   switch (type) {
     case "first_session":
@@ -91,6 +108,20 @@ function getProgress(
       return level3Count >= 1 ? 100 : 0;
     case "full_pack":
       return Math.min(100, Math.round((level3Count / 7) * 100));
+    case "amazing_student": {
+      const maxReps = commands.reduce((max, c) => {
+        const total = c.trainingSessionsCount + c.qbSuccessesCount;
+        return total > max ? total : max;
+      }, 0);
+      return Math.min(100, Math.round((maxReps / 100) * 100));
+    }
+    case "distinction_student": {
+      const basicDone = BASIC_COMMANDS.filter((name) => {
+        const cmd = commands.find((c) => c.name === name);
+        return cmd && (cmd.trainingSessionsCount + cmd.qbSuccessesCount) >= 100;
+      }).length;
+      return Math.min(100, Math.round((basicDone / 7) * 100));
+    }
     default:
       return 0;
   }
@@ -108,12 +139,23 @@ export default function AchievementsScreen() {
     (c) => c.trainingSessionsCount > 0 || c.qbSuccessesCount > 0
   );
 
+  const maxCommandReps = commands.reduce((max, c) => {
+    const total = c.trainingSessionsCount + c.qbSuccessesCount;
+    return total > max ? total : max;
+  }, 0);
+  const basicCommandsAt100 = BASIC_COMMANDS.filter((name) => {
+    const cmd = commands.find((c) => c.name === name);
+    return cmd && (cmd.trainingSessionsCount + cmd.qbSuccessesCount) >= 100;
+  }).length;
+
   const unlockedSet = new Set<string>();
   if (hasAnySessions) unlockedSet.add("first_session");
   if (streak >= 7) unlockedSet.add("streak_7");
   if (streak >= 30) unlockedSet.add("streak_30");
   if (level3Count >= 1) unlockedSet.add("reliable_handler");
   if (level3Count >= 7) unlockedSet.add("full_pack");
+  if (maxCommandReps >= 100) unlockedSet.add("amazing_student");
+  if (basicCommandsAt100 >= 7) unlockedSet.add("distinction_student");
 
   const unlockedCount = unlockedSet.size;
 
@@ -152,7 +194,7 @@ export default function AchievementsScreen() {
         const unlocked = unlockedSet.has(ach.type);
         const progress = unlocked
           ? 100
-          : getProgress(ach.type, streak, level3Count, hasAnySessions);
+          : getProgress(ach.type, streak, level3Count, hasAnySessions, commands);
 
         return (
           <View

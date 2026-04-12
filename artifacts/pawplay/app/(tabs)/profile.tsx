@@ -100,6 +100,7 @@ export default function ProfileScreen() {
   const [uploading, setUploading] = useState(false);
   const [showAddCommands, setShowAddCommands] = useState(false);
   const [addingCommand, setAddingCommand] = useState<string | null>(null);
+  const [customCommandInput, setCustomCommandInput] = useState("");
 
   const apiBase = process.env.EXPO_PUBLIC_DOMAIN
     ? `https://${process.env.EXPO_PUBLIC_DOMAIN}`
@@ -249,28 +250,38 @@ export default function ProfileScreen() {
       showsVerticalScrollIndicator={false}
     >
       <View style={styles.avatarSection}>
-        <TouchableOpacity onPress={handleAvatarPick} activeOpacity={0.7}>
-          <View
-            style={[
-              styles.avatarCircle,
-              { backgroundColor: colors.peachLight, borderColor: colors.peach },
-            ]}
+        <View style={styles.avatarWrapper}>
+          <TouchableOpacity onPress={handleAvatarPick} activeOpacity={0.7}>
+            <View
+              style={[
+                styles.avatarCircle,
+                { backgroundColor: colors.peachLight, borderColor: colors.peach },
+              ]}
+            >
+              {dog?.avatarUrl ? (
+                <Image
+                  source={{ uri: dog.avatarUrl }}
+                  style={styles.avatarImage}
+                />
+              ) : (
+                <Text style={styles.avatarEmoji}>🐾</Text>
+              )}
+              {uploading && (
+                <View style={styles.avatarOverlay}>
+                  <Text style={styles.avatarOverlayText}>...</Text>
+                </View>
+              )}
+            </View>
+          </TouchableOpacity>
+          {/* "+" badge to open add-command panel */}
+          <TouchableOpacity
+            style={[styles.avatarAddBadge, { backgroundColor: colors.peach }]}
+            onPress={() => setShowAddCommands((v) => !v)}
+            activeOpacity={0.85}
           >
-            {dog?.avatarUrl ? (
-              <Image
-                source={{ uri: dog.avatarUrl }}
-                style={styles.avatarImage}
-              />
-            ) : (
-              <Text style={styles.avatarEmoji}>🐾</Text>
-            )}
-            {uploading && (
-              <View style={styles.avatarOverlay}>
-                <Text style={styles.avatarOverlayText}>...</Text>
-              </View>
-            )}
-          </View>
-        </TouchableOpacity>
+            <Feather name={showAddCommands ? "x" : "plus"} size={14} color="#fff" />
+          </TouchableOpacity>
+        </View>
         <Text
           style={[
             styles.dogName,
@@ -511,103 +522,64 @@ export default function ProfileScreen() {
         </View>
       )}
 
-      <View style={styles.sectionHeader}>
-        <Text
-          style={[
-            styles.sectionTitle,
-            {
-              color: colors.dark,
-              fontFamily: "Nunito_900Black",
-              marginBottom: 0,
-            },
-          ]}
-        >
-          Command Library
-        </Text>
-        <TouchableOpacity
-          onPress={() => setShowAddCommands((v) => !v)}
-          activeOpacity={0.7}
-        >
-          <Text
-            style={[
-              styles.editBtn,
-              { color: colors.peach, fontFamily: "Nunito_700Bold" },
-            ]}
-          >
-            {showAddCommands ? "Done" : "Add +"}
-          </Text>
-        </TouchableOpacity>
-      </View>
+      <Text style={[styles.sectionTitle, { color: colors.dark, fontFamily: "Nunito_900Black" }]}>Command Library</Text>
 
-      {showAddCommands &&
-        (() => {
-          const ownedNames = new Set(commands.map((c) => c.name));
-          const available = ALL_COMMANDS.filter((cmd) => !ownedNames.has(cmd));
-          return available.length === 0 ? (
-            <View
-              style={[
-                styles.emptyCard,
-                { backgroundColor: colors.mintLight, marginBottom: 14 },
-              ]}
-            >
-              <Text
-                style={[
-                  styles.emptyText,
-                  { color: colors.mint, fontFamily: "Nunito_700Bold" },
-                ]}
-              >
-                All commands added!
-              </Text>
-            </View>
-          ) : (
-            <View
-              style={[
-                styles.addCommandPanel,
-                { backgroundColor: colors.card, borderColor: colors.border },
-              ]}
-            >
-              <Text
-                style={[
-                  styles.addCommandHint,
-                  {
-                    color: colors.mutedForeground,
-                    fontFamily: "Nunito_400Regular",
-                  },
-                ]}
-              >
-                Tap a command to add it to your list
-              </Text>
+      {showAddCommands && (() => {
+        const PRESET_SUGGESTIONS = ["Shake", "Hi-5", "Hop/Over", "Up", "Home", "Roll Over", "Spin", "Fetch", "Drop It", "Wait"];
+        const ALL_SUGGESTIONS = [...ALL_COMMANDS, ...PRESET_SUGGESTIONS];
+        const ownedNames = new Set(commands.map((c) => c.name));
+        const available = ALL_SUGGESTIONS.filter((cmd) => !ownedNames.has(cmd));
+        return (
+          <View style={[styles.addCommandPanel, { backgroundColor: colors.card, borderColor: colors.border }]}>
+            <Text style={[styles.addCommandHint, { color: colors.mutedForeground, fontFamily: "Nunito_400Regular" }]}>
+              Tap a suggestion or type your own
+            </Text>
+            {available.length > 0 && (
               <View style={styles.commandsGrid}>
                 {available.map((cmd) => (
                   <TouchableOpacity
                     key={cmd}
-                    style={[
-                      styles.commandChip,
-                      {
-                        backgroundColor: colors.peachLight,
-                        borderColor: colors.peach,
-                        borderWidth: 1.5,
-                        opacity: addingCommand === cmd ? 0.5 : 1,
-                      },
-                    ]}
+                    style={[styles.commandChip, { backgroundColor: colors.peachLight, borderColor: colors.peach, borderWidth: 1.5, opacity: addingCommand === cmd ? 0.5 : 1 }]}
                     onPress={() => handleAddCommand(cmd)}
                     disabled={!!addingCommand}
                     activeOpacity={0.75}
                   >
-                    <Text
-                      style={[
-                        styles.commandChipText,
-                        { color: colors.peach, fontFamily: "Nunito_700Bold" },
-                      ]}
-                    >
+                    <Text style={[styles.commandChipText, { color: colors.peach, fontFamily: "Nunito_700Bold" }]}>
                       {addingCommand === cmd ? "Adding…" : `+ ${cmd}`}
                     </Text>
                   </TouchableOpacity>
                 ))}
               </View>
+            )}
+            <View style={[styles.customInputRow, { borderTopColor: colors.border }]}>
+              <TextInput
+                style={[styles.customInput, { backgroundColor: colors.background, borderColor: colors.border, color: colors.dark, fontFamily: "Nunito_400Regular" }]}
+                value={customCommandInput}
+                onChangeText={setCustomCommandInput}
+                placeholder="Custom command…"
+                placeholderTextColor={colors.mutedForeground}
+                autoCapitalize="words"
+                returnKeyType="done"
+                onSubmitEditing={() => {
+                  const trimmed = customCommandInput.trim();
+                  if (trimmed) { handleAddCommand(trimmed); setCustomCommandInput(""); }
+                }}
+              />
+              <TouchableOpacity
+                style={[styles.customInputBtn, { backgroundColor: colors.peach, opacity: customCommandInput.trim() ? 1 : 0.4 }]}
+                onPress={() => {
+                  const trimmed = customCommandInput.trim();
+                  if (trimmed) { handleAddCommand(trimmed); setCustomCommandInput(""); }
+                }}
+                disabled={!customCommandInput.trim() || !!addingCommand}
+                activeOpacity={0.8}
+              >
+                <Feather name="plus" size={18} color="#fff" />
+              </TouchableOpacity>
             </View>
-          );
-        })()}
+          </View>
+        );
+      })()}
 
       {level3Count > 0 && (
         <View
@@ -870,4 +842,20 @@ const styles = StyleSheet.create({
   },
   achievementsNavLeft: { flexDirection: "row", alignItems: "center", gap: 12 },
   achievementsNavSub: { fontSize: 13 },
+  avatarWrapper: { position: "relative" },
+  avatarAddBadge: {
+    position: "absolute",
+    bottom: 2,
+    right: 2,
+    width: 26,
+    height: 26,
+    borderRadius: 13,
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 2,
+    borderColor: "#fff",
+  },
+  customInputRow: { flexDirection: "row", alignItems: "center", gap: 8, marginTop: 10, paddingTop: 10, borderTopWidth: 1 },
+  customInput: { flex: 1, borderWidth: 1, borderRadius: 12, paddingHorizontal: 12, paddingVertical: 10, fontSize: 14 },
+  customInputBtn: { width: 40, height: 40, borderRadius: 12, alignItems: "center", justifyContent: "center" },
 });

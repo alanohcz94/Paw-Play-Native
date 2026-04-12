@@ -7,6 +7,7 @@ import {
   TouchableOpacity,
   Platform,
   RefreshControl,
+  Image,
 } from "react-native";
 import { router, useFocusEffect } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -154,8 +155,14 @@ export default function DashboardScreen() {
         showsVerticalScrollIndicator={false}
       >
         <View style={styles.topBar}>
-          <TouchableOpacity>
-            <Feather name="menu" size={24} color={colors.dark} />
+          <TouchableOpacity onPress={() => router.push("/(tabs)/profile")} activeOpacity={0.8}>
+            <View style={[styles.topAvatarCircle, { backgroundColor: colors.peachLight, borderColor: colors.peach }]}>
+              {dog?.avatarUrl ? (
+                <Image source={{ uri: dog.avatarUrl }} style={styles.topAvatarImage} />
+              ) : (
+                <Text style={styles.topAvatarEmoji}>🐾</Text>
+              )}
+            </View>
           </TouchableOpacity>
           <Text
             style={[
@@ -222,12 +229,21 @@ export default function DashboardScreen() {
               const isQB = s.mode === "quickbites" || s.mode === "challenge";
               const modeLabel = isQB ? "Quick Bites" : "Training";
               const modeIcon = isQB ? "zap" : "book-open";
+              const cmdName = !isQB && s.commandsUsed?.[0]?.name ? s.commandsUsed[0].name : null;
+              const reps = !isQB && s.durationSeconds ? Math.round(s.durationSeconds / 30) : null;
               return (
                 <View key={s.id ?? i} style={[styles.historyRow, i > 0 && { borderTopWidth: 1, borderTopColor: colors.border }]}>
                   <Feather name={modeIcon as any} size={16} color={isQB ? colors.peach : colors.mint} />
-                  <Text style={[styles.historyLabel, { color: colors.dark, fontFamily: "Nunito_700Bold" }]}>
-                    {modeLabel}
-                  </Text>
+                  <View style={{ flex: 1 }}>
+                    <Text style={[styles.historyLabel, { color: colors.dark, fontFamily: "Nunito_700Bold" }]}>
+                      {modeLabel}{cmdName ? ` — ${cmdName}` : ""}
+                    </Text>
+                    {reps && reps > 0 && (
+                      <Text style={[styles.historyMeta, { color: colors.mutedForeground, fontFamily: "Nunito_400Regular" }]}>
+                        {reps} rep{reps !== 1 ? "s" : ""}
+                      </Text>
+                    )}
+                  </View>
                   {s.difficulty && (
                     <View style={[styles.diffChip, { backgroundColor: colors.lavLight }]}>
                       <Text style={[styles.diffChipText, { color: colors.lavender, fontFamily: "Nunito_700Bold" }]}>
@@ -494,10 +510,14 @@ const styles = StyleSheet.create({
   countBadge: { paddingHorizontal: 8, paddingVertical: 3, borderRadius: 12 },
   countBadgeText: { fontSize: 13 },
   historyRow: { flexDirection: "row", alignItems: "center", gap: 8, paddingVertical: 10 },
-  historyLabel: { flex: 1, fontSize: 14 },
+  historyLabel: { fontSize: 14 },
+  historyMeta: { fontSize: 12, marginTop: 1 },
   diffChip: { paddingHorizontal: 8, paddingVertical: 3, borderRadius: 10 },
   diffChipText: { fontSize: 11, textTransform: "capitalize" as const },
   historyPts: { fontSize: 13 },
+  topAvatarCircle: { width: 36, height: 36, borderRadius: 18, borderWidth: 2, alignItems: "center", justifyContent: "center", overflow: "hidden" },
+  topAvatarImage: { width: 32, height: 32, borderRadius: 16 },
+  topAvatarEmoji: { fontSize: 18 },
   fab: {
     position: "absolute",
     bottom: 90,

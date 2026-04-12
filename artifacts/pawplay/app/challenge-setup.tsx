@@ -61,7 +61,7 @@ export default function ChallengeSetupScreen() {
 
         <View style={[styles.infoBox, { backgroundColor: colors.mintLight, borderLeftColor: colors.mint }]}>
           <Text style={[styles.infoText, { color: colors.dark, fontFamily: "Nunito_400Regular" }]}>
-            Hold the HOLD button when your dog starts complying. Release when done. Beat the timer for full points — skipping costs points!
+            HOLD means your dog holds the position AND keeps focus on you — body still, eyes on handler! Hold the HOLD button while they comply and release when done. Beat the timer for full points — skipping costs points!
           </Text>
         </View>
 

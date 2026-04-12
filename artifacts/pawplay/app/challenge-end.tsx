@@ -14,7 +14,7 @@ export default function ChallengeEndScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const { result: resultParam, difficulty } = useLocalSearchParams<{ result: string; difficulty: string }>();
-  const { dog, setLastTrainedDate, setStreak, streak } = useApp();
+  const { dog, setLastTrainedDate, setStreak, streak, setCommands } = useApp();
   const { user } = useAuth();
   const scoreAnim = useRef(new Animated.Value(0)).current;
   const bonusAnim = useRef(new Animated.Value(0)).current;
@@ -53,11 +53,25 @@ export default function ChallengeEndScreen() {
           rawScore: result.rawScore,
           participationPoints: result.participationPoints,
           bonuses: result.bonuses,
-          commandsUsed: result.commandResults.map((r) => ({ name: r.name, success: r.success, skipped: r.skipped, resetCount: r.resetCount })),
+          commandsUsed: result.commandResults.map((r) => ({
+            name: r.name,
+            success: r.success,
+            skipped: r.skipped,
+            resetCount: r.resetCount,
+            count: 1,
+          })),
           durationSeconds: 120,
           completed: true,
         }),
       });
+      // Refresh command counts so Command Library updates immediately
+      const cmdsRes = await fetch(`${apiBase}/api/dogs/${dog.id}/commands`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (cmdsRes.ok) {
+        const { commands } = await cmdsRes.json();
+        setCommands(commands);
+      }
     } catch (e) {
       console.error(e);
     }

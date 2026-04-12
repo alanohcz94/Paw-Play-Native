@@ -55,7 +55,7 @@ export default function TrainingActiveScreen() {
   const { command, rewardType, variableSchedule: vsParam, reps: repsParam } = useLocalSearchParams<{
     command: string; rewardType: string; variableSchedule: string; reps: string;
   }>();
-  const { dog } = useApp();
+  const { dog, setCommands } = useApp();
   const { user } = useAuth();
   const reps = parseInt(repsParam ?? "5");
   const variableSchedule = vsParam === "1";
@@ -68,7 +68,6 @@ export default function TrainingActiveScreen() {
   const [completedReps, setCompletedReps] = useState(0);
   const [interTrialCountdown, setInterTrialCountdown] = useState<number | null>(null);
   const [rewardResult, setRewardResult] = useState<"reward" | "hold" | null>(null);
-  const [decisionCountdown, setDecisionCountdown] = useState<number | null>(null);
   const [rewardMessage, setRewardMessage] = useState("");
   const [resetCount, setResetCount] = useState(0);
 
@@ -109,7 +108,6 @@ export default function TrainingActiveScreen() {
         setCurrentRep((r) => r + 1);
         setInterTrialCountdown(null);
         setRewardResult(null);
-        setDecisionCountdown(null);
         setResetCount(0);
         setPhase("ready");
       }
@@ -126,40 +124,26 @@ export default function TrainingActiveScreen() {
 
     timerRef.current = setTimeout(() => {
       if (variableSchedule) {
-        // Phase: countdown — deciding reward
-        const countdownDuration = Math.floor(Math.random() * 2) + 1;
-        setDecisionCountdown(countdownDuration);
-        setPhase("countdown");
+        // Decide reward instantly (no visible countdown — keeps the pace snappy)
+        const isReward = Math.random() < 0.40;
+        setRewardResult(isReward ? "reward" : "hold");
+        if (isReward) {
+          setRewardMessage(pickRandom(REWARD_YES_MESSAGES)(markerCue, dog?.name ?? "your dog"));
+          Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+        } else {
+          setRewardMessage(pickRandom(REWARD_HOLD_MESSAGES));
+        }
+        setPhase("reward");
 
-        let remaining = countdownDuration;
-        intervalRef.current = setInterval(() => {
-          remaining--;
-          setDecisionCountdown(remaining);
-          if (remaining <= 0) {
-            clearInterval(intervalRef.current!);
-            const reward = Math.random() < 0.40;
-            const isReward = reward;
-            setRewardResult(isReward ? "reward" : "hold");
-            if (isReward) {
-              setRewardMessage(pickRandom(REWARD_YES_MESSAGES)(markerCue, dog?.name ?? "your dog"));
-              Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-            } else {
-              setRewardMessage(pickRandom(REWARD_HOLD_MESSAGES));
-            }
-            setPhase("reward");
-
-            // After showing reward, move to releasing or complete
-            timerRef.current = setTimeout(() => {
-              if (newCompleted >= reps) {
-                endMessageRef.current = pickRandom(END_MESSAGES);
-                setPhase("complete");
-                saveSession(newCompleted);
-              } else {
-                startReleasingPhase();
-              }
-            }, 1800);
+        timerRef.current = setTimeout(() => {
+          if (newCompleted >= reps) {
+            endMessageRef.current = pickRandom(END_MESSAGES);
+            setPhase("complete");
+            saveSession(newCompleted);
+          } else {
+            startReleasingPhase();
           }
-        }, 1000);
+        }, 1800);
       } else {
         // Always reward
         setRewardResult("reward");
@@ -205,11 +189,20 @@ export default function TrainingActiveScreen() {
           rawScore: 0,
           participationPoints: 0,
           bonuses: [],
-          commandsUsed: [{ name: command, success: completed > 0 }],
-          durationSeconds: reps * 30,
+          // count = actual reps completed so server increments trainingSessionsCount by that amount
+          commandsUsed: [{ name: command, success: completed > 0, count: completed }],
+          durationSeconds: completed * 30,
           completed: true,
         }),
       });
+      // Refresh command counts so Command Library updates immediately
+      const cmdsRes = await fetch(`${apiBase}/api/dogs/${dog.id}/commands`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (cmdsRes.ok) {
+        const { commands } = await cmdsRes.json();
+        setCommands(commands);
+      }
     } catch (e) {
       console.error(e);
     }
@@ -298,15 +291,6 @@ export default function TrainingActiveScreen() {
           <Text style={styles.rewardEmoji}>✓</Text>
           <Text style={[styles.waitText, { color: colors.mint, fontFamily: "Nunito_900Black" }]}>
             {markerCue}!
-          </Text>
-        </View>
-      )}
-
-      {/* Countdown phase — variable schedule deciding */}
-      {phase === "countdown" && decisionCountdown !== null && (
-        <View style={[styles.waitBox, { backgroundColor: colors.lemonLight }]}>
-          <Text style={[styles.waitText, { color: colors.lemon, fontFamily: "Nunito_900Black" }]}>
-            Deciding… {decisionCountdown}s
           </Text>
         </View>
       )}

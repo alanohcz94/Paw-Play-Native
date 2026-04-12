@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import {
-  View, Text, StyleSheet, ScrollView, TouchableOpacity, Platform,
+  View, Text, StyleSheet, ScrollView, TouchableOpacity, Platform, ActivityIndicator,
 } from "react-native";
 import { router } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -19,15 +19,27 @@ interface CalendarDay {
   sessionCount: number;
 }
 
+interface SessionRecord {
+  id: string;
+  mode: string;
+  difficulty: string | null;
+  participationPoints: number | null;
+  commandsUsed: Array<{ name: string; success?: boolean; skipped?: boolean; count?: number }>;
+  createdAt: string;
+}
+
 export default function CalendarScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
-  const { familyId } = useApp();
+  const { familyId, dog } = useApp();
   const { user } = useAuth();
   const [calendarData, setCalendarData] = useState<CalendarDay[]>([]);
   const [totalSessions, setTotalSessions] = useState(0);
   const [totalHours, setTotalHours] = useState(0);
   const [avgScore, setAvgScore] = useState(0);
+  const [selectedDay, setSelectedDay] = useState<string | null>(null);
+  const [daySessions, setDaySessions] = useState<SessionRecord[]>([]);
+  const [loadingDay, setLoadingDay] = useState(false);
   const now = new Date();
   const [month, setMonth] = useState(now.getMonth() + 1);
   const [year, setYear] = useState(now.getFullYear());
@@ -54,12 +66,49 @@ export default function CalendarScreen() {
     }
   };
 
+  const loadDaySessions = async (dateStr: string) => {
+    if (!dog?.id) return;
+    setLoadingDay(true);
+    setDaySessions([]);
+    try {
+      const { getItemAsync } = await import("expo-secure-store");
+      const token = await getItemAsync("auth_session_token");
+      const res = await fetch(`${apiBase}/api/sessions?dogId=${dog.id}&date=${dateStr}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setDaySessions(data.sessions ?? []);
+      }
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setLoadingDay(false);
+    }
+  };
+
+  const handleDayPress = (day: number) => {
+    const future = new Date(year, month - 1, day) > now;
+    if (future) return;
+    const dateStr = `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+    if (selectedDay === dateStr) {
+      setSelectedDay(null);
+      setDaySessions([]);
+    } else {
+      setSelectedDay(dateStr);
+      loadDaySessions(dateStr);
+    }
+  };
+
   useEffect(() => { loadCalendar(); }, [month, year, familyId]);
+
+  // Clear selected day when navigating months
+  useEffect(() => { setSelectedDay(null); setDaySessions([]); }, [month, year]);
 
   const firstDayOfMonth = new Date(year, month - 1, 1);
   const startOffset = (firstDayOfMonth.getDay() + 6) % 7;
   const daysInMonth = new Date(year, month, 0).getDate();
-  const today = now.toISOString().split("T")[0];
+  const todayStr = now.toISOString().split("T")[0];
 
   const prevMonth = () => {
     if (month === 1) { setMonth(12); setYear((y) => y - 1); }
@@ -75,7 +124,7 @@ export default function CalendarScreen() {
     return calendarData.find((d) => d.date === dateStr);
   };
 
-  const getDotColor = (data: CalendarDay | undefined, day: number): string => {
+  const getDotColor = (data: CalendarDay | undefined): string => {
     if (!data) return "transparent";
     if (data.trainedByMe && data.trainedByFamily) return colors.lemon;
     if (data.trainedByMe) return colors.mint;
@@ -83,12 +132,38 @@ export default function CalendarScreen() {
     return "transparent";
   };
 
-  const isToday = (day: number) => `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}` === today;
+  const isToday = (day: number) =>
+    `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}` === todayStr;
   const isFuture = (day: number) => new Date(year, month - 1, day) > now;
+  const isSelected = (day: number) =>
+    `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}` === selectedDay;
 
   const cells: (number | null)[] = [];
   for (let i = 0; i < startOffset; i++) cells.push(null);
   for (let d = 1; d <= daysInMonth; d++) cells.push(d);
+
+  const modeLabel = (mode: string) => {
+    if (mode === "quickbites") return "Quick Bites";
+    if (mode === "training") return "Training";
+    return mode.charAt(0).toUpperCase() + mode.slice(1);
+  };
+
+  const modeIcon = (mode: string): string => {
+    if (mode === "quickbites") return "zap";
+    if (mode === "training") return "book";
+    return "activity";
+  };
+
+  const diffColor = (diff: string | null) => {
+    if (diff === "easy") return { bg: colors.mintLight, fg: colors.mint };
+    if (diff === "medium") return { bg: colors.lemonLight, fg: colors.lemon };
+    if (diff === "expert") return { bg: colors.peachLight, fg: colors.peach };
+    return { bg: colors.muted, fg: colors.mutedForeground };
+  };
+
+  const selectedDateLabel = selectedDay
+    ? new Date(selectedDay + "T12:00:00").toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric" })
+    : null;
 
   return (
     <ScrollView
@@ -116,22 +191,27 @@ export default function CalendarScreen() {
         {cells.map((day, i) => {
           if (!day) return <View key={`empty-${i}`} style={styles.dayCell} />;
           const data = getDayData(day);
-          const dotColor = getDotColor(data, day);
-          const today = isToday(day);
+          const dotColor = getDotColor(data);
+          const todayCell = isToday(day);
           const future = isFuture(day);
+          const selected = isSelected(day);
 
           return (
-            <View
+            <TouchableOpacity
               key={day}
               style={[
                 styles.dayCell,
-                today && { borderWidth: 2, borderColor: colors.peach, borderRadius: 10 },
-                !data?.trainedByMe && !data?.trainedByFamily && !today && !future && { backgroundColor: `${colors.muted}40` },
+                todayCell && { borderWidth: 2, borderColor: colors.peach, borderRadius: 10 },
+                selected && { backgroundColor: colors.lavLight, borderRadius: 10 },
+                !data?.trainedByMe && !data?.trainedByFamily && !todayCell && !future && { backgroundColor: `${colors.muted}40` },
               ]}
+              onPress={() => handleDayPress(day)}
+              activeOpacity={future ? 1 : 0.7}
+              disabled={future}
             >
-              <Text style={[styles.dayNum, { color: future ? colors.mutedForeground : colors.dark, fontFamily: "Nunito_700Bold", opacity: future ? 0.4 : 1 }]}>{day}</Text>
+              <Text style={[styles.dayNum, { color: future ? colors.mutedForeground : selected ? colors.lavender : colors.dark, fontFamily: "Nunito_700Bold", opacity: future ? 0.4 : 1 }]}>{day}</Text>
               {dotColor !== "transparent" && <View style={[styles.dot, { backgroundColor: dotColor }]} />}
-            </View>
+            </TouchableOpacity>
           );
         })}
       </View>
@@ -148,6 +228,74 @@ export default function CalendarScreen() {
           </View>
         ))}
       </View>
+
+      {/* Day detail panel */}
+      {selectedDay && (
+        <View style={[styles.dayDetail, { backgroundColor: colors.card, borderColor: colors.border }]}>
+          <View style={styles.dayDetailHeader}>
+            <Text style={[styles.dayDetailTitle, { color: colors.dark, fontFamily: "Nunito_900Black" }]}>
+              {selectedDateLabel}
+            </Text>
+            <TouchableOpacity onPress={() => { setSelectedDay(null); setDaySessions([]); }} activeOpacity={0.7}>
+              <Feather name="x" size={18} color={colors.mutedForeground} />
+            </TouchableOpacity>
+          </View>
+
+          {loadingDay ? (
+            <ActivityIndicator color={colors.mint} style={{ marginVertical: 16 }} />
+          ) : daySessions.length === 0 ? (
+            <Text style={[styles.emptyDayText, { color: colors.mutedForeground, fontFamily: "Nunito_400Regular" }]}>
+              No sessions recorded on this day.
+            </Text>
+          ) : (
+            daySessions.map((s, idx) => {
+              const dc = diffColor(s.difficulty);
+              const pts = s.participationPoints ?? 0;
+              const totalReps = s.commandsUsed.reduce((sum, c) => sum + (c.count ?? 1), 0);
+              return (
+                <View
+                  key={s.id ?? idx}
+                  style={[
+                    styles.sessionRow,
+                    idx < daySessions.length - 1 && { borderBottomWidth: 1, borderBottomColor: colors.border },
+                  ]}
+                >
+                  <View style={[styles.sessionIconBadge, { backgroundColor: dc.bg }]}>
+                    <Feather name={modeIcon(s.mode) as any} size={16} color={dc.fg} />
+                  </View>
+                  <View style={styles.sessionBody}>
+                    <View style={styles.sessionTitleRow}>
+                      <Text style={[styles.sessionMode, { color: colors.dark, fontFamily: "Nunito_700Bold" }]}>
+                        {modeLabel(s.mode)}
+                      </Text>
+                      {s.difficulty && (
+                        <View style={[styles.diffChip, { backgroundColor: dc.bg }]}>
+                          <Text style={[styles.diffChipText, { color: dc.fg, fontFamily: "Nunito_700Bold" }]}>
+                            {s.difficulty.charAt(0).toUpperCase() + s.difficulty.slice(1)}
+                          </Text>
+                        </View>
+                      )}
+                    </View>
+                    <View style={styles.sessionMeta}>
+                      <Text style={[styles.sessionReps, { color: colors.mutedForeground, fontFamily: "Nunito_400Regular" }]}>
+                        {totalReps} {totalReps === 1 ? "rep" : "reps"}
+                      </Text>
+                      {s.commandsUsed.length > 0 && (
+                        <Text style={[styles.sessionCmds, { color: colors.mutedForeground, fontFamily: "Nunito_400Regular" }]} numberOfLines={1}>
+                          · {s.commandsUsed.map((c) => c.name).join(", ")}
+                        </Text>
+                      )}
+                    </View>
+                  </View>
+                  <Text style={[styles.sessionPts, { color: pts >= 0 ? colors.mint : "#ef4444", fontFamily: "Nunito_900Black" }]}>
+                    {pts >= 0 ? "+" : ""}{pts}
+                  </Text>
+                </View>
+              );
+            })
+          )}
+        </View>
+      )}
 
       <View style={styles.statsRow}>
         <View style={[styles.statCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
@@ -179,10 +327,25 @@ const styles = StyleSheet.create({
   dayCell: { width: `${100 / 7}%`, aspectRatio: 1, alignItems: "center", justifyContent: "center", borderRadius: 10, gap: 2 },
   dayNum: { fontSize: 13 },
   dot: { width: 6, height: 6, borderRadius: 3 },
-  legend: { flexDirection: "row", flexWrap: "wrap", gap: 12, marginBottom: 24 },
+  legend: { flexDirection: "row", flexWrap: "wrap", gap: 12, marginBottom: 20 },
   legendItem: { flexDirection: "row", alignItems: "center", gap: 6 },
   legendDot: { width: 10, height: 10, borderRadius: 5 },
   legendText: { fontSize: 13 },
+  dayDetail: { borderRadius: 16, borderWidth: 1, padding: 16, marginBottom: 20 },
+  dayDetailHeader: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 12 },
+  dayDetailTitle: { fontSize: 15 },
+  emptyDayText: { fontSize: 14, textAlign: "center", paddingVertical: 12 },
+  sessionRow: { flexDirection: "row", alignItems: "center", paddingVertical: 12, gap: 10 },
+  sessionIconBadge: { width: 36, height: 36, borderRadius: 18, alignItems: "center", justifyContent: "center", flexShrink: 0 },
+  sessionBody: { flex: 1, gap: 2 },
+  sessionTitleRow: { flexDirection: "row", alignItems: "center", gap: 8 },
+  sessionMode: { fontSize: 14 },
+  sessionMeta: { flexDirection: "row", alignItems: "center", gap: 0 },
+  sessionReps: { fontSize: 12 },
+  sessionCmds: { fontSize: 12, flex: 1 },
+  sessionPts: { fontSize: 15, minWidth: 36, textAlign: "right" },
+  diffChip: { paddingHorizontal: 8, paddingVertical: 2, borderRadius: 8 },
+  diffChipText: { fontSize: 11 },
   statsRow: { flexDirection: "row", gap: 10 },
   statCard: { flex: 1, borderRadius: 16, padding: 14, alignItems: "center", borderWidth: 1, gap: 4 },
   statValue: { fontSize: 24 },
