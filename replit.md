@@ -7,17 +7,31 @@ PawPlay is a gamified dog training mobile app for families. Built as a pnpm work
 ## App Features
 
 - **Welcome Screen** — demo mode (no login) + Replit Auth login
-- **Demo Mode** — Quick Bites session with local state only, no API calls
+- **Demo Mode** — Quick Bites session with local state only, no API calls, uses calculateScore()
 - **Replit Auth** — OIDC/PKCE mobile auth via expo-auth-session
 - **Onboarding** — 4-step flow: dog info → commands → family invite → done
 - **Dashboard** — streak, weekly activity grid, leaderboard, calendar link
 - **Games Hub** — Quick Bites, Training Mode, Obedience Challenge (locked til 7 reliable commands)
-- **Quick Bites (challenge-active)** — HOLD button timer via Reanimated 2 on native thread
-- **Training Mode** — configure command, reward type, variable schedule, reps
+- **Quick Bites (challenge-active)** — HOLD button with 1-3s random hold countdown, timer continues past 0 as negative, reset button with 25% deduction per press, purple bonus bubbles during gameplay
+- **Training Mode** — zero scoring, variable reward 49/51 schedule, "Release cue command" button, inter-trial wait timers, Train Again + Done end screen
 - **Calendar** — monthly view with dot indicators (me/family/both)
 - **Yearly Chart** — animated bar chart, best month, total hours
-- **Profile** — command library with levels, achievement badges
+- **Profile** — command library with mastery colour system (Gray Added → Yellow Learning → Green Practising → Blue Reliable), achievement badges with descriptions + tap animations (bounce+glow for unlocked, shake+slide-up panel for locked), cue word fields (release cue, marker cue), dog photo upload via image picker
 - **Settings** — notifications, family invite code, sign out
+
+## Scoring Engine (`artifacts/pawplay/utils/scoring.ts`)
+
+- Easy: 6s window, skip=0 pts, exceed=-1/sec, display floor max(0)
+- Medium: 4s window, skip=0 pts, exceed=-1/sec, display floor max(0)
+- Expert: 2s window, skip=-20 with overtime deduction, exceed=-1/sec, shows negatives in red
+- Reset button: 25% deduction of maxPoints per press, tracked per command via resetCount
+- Bonuses (capped at +50 total):
+  - Perfect Round: all 5 within window, 0 skips → +20
+  - Speed Demon: every command < half window → +5 per command
+  - Combo Streak: 3+ consecutive within window → x1.5 multiplier on streak base pts
+  - Clean Sweep: zero skips → +10
+  - First Cue: zero resets → +3 per command (max +15)
+  - Difficulty Bonus: Medium +10, Expert +25
 
 ## Color Palette
 - Primary/Peach: #FF8B6A
@@ -49,18 +63,11 @@ PawPlay is a gamified dog training mobile app for families. Built as a pnpm work
 - `users` — auth users (Replit Auth)
 - `pawplay_users` — extended user profile (familyId, role, expoPushToken)
 - `families` — family groups with 6-char invite code
-- `dogs` — dog profiles (name, breed, age, level, xp)
+- `dogs` — dog profiles (name, breed, age, level, xp, release_cue, marker_cue, avatar_url)
 - `commands` — command library per dog (with level tracking)
 - `sessions_record` — training session history with scoring
 - `achievements` — dog/user achievement records
 - `push_tokens` — Expo push notification tokens
-
-## Scoring Engine (`artifacts/pawplay/utils/scoring.ts`)
-- Easy: 6s window, 0 floor on display
-- Medium: 4s window, 0 floor on display
-- Expert: 2s window, shows negatives in red
-- Bonuses capped at +50: Perfect Round, Speed Demon, Combo Streak, Clean Sweep, Difficulty Bonus
-- `evaluateCommandLevel()` runs server-side after every POST /api/sessions
 
 ## Key Commands
 

@@ -36,6 +36,8 @@ export const dogsTable = pgTable("dogs", {
   age: real("age"),
   breed: varchar("breed"),
   avatarUrl: varchar("avatar_url"),
+  releaseCue: varchar("release_cue").default("Free"),
+  markerCue: varchar("marker_cue").default("Yes"),
   level: integer("level").notNull().default(1),
   xp: integer("xp").notNull().default(0),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),

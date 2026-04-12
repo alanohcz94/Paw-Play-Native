@@ -39,12 +39,14 @@ router.patch("/dogs/:dogId", async (req: Request, res: Response) => {
     return;
   }
   const { dogId } = req.params;
-  const { name, age, breed, avatarUrl } = req.body;
+  const { name, age, breed, avatarUrl, releaseCue, markerCue } = req.body;
   const updates: Record<string, unknown> = {};
   if (name !== undefined) updates.name = name;
   if (age !== undefined) updates.age = age;
   if (breed !== undefined) updates.breed = breed;
   if (avatarUrl !== undefined) updates.avatarUrl = avatarUrl;
+  if (releaseCue !== undefined) updates.releaseCue = releaseCue;
+  if (markerCue !== undefined) updates.markerCue = markerCue;
   const [dog] = await db.update(dogsTable).set(updates).where(eq(dogsTable.id, dogId)).returning();
   if (!dog) {
     res.status(404).json({ error: "Dog not found" });

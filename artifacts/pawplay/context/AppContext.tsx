@@ -10,6 +10,8 @@ export interface Dog {
   avatarUrl?: string | null;
   level: number;
   xp: number;
+  releaseCue?: string;
+  markerCue?: string;
 }
 
 export interface Command {

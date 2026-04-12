@@ -1,0 +1,575 @@
+You are fixing bugs and implementing feature improvements on the
+PawPlay React Native + Expo application. Work through every item
+below in the exact order listed. After completing each numbered
+fix, stop and tell me what was changed and what to test before
+moving to the next item.
+
+═══════════════════════════════════════════════════════════════
+CRITICAL RULES BEFORE YOU START
+═══════════════════════════════════════════════════════════════
+
+1. Do NOT change anything that is already working correctly.
+   Only touch the specific code referenced in each fix.
+
+2. The scoring engine (calculateScore) is a pure utility
+   function. Fix it once — every game mode calls the same
+   function. Do not duplicate scoring logic per screen.
+
+3. Raw score is ALWAYS stored in the database as the true value.
+   The score floor (0 for Easy + Medium) is applied at the
+   DISPLAY layer only — never in the calculation function.
+
+4. Reanimated 2 shared values must be used for all timers.
+   Never use setTimeout or React setState for countdown logic.
+
+5. After each fix, confirm the change with a clear before/after
+   summary of what the code did vs what it does now.
+
+═══════════════════════════════════════════════════════════════
+FIX 1 — SCORING ENGINE: Skip rules by difficulty
+Affects: calculateScore() utility — all game modes
+═══════════════════════════════════════════════════════════════
+
+Current wrong behaviour:
+  Skip deducts the same penalty regardless of difficulty level.
+
+Fix the calculateScore() function so skip logic is:
+
+  EASY:
+    skip (no exceed)       = 0 pts
+    skip after exceed      = 0 pts (floor applies, no negatives)
+    score floor            = 0 (display and calculation)
+
+  MEDIUM:
+    skip (no exceed)       = 0 pts
+    skip after exceed      = 0 pts (floor applies, no negatives)
+    score floor            = 0 (display and calculation)
+
+  EXPERT:
+    skip (no exceed)       = -20 pts
+    skip after exceed      = -20 pts AND -1pt per second
+                             already accumulated
+    score floor            = NONE (negatives allowed and shown)
+
+Complete scoring rules for reference — implement all of these
+exactly in calculateScore():
+
+  Complete within window   = +20 pts
+  Exceed window (no skip)  = -1 pt per second over (all levels)
+  Skip Easy/Medium         = 0 pts
+  Skip Expert              = -20 pts
+  Skip Expert + exceed     = -20 pts + -1pt/sec accumulated
+
+Store the raw calculated value in the database always.
+Apply max(0, score) only at the display/render layer for
+Easy and Medium.
+
+═══════════════════════════════════════════════════════════════
+FIX 2 — DEMO SESSION: Apply Easy mode scoring correctly
+Affects: Demo session screen only (pre-login, local state)
+═══════════════════════════════════════════════════════════════
+
+Current wrong behaviour:
+  Demo session was applying minus points on skip.
+
+Fix:
+  The demo session uses Easy difficulty.
+  It must call the same calculateScore() function fixed in Fix 1.
+  With Easy mode, skip = 0 pts, floor = 0, no negatives.
+  The demo dog is named "Buddy", 3 commands: Sit, Down, Come.
+  Demo is entirely local state — zero database calls, zero API
+  calls, nothing saved anywhere.
+
+═══════════════════════════════════════════════════════════════
+FIX 3 — TIMER: Comply countdown continues past 0 as negative
+Affects: Challenge Active screen — all game modes
+═══════════════════════════════════════════════════════════════
+
+Current wrong behaviour:
+  Timer stops at 0.0s.
+
+Fix:
+  The comply countdown timer must continue running past 0
+  as a negative clock: 1s → 0s → -1s → -2s → -3s etc.
+
+  Implementation using Reanimated 2 shared values:
+
+  - When timer crosses 0: change timer text colour to red
+  - Continue decrementing every second indefinitely
+  - The negative seconds value drives the -1pt/sec deduction
+    in calculateScore()
+  - Timer only stops when:
+      (a) Owner presses HOLD button, or
+      (b) Owner taps Skip
+
+  Display format:
+    Positive: "3s remaining" (normal colour)
+    Zero:     "0s" (red)
+    Negative: "-2s over" (red, bold)
+
+  The negative value must be captured and passed to
+  calculateScore() as the overtime_seconds parameter.
+
+═══════════════════════════════════════════════════════════════
+FIX 4 — HOLD BUTTON: Redesign comply + hold flow
+Affects: Challenge Active screen — all game modes
+═══════════════════════════════════════════════════════════════
+
+Current wrong behaviour:
+  HOLD button acts as a simple mark-done button. Pressing it
+  immediately scores and advances. No hold countdown exists.
+
+New correct flow — implement exactly as described:
+
+  STEP 1: Command word appears on screen
+  STEP 2: Comply countdown starts (Fix 3 above — runs negative)
+          HOLD button is visible but shows "waiting for dog..."
+          state — slightly dimmed
+  STEP 3: Dog complies → Owner presses and holds HOLD button
+          - HOLD button activates (full colour, ring animates)
+          - Comply countdown STOPS (capture the time value)
+          - A new HOLD countdown starts immediately:
+              Random duration between 1 second and 3 seconds
+              Show the hold countdown inside or below the button
+              e.g. "Hold... 2s" counting down
+  STEP 4: Hold countdown reaches 0
+          - Haptic feedback: strong tap
+          - Score is calculated using captured comply time
+          - Auto advance to next command (no button press needed)
+          - Brief flash showing points earned/lost for that command
+
+  IMPORTANT: The hold duration (1-3s random) is separate from
+  the comply window. The comply window determines score.
+  The hold countdown is purely to train position duration.
+
+  If the owner releases the HOLD button before the hold
+  countdown finishes — treat as a reset (see Fix 11).
+
+  Haptics:
+    Command appears: light tap
+    HOLD activated:  medium tap
+    Hold complete:   strong double tap
+    Skip tapped:     error pattern
+
+═══════════════════════════════════════════════════════════════
+FIX 5 — QUICK BITES: Bonus combos not calculating
+Affects: calculateBonuses() function, End screen
+═══════════════════════════════════════════════════════════════
+
+Current wrong behaviour:
+  Bonus combos not evaluated or displayed after session ends.
+
+Fix:
+  Ensure calculateBonuses() is called after all commands
+  complete, receives the full session command results array,
+  and returns an array of earned bonuses.
+
+  Implement all bonuses exactly:
+
+  perfect_round:
+    Condition: all 5 commands completed within window, 0 skips
+    Reward: +20 pts
+
+  speed_demon:
+    Condition: every command comply time < half the difficulty
+               window. Easy < 3s | Medium < 2s | Expert < 1s
+    Reward: +5 pts per qualifying command (max +25 pts)
+
+  combo_streak:
+    Condition: 3 or more consecutive commands within window
+               with no skips between them
+    Reward: x1.5 multiplier applied to those commands' base pts
+    Reset: any skip or overtime breaks the streak
+
+  clean_sweep:
+    Condition: zero skips in the entire session (overtime OK)
+    Reward: +10 pts
+
+  first_cue:
+    Condition: zero resets used on any command in the session
+    Reward: +3 pts per command (max +15 pts)
+
+  difficulty_bonus:
+    Condition: session completed on Medium or Expert
+    Reward: Medium = +10 pts | Expert = +25 pts
+
+  family_record:
+    Condition: final total beats the family leaderboard top score
+    Reward: crown badge awarded + push notification sent to all
+            family members via Expo Notifications
+
+  BONUS CAP: total bonus points cannot exceed +50 per session.
+  Apply cap after all bonuses calculated.
+
+  On the end screen display:
+    - Each earned bonus as a chip with its name and pts value
+    - Lavender background chips
+    - If no bonuses earned: show "Keep training — bonuses
+      unlock as you improve!" in muted text
+
+  Save bonuses array to session record in database.
+
+═══════════════════════════════════════════════════════════════
+FIX 6 — TRAINING MODE: Remove all scoring
+Affects: Training mode session screen and data saving
+═══════════════════════════════════════════════════════════════
+
+Current wrong behaviour:
+  Training mode displays and calculates participation points.
+
+Fix:
+  Training mode must have ZERO scoring. Remove all point
+  display, score calculation, and participation points from
+  the training session screen and end screen.
+
+  What training DOES track:
+    - Increments training_sessions_count on the command record
+      in the database after every completed session
+    - Saves session to history with mode = "training" and
+      score = null
+
+  What training does NOT show:
+    - No points counter during session
+    - No score on end screen
+    - No participation points
+    - No bonus evaluation
+
+  Training end screen should show:
+    - "Session complete!"
+    - Command name trained
+    - Rep count completed
+    - A positive encouragement message
+    - "Train again" and "Done" buttons
+
+═══════════════════════════════════════════════════════════════
+FIX 7 — TRAINING MODE: Variable reward schedule 49/51 random
+Affects: Training mode — variable schedule session loop
+═══════════════════════════════════════════════════════════════
+
+Current wrong behaviour:
+  Variable reward triggers on every 5th success (fixed ratio).
+  This is not a variable schedule.
+
+Fix the variable schedule logic exactly:
+
+  After owner taps "Release cue command":
+    1. Show a short countdown (random 1-2 seconds)
+    2. When countdown ends, run this logic:
+         const reward = Math.random() < 0.49
+    3. If reward === true (49% chance):
+         Show: "Good reward — good boy! 🎉"
+         Show reward animation (treat/play/praise icon pulses)
+    4. If reward === false (51% chance):
+         Show: "Hold reward — not this time"
+         Show a gentle "X" or hold indicator
+    5. Either way: wait the inter-trial timer (random 7-12s)
+       then show next rep
+
+  Each trial is independently random. No memory of previous
+  outcomes. Not a pattern, not a ratio tracker — pure random
+  with 49% probability each time.
+
+  The 49/51 split is deliberate. Slightly more withholding
+  than rewarding builds the strongest variable schedule
+  reinforcement.
+
+═══════════════════════════════════════════════════════════════
+FIX 8 — TRAINING MODE: Rename button and fix copy
+Affects: Training mode session screen — both schedule types
+═══════════════════════════════════════════════════════════════
+
+Current wrong behaviour:
+  Button labelled "Mark Done" or "Complete" — generic.
+
+Fix:
+
+  Button label: "Release cue command"
+
+  After tapping the button:
+
+  FIXED SCHEDULE (variable toggle OFF):
+    Show: "Good reward — good boy! 🎉"
+    Show reward animation immediately
+    Then: start random inter-trial wait timer (7-12 seconds)
+    Display the wait timer as a countdown
+
+  VARIABLE SCHEDULE (variable toggle ON):
+    Show: short countdown (Fix 7 above)
+    Then: reward or hold based on 49/51 random
+    Then: start random inter-trial wait timer (7-12 seconds)
+
+  NOTE: If the dog's Marker Cue Word is set in the dog profile,
+  use it dynamically in the mark moment.
+  Default Marker Cue Word = "Yes"
+  Example: instead of "Release cue command" the button could
+  optionally show "Yes! — Release" if marker word is "Yes"
+  This is a nice-to-have — implement if straightforward.
+
+═══════════════════════════════════════════════════════════════
+FIX 9 — DOG PROFILE: Add Release Cue Word + Marker Cue Word
+Affects: Dog profile edit screen, database dog record
+═══════════════════════════════════════════════════════════════
+
+Add two new text input fields to the dog profile edit screen:
+
+  Field 1: Release Cue Word
+    Label: "Release cue word"
+    Placeholder: "Free"
+    Default value: "Free"
+    Examples shown below field: e.g. Free, OK, Release, Break
+    Stored as: release_cue on dog record
+
+  Field 2: Marker Cue Word
+    Label: "Marker cue word"
+    Placeholder: "Yes"
+    Default value: "Yes"
+    Examples shown below field: e.g. Yes, Mark, Good
+    Stored as: marker_cue on dog record
+
+  Update dog record in Replit Database to include these fields.
+
+  Use these values dynamically:
+    - Training mode "Release cue command" button can
+      reference the release_cue word
+    - Training mode reward messages can reference marker_cue
+    - Any game screen that mentions marking or releasing
+      should pull from the dog profile rather than hardcoding
+
+═══════════════════════════════════════════════════════════════
+FIX 10 — DOG PROFILE: Fix image upload
+Affects: Dog profile edit screen, Replit Object Storage
+═══════════════════════════════════════════════════════════════
+
+Current wrong behaviour:
+  Tapping the dog avatar to upload a photo does not work.
+
+Fix:
+
+  1. On tap of the avatar circle on the profile screen:
+       Open expo-image-picker (camera roll)
+       Request MEDIA_LIBRARY permission if not already granted
+
+  2. On image selected:
+       Compress image to max 800px width, quality 0.8
+       Convert to base64 or form-data
+
+  3. POST the image to the backend:
+       Endpoint: POST /api/dogs/:id/avatar
+       Backend uploads to Replit Object Storage
+       Returns the public URL of the stored image
+
+  4. Update dog record:
+       PATCH avatar_url on dog record in Replit Database
+       with the returned URL
+
+  5. Update UI:
+       Show new image in avatar circle immediately
+       Brief success toast: "Profile photo updated!"
+
+  Error handling:
+    If upload fails: show "Upload failed — try again"
+    Keep existing image on failure
+
+═══════════════════════════════════════════════════════════════
+FIX 11 — ALL GAMES: Add Reset button with 25% deduction
+Affects: Quick Bites challenge screen, Training session screen,
+         Obedience Challenge screen
+═══════════════════════════════════════════════════════════════
+
+Add a Reset button to every game mode session screen.
+
+  Position: below the HOLD button, above the Skip link
+  Style: ghost button (outline, no fill), smaller than HOLD
+  Label: "Reset"
+
+  Reset logic per tap:
+    current_points = command's current remaining points
+    deduction = Math.floor(current_points * 0.25)
+    new_points = Math.max(1, current_points - deduction)
+
+  Examples:
+    20pts → reset → 15pts → reset → 11pts → reset → 8pts
+    → reset → 6pts → reset → 4pts → reset → 3pts → reset → 2pts
+    → reset → 1pt (floor — cannot go below 1)
+
+  On reset:
+    - Brief shake animation on the command word
+    - Points remaining updates in the score display
+    - Timer resets to full comply window and starts again
+    - Dog is re-cued (command word briefly flashes)
+
+  Track reset_count per command in the session data.
+
+  Reset button is NOT available in Demo mode — Demo is
+  designed to be a quick taste, not a full training session.
+
+═══════════════════════════════════════════════════════════════
+FIX 12 — COMMAND LIBRARY: Mastery colour system
+Affects: Dog profile command chips, command level evaluation
+═══════════════════════════════════════════════════════════════
+
+Replace the current flat command chip design with a mastery
+colour system. Each chip colour reflects the command's level.
+
+  Colour → Level → Criteria:
+
+  Gray     Added    Command in library, not yet trained
+           Chip: gray border, gray background, gray text
+
+  Yellow   Level 1  Learning — command introduced
+           Criteria: command exists in library (same as Added
+           initially — transitions to Yellow on first training
+           session)
+           Chip: yellow border, yellow-light background
+
+  Green    Level 2  Practising
+           Criteria: training_sessions_count >= 5
+           Chip: green border, green-light background
+
+  Blue     Level 3  Reliable — counts toward Obedience gate
+           Criteria: qb_successes_count >= 10 AND
+                     qb_sessions_with_success >= 3
+           Chip: blue border, blue-light background
+
+  Black    Advanced — V2 placeholder only
+           Show chip as gray with "Advanced — coming soon"
+           tooltip when tapped. Do not implement criteria yet.
+
+  Red      Elite — V3 placeholder only
+           Show chip as gray with "Elite — coming soon"
+           tooltip when tapped. Do not implement criteria yet.
+
+  Obedience Challenge gate:
+    Count chips at Blue (Level 3) for this dog.
+    If count >= 7 → challenge unlocked.
+    Animated progress ring shows: "X of 7 commands Reliable"
+
+  Level up animation:
+    When a command transitions to a new colour level:
+    - The chip animates with a brief glow + scale up
+    - Show a toast: "[Command] reached [Level name]! 🎉"
+    - If Level 3 reached: check if challenge gate is now met
+
+═══════════════════════════════════════════════════════════════
+FIX 13 — ACHIEVEMENTS: Add descriptions + tap animation
+Affects: Profile screen achievements grid
+═══════════════════════════════════════════════════════════════
+
+Add the following to every achievement in the grid:
+
+  1. A short description (one sentence)
+  2. How to unlock it (plain English criteria)
+  3. A tap animation:
+       Unlocked achievement: bounces + brief glow on tap
+       Locked achievement: gentle shake + slides up a
+       description panel showing how to unlock it
+
+  Implement these achievements with their descriptions:
+
+  Starter
+    Description: "Completed your first training session"
+    Unlock: "Complete 1 Quick Bites session"
+
+  7-day streak
+    Description: "Trained with your dog 7 days in a row"
+    Unlock: "Train every day for 7 consecutive days"
+
+  30-day streak
+    Description: "A month of consistent daily training"
+    Unlock: "Train every day for 30 consecutive days"
+
+  Perfect Round
+    Description: "Flawless session — every command on time"
+    Unlock: "Complete all 5 commands within the comply window
+             with zero skips in one Quick Bites session"
+
+  Speed Demon
+    Description: "Lightning fast responses from your dog"
+    Unlock: "Complete every command in under half the comply
+             window in one Quick Bites session"
+
+  Family Champ
+    Description: "Top of the family leaderboard"
+    Unlock: "Beat all family members' session scores"
+
+  Reliable Handler
+    Description: "Your first command reached expert level"
+    Unlock: "Get any command to Level 3 — Reliable"
+
+  Full Pack
+    Description: "All basic commands mastered"
+    Unlock: "Get all 7 basic commands to Level 3 — Reliable"
+
+  Month Pawfect
+    Description: "Trained every single day this month"
+    Unlock: "Complete a session every day in a calendar month"
+
+═══════════════════════════════════════════════════════════════
+FIX 14 — SCORING DISPLAY: Expert negative score UX
+Affects: Challenge Active screen, End screen — Expert mode only
+═══════════════════════════════════════════════════════════════
+
+When score goes negative on Expert difficulty:
+
+  During challenge (score pill):
+    Show score in red text
+    Add a minus prefix: "-5 pts"
+
+  On end screen when final score is negative:
+    Show score in red (Fredoka One, 48px)
+    Show label: "Participation Points" below in red
+    Show encouragement copy below the score:
+      "Tough session — Expert is built to push you. Come
+       back stronger tomorrow!"
+    Still show bonuses earned (if any)
+    Still show streak update
+
+  On end screen when score is 0 or positive (Easy/Medium):
+    Normal display — peach colour, positive messaging
+
+═══════════════════════════════════════════════════════════════
+TESTING CHECKLIST — verify each fix before marking done
+═══════════════════════════════════════════════════════════════
+
+After all fixes are complete, test every item below on a
+real device via Expo Go:
+
+Fix 1:  Skip on Easy = 0 pts. Skip on Expert = -20 pts.
+Fix 2:  Demo skip = 0 pts. Demo score never goes negative.
+Fix 3:  Timer runs past 0 showing -1s, -2s in red.
+Fix 4:  HOLD activates a 1-3s random hold countdown.
+        Session auto-advances when hold countdown ends.
+Fix 5:  Perfect Round bonus awards +20 pts on flawless session.
+        Difficulty Bonus shows on Medium and Expert end screen.
+Fix 6:  Training mode shows no points during or after session.
+Fix 7:  Variable schedule randomly rewards (~half the time).
+        Not every 5th. Check 10 reps — should see mix.
+Fix 8:  Button says "Release cue command".
+        Fixed schedule shows "Good reward — good boy! 🎉"
+Fix 9:  Dog profile has Release Cue Word and Marker Cue Word
+        fields. Saved and retrieved correctly.
+Fix 10: Dog photo uploads and displays on profile.
+Fix 11: Reset button appears. Each tap reduces pts by 25%.
+        Floor of 1 pt respected.
+Fix 12: Commands show correct colour by mastery level.
+        Blue chip = counts toward Obedience Challenge gate.
+Fix 13: Tapping locked achievement shows how to unlock it.
+        Tapping unlocked achievement bounces.
+Fix 14: Expert negative score shows in red with encouragement.
+
+═══════════════════════════════════════════════════════════════
+ORDER OF WORK
+═══════════════════════════════════════════════════════════════
+
+Start with Fix 1 (scoring engine) first — everything depends
+on it being correct. Then Fix 3 (timer) and Fix 4 (HOLD) as
+they are the core game loop. Then Fix 5 (bonuses) which builds
+on the corrected scoring engine.
+
+After Fixes 1, 3, 4, 5 are done and tested on device — STOP
+and confirm the core game loop feels correct before continuing
+with the remaining fixes.
+
+Fix order:
+1 → 2 → 3 → 4 → 5 → STOP AND TEST ON DEVICE
+6 → 7 → 8 → 9 → 10 → 11 → 12 → 13 → 14 → FINAL TEST

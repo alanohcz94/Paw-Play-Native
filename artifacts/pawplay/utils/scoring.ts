@@ -8,6 +8,7 @@ export interface CommandResult {
   windowSeconds: number;
   secondsOver: number;
   pointsEarned: number;
+  resetCount: number;
 }
 
 export interface ScoreResult {
@@ -40,12 +41,15 @@ export interface RawCommandInput {
   skipped: boolean;
   timeSeconds: number;
   windowSeconds: number;
+  resetCount?: number;
+  maxPoints?: number;
 }
 
 export function calculateScore(inputs: RawCommandInput[], difficulty: Difficulty): ScoreResult {
   const commandResults: CommandResult[] = inputs.map((input) => {
     let pointsEarned = 0;
     const secondsOver = Math.max(0, input.timeSeconds - input.windowSeconds);
+    const maxPts = input.maxPoints ?? 20;
 
     if (input.skipped) {
       if (difficulty === "expert") {
@@ -54,7 +58,7 @@ export function calculateScore(inputs: RawCommandInput[], difficulty: Difficulty
         pointsEarned = 0;
       }
     } else if (input.timeSeconds <= input.windowSeconds) {
-      pointsEarned = 20;
+      pointsEarned = maxPts;
     } else {
       pointsEarned = -Math.floor(secondsOver);
     }
@@ -67,6 +71,7 @@ export function calculateScore(inputs: RawCommandInput[], difficulty: Difficulty
       windowSeconds: input.windowSeconds,
       secondsOver,
       pointsEarned,
+      resetCount: input.resetCount ?? 0,
     };
   });
 
@@ -88,20 +93,38 @@ export function calculateScore(inputs: RawCommandInput[], difficulty: Difficulty
 
   let maxConsecutive = 0;
   let currentStreak = 0;
-  for (const r of commandResults) {
+  let streakStartIdx = 0;
+  let bestStreakStart = 0;
+  let bestStreakLen = 0;
+  for (let i = 0; i < commandResults.length; i++) {
+    const r = commandResults[i];
     if (!r.skipped && r.timeSeconds <= r.windowSeconds) {
+      if (currentStreak === 0) streakStartIdx = i;
       currentStreak++;
-      maxConsecutive = Math.max(maxConsecutive, currentStreak);
+      if (currentStreak > bestStreakLen) {
+        bestStreakLen = currentStreak;
+        bestStreakStart = streakStartIdx;
+      }
     } else {
       currentStreak = 0;
     }
   }
-  if (maxConsecutive >= 3) {
-    bonuses.push({ name: "combo_streak", label: "Combo Streak", points: Math.floor(rawScore * 0.5) });
+  if (bestStreakLen >= 3) {
+    let streakBasePoints = 0;
+    for (let i = bestStreakStart; i < bestStreakStart + bestStreakLen; i++) {
+      streakBasePoints += commandResults[i].pointsEarned;
+    }
+    const comboBonus = Math.floor(streakBasePoints * 0.5);
+    bonuses.push({ name: "combo_streak", label: "Combo Streak", points: comboBonus });
   }
 
   if (noSkips) {
     bonuses.push({ name: "clean_sweep", label: "Clean Sweep", points: 10 });
+  }
+
+  const zeroResets = commandResults.every((r) => r.resetCount === 0);
+  if (zeroResets && commandResults.length > 0) {
+    bonuses.push({ name: "first_cue", label: "First Cue", points: Math.min(3 * commandResults.length, 15) });
   }
 
   const diffBonus = DIFFICULTY_COMPLETION_BONUS[difficulty];

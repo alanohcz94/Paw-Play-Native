@@ -17,26 +17,24 @@ export default function ChallengeEndScreen() {
   const { dog, setLastTrainedDate, setStreak, streak } = useApp();
   const { user } = useAuth();
   const scoreAnim = useRef(new Animated.Value(0)).current;
+  const bonusAnim = useRef(new Animated.Value(0)).current;
 
   const result: ScoreResult | null = resultParam ? JSON.parse(resultParam) : null;
   const isExpert = difficulty === "expert";
   const rawScore = result?.participationPoints ?? 0;
   const score = isExpert ? rawScore : Math.max(0, rawScore);
+  const totalBonus = result?.bonuses.reduce((s, b) => s + b.points, 0) ?? 0;
 
   const apiBase = process.env.EXPO_PUBLIC_DOMAIN ? `https://${process.env.EXPO_PUBLIC_DOMAIN}` : "";
 
   useEffect(() => {
     Animated.spring(scoreAnim, { toValue: 1, useNativeDriver: true, tension: 60, friction: 8 }).start();
+    Animated.spring(bonusAnim, { toValue: 1, useNativeDriver: true, tension: 40, friction: 10, delay: 400 }).start();
 
     if (result && dog?.id && user?.id) {
       saveSession();
     }
 
-    const today = new Date().toDateString();
-    const lastDate = new Date().toDateString();
-    if (today !== lastDate) {
-      setStreak(streak + 1);
-    }
     setLastTrainedDate(new Date().toISOString());
   }, []);
 
@@ -55,7 +53,7 @@ export default function ChallengeEndScreen() {
           rawScore: result.rawScore,
           participationPoints: result.participationPoints,
           bonuses: result.bonuses,
-          commandsUsed: result.commandResults.map((r) => ({ name: r.name, success: r.success, skipped: r.skipped })),
+          commandsUsed: result.commandResults.map((r) => ({ name: r.name, success: r.success, skipped: r.skipped, resetCount: r.resetCount })),
           durationSeconds: 120,
           completed: true,
         }),
@@ -70,6 +68,14 @@ export default function ChallengeEndScreen() {
     opacity: scoreAnim,
   };
 
+  const bonusStyle = {
+    transform: [{ scale: bonusAnim }],
+    opacity: bonusAnim,
+  };
+
+  const scoreColor = isExpert && score < 0 ? "#ef4444" : colors.peach;
+  const scoreLabelColor = isExpert && score < 0 ? "#ef4444" : colors.mutedForeground;
+
   return (
     <ScrollView
       style={[styles.container, { backgroundColor: colors.background }]}
@@ -81,14 +87,14 @@ export default function ChallengeEndScreen() {
       </Text>
 
       <Animated.View style={[styles.scoreContainer, scoreStyle]}>
-        <Text style={[styles.scoreValue, { color: score < 0 ? "#ef4444" : colors.peach, fontFamily: "FredokaOne_400Regular" }]}>{score}</Text>
-        <Text style={[styles.scoreLabel, { color: colors.mutedForeground, fontFamily: "Nunito_400Regular" }]}>Participation Points</Text>
+        <Text style={[styles.scoreValue, { color: scoreColor, fontFamily: "FredokaOne_400Regular" }]}>{score}</Text>
+        <Text style={[styles.scoreLabel, { color: scoreLabelColor, fontFamily: "Nunito_400Regular" }]}>Participation Points</Text>
       </Animated.View>
 
       {isExpert && score < 0 && (
         <View style={[styles.expertNote, { backgroundColor: "#fef2f2" }]}>
           <Text style={[styles.expertNoteText, { color: "#ef4444", fontFamily: "Nunito_700Bold" }]}>
-            Tough session — Expert is meant to be hard. Come back stronger!
+            Tough session — Expert is built to push you. Come back stronger tomorrow!
           </Text>
         </View>
       )}
@@ -98,6 +104,11 @@ export default function ChallengeEndScreen() {
         {result?.commandResults.map((r, i) => (
           <View key={i} style={[styles.commandRow, i < (result.commandResults.length - 1) && { borderBottomWidth: 1, borderBottomColor: colors.border }]}>
             <Text style={[styles.cmdName, { color: colors.dark, fontFamily: "Nunito_700Bold" }]}>{r.name}</Text>
+            {r.resetCount > 0 && (
+              <View style={[styles.resetBadge, { backgroundColor: colors.lemonLight }]}>
+                <Text style={[styles.resetBadgeText, { color: colors.lemon, fontFamily: "Nunito_700Bold" }]}>R{r.resetCount}</Text>
+              </View>
+            )}
             {r.skipped ? (
               <Feather name="x-circle" size={18} color="#ef4444" />
             ) : r.success ? (
@@ -105,16 +116,16 @@ export default function ChallengeEndScreen() {
             ) : (
               <Feather name="clock" size={18} color={colors.lemon} />
             )}
-            <Text style={[styles.cmdPoints, { color: r.pointsEarned > 0 ? colors.mint : "#ef4444", fontFamily: "Nunito_900Black" }]}>
+            <Text style={[styles.cmdPoints, { color: r.pointsEarned > 0 ? colors.mint : r.pointsEarned === 0 ? colors.mutedForeground : "#ef4444", fontFamily: "Nunito_900Black" }]}>
               {r.pointsEarned > 0 ? "+" : ""}{r.pointsEarned}
             </Text>
           </View>
         ))}
       </View>
 
-      {(result?.bonuses ?? []).length > 0 && (
-        <View style={styles.bonusSection}>
-          <Text style={[styles.bonusTitle, { color: colors.dark, fontFamily: "Nunito_900Black" }]}>Bonuses</Text>
+      {totalBonus > 0 ? (
+        <Animated.View style={[styles.bonusSection, bonusStyle]}>
+          <Text style={[styles.bonusTitle, { color: colors.dark, fontFamily: "Nunito_900Black" }]}>Bonuses +{Math.min(totalBonus, 50)}</Text>
           <View style={styles.bonusChips}>
             {result!.bonuses.map((b) => (
               <View key={b.name} style={[styles.bonusChip, { backgroundColor: colors.lavLight }]}>
@@ -122,6 +133,12 @@ export default function ChallengeEndScreen() {
               </View>
             ))}
           </View>
+        </Animated.View>
+      ) : (
+        <View style={[styles.noBonusBox, { backgroundColor: colors.card }]}>
+          <Text style={[styles.noBonusText, { color: colors.mutedForeground, fontFamily: "Nunito_400Regular" }]}>
+            Keep training — bonuses unlock as you improve!
+          </Text>
         </View>
       )}
 
@@ -157,11 +174,15 @@ const styles = StyleSheet.create({
   commandRow: { flexDirection: "row", alignItems: "center", paddingVertical: 10, gap: 10 },
   cmdName: { flex: 1, fontSize: 15 },
   cmdPoints: { fontSize: 15, minWidth: 40, textAlign: "right" },
+  resetBadge: { paddingHorizontal: 6, paddingVertical: 2, borderRadius: 8 },
+  resetBadgeText: { fontSize: 11 },
   bonusSection: { width: "100%", marginBottom: 20 },
   bonusTitle: { fontSize: 15, marginBottom: 10 },
   bonusChips: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
   bonusChip: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 20 },
   bonusChipText: { fontSize: 13 },
+  noBonusBox: { borderRadius: 16, padding: 16, width: "100%", marginBottom: 20 },
+  noBonusText: { fontSize: 14, textAlign: "center" },
   streakBox: { flexDirection: "row", alignItems: "center", gap: 8, paddingHorizontal: 20, paddingVertical: 12, borderRadius: 20, marginBottom: 24 },
   streakText: { fontSize: 16 },
   playAgainBtn: { width: "100%", paddingVertical: 18, borderRadius: 16, alignItems: "center", marginBottom: 12, shadowColor: "#FF8B6A", shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 10, elevation: 6 },
