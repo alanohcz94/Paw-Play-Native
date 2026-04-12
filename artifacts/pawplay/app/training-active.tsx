@@ -67,7 +67,7 @@ export default function TrainingActiveScreen() {
         setDecisionCountdown(remaining);
         if (remaining <= 0) {
           clearInterval(intervalRef.current!);
-          const reward = Math.random() < 0.49;
+          const reward = Math.random() < 0.40;
           setRewardResult(reward ? "reward" : "hold");
           setPhase("reward");
 
@@ -104,7 +104,7 @@ export default function TrainingActiveScreen() {
   }, [currentRep, reps, completedReps, variableSchedule]);
 
   const startInterTrialWait = (_completedCount: number) => {
-    const waitTime = Math.floor(Math.random() * 6) + 7;
+    const waitTime = Math.floor(Math.random() * 10) + 1;
 
     timerRef.current = setTimeout(() => {
       setInterTrialCountdown(waitTime);
@@ -185,6 +185,11 @@ export default function TrainingActiveScreen() {
         <View style={[styles.encourageBox, { backgroundColor: colors.mintLight }]}>
           <Text style={[styles.encourageText, { color: colors.mint, fontFamily: "Nunito_700Bold" }]}>{msg}</Text>
         </View>
+        <View style={[styles.rewardReminder, { backgroundColor: colors.peachLight, borderColor: colors.peach }]}>
+          <Text style={[styles.rewardReminderText, { color: colors.dark, fontFamily: "Nunito_700Bold" }]}>
+            🎉 Remember to give {dog?.name ?? "your dog"} a reward! Always end on a good note.
+          </Text>
+        </View>
         <TouchableOpacity
           style={[styles.doneBtn, { backgroundColor: colors.peach }]}
           onPress={() => router.replace({ pathname: "/training-active", params: { command, rewardType, variableSchedule: vsParam ?? "0", reps: String(reps) } })}
@@ -258,7 +263,7 @@ export default function TrainingActiveScreen() {
             onPress={handleReleaseCue}
             activeOpacity={0.85}
           >
-            <Text style={[styles.markDoneText, { fontFamily: "Nunito_900Black" }]}>Release cue command</Text>
+            <Text style={[styles.markDoneText, { fontFamily: "Nunito_900Black" }]}>{releaseCue}</Text>
           </TouchableOpacity>
           <TouchableOpacity
             style={[styles.resetBtn, { borderColor: colors.border }]}
@@ -295,6 +300,8 @@ const styles = StyleSheet.create({
   doneStats: { fontSize: 18, marginBottom: 16 },
   encourageBox: { borderRadius: 16, paddingHorizontal: 24, paddingVertical: 16, marginBottom: 32, width: "100%" },
   encourageText: { fontSize: 16, textAlign: "center", lineHeight: 24 },
+  rewardReminder: { borderRadius: 16, padding: 16, marginBottom: 24, borderWidth: 1.5, width: "100%" },
+  rewardReminderText: { fontSize: 15, textAlign: "center", lineHeight: 22 },
   doneBtn: { paddingVertical: 18, paddingHorizontal: 48, borderRadius: 16, width: "100%", alignItems: "center", marginBottom: 12 },
   doneBtnText: { color: "#fff", fontSize: 18 },
   doneBtnOutline: { paddingVertical: 16, paddingHorizontal: 48, borderRadius: 16, width: "100%", alignItems: "center", borderWidth: 1.5 },

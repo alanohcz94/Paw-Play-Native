@@ -6,26 +6,24 @@ import { useColors } from "@/hooks/useColors";
 import { useApp } from "@/context/AppContext";
 import { useAuth } from "@/lib/auth";
 
-type MasteryLevel = "added" | "learning" | "practising" | "reliable";
+type MasteryLevel = "added" | "learning" | "reliable";
 
-function getCommandMastery(cmd: { trainingSessionsCount: number; qbSuccessesCount: number; qbSessionsWithSuccess: number; level: number }): MasteryLevel {
-  if (cmd.qbSuccessesCount >= 10 && cmd.qbSessionsWithSuccess >= 3) return "reliable";
-  if (cmd.trainingSessionsCount >= 5) return "practising";
-  if (cmd.trainingSessionsCount >= 1 || cmd.level >= 1) return "learning";
+function getCommandMastery(cmd: { trainingSessionsCount: number; qbSuccessesCount: number }): MasteryLevel {
+  const total = cmd.trainingSessionsCount + cmd.qbSuccessesCount;
+  if (total >= 100) return "reliable";
+  if (total >= 1) return "learning";
   return "added";
 }
 
 const MASTERY_COLORS: Record<MasteryLevel, { border: string; bg: string; text: string }> = {
   added: { border: "#9CA3AF", bg: "#F3F4F6", text: "#6B7280" },
-  learning: { border: "#F5C400", bg: "#FFFBE0", text: "#92780A" },
-  practising: { border: "#3DB884", bg: "#E8F8F1", text: "#2D8A63" },
+  learning: { border: "#22C55E", bg: "#F0FDF4", text: "#15803D" },
   reliable: { border: "#3B82F6", bg: "#EBF5FF", text: "#1D4ED8" },
 };
 
 const MASTERY_LABELS: Record<MasteryLevel, string> = {
   added: "Added",
   learning: "Learning",
-  practising: "Practising",
   reliable: "Reliable",
 };
 
@@ -111,6 +109,15 @@ export default function ProfileScreen() {
   const apiBase = process.env.EXPO_PUBLIC_DOMAIN ? `https://${process.env.EXPO_PUBLIC_DOMAIN}` : "";
 
   const level3Count = commands.filter((c) => c.level >= 3 || (c.qbSuccessesCount >= 10 && c.qbSessionsWithSuccess >= 3)).length;
+
+  const hasAnySessions = commands.some((c) => c.trainingSessionsCount > 0 || c.qbSuccessesCount > 0);
+
+  const unlockedAchievements = new Set<string>();
+  if (hasAnySessions) unlockedAchievements.add("first_session");
+  if (streak >= 7) unlockedAchievements.add("streak_7");
+  if (streak >= 30) unlockedAchievements.add("streak_30");
+  if (level3Count >= 1) unlockedAchievements.add("reliable_handler");
+  if (level3Count >= 7) unlockedAchievements.add("full_pack");
 
   const LEVEL_TITLES: Record<number, string> = {
     1: "Puppy Pal",
@@ -300,7 +307,7 @@ export default function ProfileScreen() {
       )}
 
       <View style={styles.masteryLegend}>
-        {(["added", "learning", "practising", "reliable"] as MasteryLevel[]).map((m) => (
+        {(["added", "learning", "reliable"] as MasteryLevel[]).map((m) => (
           <View key={m} style={styles.legendItem}>
             <View style={[styles.legendDot, { backgroundColor: MASTERY_COLORS[m].border }]} />
             <Text style={[styles.legendText, { color: colors.mutedForeground, fontFamily: "Nunito_400Regular" }]}>{MASTERY_LABELS[m]}</Text>
@@ -311,7 +318,7 @@ export default function ProfileScreen() {
       <Text style={[styles.sectionTitle, { color: colors.dark, fontFamily: "Nunito_900Black" }]}>Achievements</Text>
       <View style={styles.achievementsGrid}>
         {ACHIEVEMENT_TYPES.map((ach) => (
-          <AchievementBadge key={ach.type} ach={ach} unlocked={false} colors={colors} />
+          <AchievementBadge key={ach.type} ach={ach} unlocked={unlockedAchievements.has(ach.type)} colors={colors} />
         ))}
       </View>
     </ScrollView>

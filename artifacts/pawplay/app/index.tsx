@@ -8,7 +8,7 @@ import { useColors } from "@/hooks/useColors";
 import { LinearGradient } from "expo-linear-gradient";
 
 export default function WelcomeScreen() {
-  const { isAuthenticated, isLoading } = useAuth();
+  const { isAuthenticated, isLoading, login } = useAuth();
   const { onboardingComplete } = useApp();
   const colors = useColors();
   const insets = useSafeAreaInsets();
@@ -59,9 +59,9 @@ export default function WelcomeScreen() {
           <Text style={[styles.demoButtonText, { fontFamily: "Nunito_900Black" }]}>Try a Quick Demo</Text>
         </TouchableOpacity>
 
-        <View style={styles.authRow}>
-          <Text style={[styles.authLabel, { color: colors.mutedForeground, fontFamily: "Nunito_400Regular" }]}>Already have an account?</Text>
-        </View>
+        <TouchableOpacity style={styles.authRow} onPress={login} activeOpacity={0.7}>
+          <Text style={[styles.authLabel, { color: colors.peach, fontFamily: "Nunito_700Bold", textDecorationLine: "underline" }]}>Already have an account? Sign in</Text>
+        </TouchableOpacity>
       </View>
     </LinearGradient>
   );

@@ -24,8 +24,11 @@ export default function DemoScreen() {
   const [commandIndex, setCommandIndex] = useState(0);
   const [displayScore, setDisplayScore] = useState(0);
   const [isHolding, setIsHolding] = useState(false);
+  const [holdCountdown, setHoldCountdown] = useState(0);
   const timerAnim = useRef(new Animated.Value(1)).current;
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const holdTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const capturedElapsed = useRef(0);
   const [timeRemaining, setTimeRemaining] = useState(DIFFICULTY_WINDOW[DEMO_DIFFICULTY]);
   const [windowExceeded, setWindowExceeded] = useState(false);
   const elapsedRef = useRef(0);
@@ -75,26 +78,51 @@ export default function DemoScreen() {
   };
 
   const handleHoldStart = () => {
+    if (isHolding) return;
     setIsHolding(true);
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+
+    clearTimerInterval();
+    capturedElapsed.current = elapsedRef.current;
+
+    const holdDuration = Math.floor(Math.random() * 3) + 1;
+    setHoldCountdown(holdDuration);
+
+    let remaining = holdDuration;
+    holdTimerRef.current = setInterval(() => {
+      remaining--;
+      setHoldCountdown(remaining);
+      if (remaining <= 0) {
+        clearInterval(holdTimerRef.current!);
+        holdTimerRef.current = null;
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
+        setIsHolding(false);
+        setHoldCountdown(0);
+
+        const elapsed = capturedElapsed.current;
+        const newInput: RawCommandInput = {
+          name: currentCommand,
+          skipped: false,
+          timeSeconds: elapsed,
+          windowSeconds: windowSec,
+        };
+        const newInputs = [...inputsRef.current, newInput];
+        inputsRef.current = newInputs;
+        advanceCommand(newInputs);
+      }
+    }, 1000);
   };
 
   const handleHoldEnd = () => {
     if (!isHolding) return;
-    setIsHolding(false);
-    clearTimerInterval();
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
-
-    const elapsed = elapsedRef.current;
-    const newInput: RawCommandInput = {
-      name: currentCommand,
-      skipped: false,
-      timeSeconds: elapsed,
-      windowSeconds: windowSec,
-    };
-    const newInputs = [...inputsRef.current, newInput];
-    inputsRef.current = newInputs;
-    advanceCommand(newInputs);
+    // Released too early — reset and let them try again
+    if (holdCountdown > 0) {
+      clearInterval(holdTimerRef.current!);
+      holdTimerRef.current = null;
+      setIsHolding(false);
+      setHoldCountdown(0);
+      resetTimer();
+    }
   };
 
   const handleSkip = () => {
@@ -194,12 +222,22 @@ export default function DemoScreen() {
         </Text>
 
         <TouchableOpacity
-          style={[styles.holdButton, { borderColor: colors.peachMid, backgroundColor: isHolding ? colors.peachMid : colors.peach }]}
+          style={[styles.holdButton, { borderColor: isHolding ? colors.mint : colors.peachMid, backgroundColor: isHolding ? colors.mint : colors.peach }]}
           onPressIn={handleHoldStart}
           onPressOut={handleHoldEnd}
           activeOpacity={1}
         >
-          <Text style={[styles.holdText, { fontFamily: "Nunito_900Black" }]}>HOLD</Text>
+          {isHolding ? (
+            <View style={styles.holdInner}>
+              <Text style={[styles.holdText, { fontFamily: "Nunito_900Black" }]}>HOLD</Text>
+              <Text style={[styles.holdCountdownText, { fontFamily: "Nunito_700Bold" }]}>Hold... {holdCountdown}s</Text>
+            </View>
+          ) : (
+            <View style={styles.holdInner}>
+              <Text style={[styles.holdText, { fontFamily: "Nunito_900Black" }]}>HOLD</Text>
+              <Text style={[styles.holdSubtext, { fontFamily: "Nunito_400Regular" }]}>waiting...</Text>
+            </View>
+          )}
         </TouchableOpacity>
 
         <TouchableOpacity onPress={handleSkip} activeOpacity={0.7}>
@@ -273,7 +311,10 @@ const styles = StyleSheet.create({
   timerBar: { height: "100%", borderRadius: 5 },
   timerText: { fontSize: 14, marginBottom: 48 },
   holdButton: { width: 160, height: 160, borderRadius: 80, borderWidth: 3, alignItems: "center", justifyContent: "center", shadowColor: "#FF8B6A", shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.3, shadowRadius: 16, elevation: 8, marginBottom: 24 },
+  holdInner: { alignItems: "center", gap: 4 },
   holdText: { color: "#FFFFFF", fontSize: 22, letterSpacing: 3 },
+  holdCountdownText: { color: "#FFFFFF", fontSize: 14 },
+  holdSubtext: { color: "rgba(255,255,255,0.7)", fontSize: 12 },
   skipText: { fontSize: 14, textDecorationLine: "underline" },
   endTitle: { fontSize: 32, marginTop: 32, marginBottom: 4 },
   endSubtitle: { fontSize: 18, marginBottom: 24 },

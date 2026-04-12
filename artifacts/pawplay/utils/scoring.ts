@@ -60,7 +60,8 @@ export function calculateScore(inputs: RawCommandInput[], difficulty: Difficulty
     } else if (input.timeSeconds <= input.windowSeconds) {
       pointsEarned = maxPts;
     } else {
-      pointsEarned = -Math.floor(secondsOver);
+      // Exceeded window: award base points minus the penalty seconds
+      pointsEarned = maxPts - Math.floor(secondsOver);
     }
 
     return {

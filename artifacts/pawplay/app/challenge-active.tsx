@@ -171,9 +171,8 @@ export default function ChallengeActiveScreen() {
 
         const elapsed = capturedElapsed.current;
         const secondsOver = Math.max(0, elapsed - windowSec);
-        let pts = elapsed <= windowSec ? maxPoints : -Math.floor(secondsOver);
-        if (isExpert) {
-        } else {
+        let pts = elapsed <= windowSec ? maxPoints : maxPoints - Math.floor(secondsOver);
+        if (!isExpert) {
           pts = Math.max(0, pts);
         }
 

@@ -142,6 +142,12 @@ export default function ChallengeEndScreen() {
         </View>
       )}
 
+      <View style={[styles.rewardReminder, { backgroundColor: colors.mintLight, borderColor: colors.mint }]}>
+        <Text style={[styles.rewardReminderText, { color: colors.dark, fontFamily: "Nunito_700Bold" }]}>
+          🎉 Remember to reward {dog?.name ?? "your dog"} with a treat! Always end on a good note.
+        </Text>
+      </View>
+
       {streak > 0 && (
         <View style={[styles.streakBox, { backgroundColor: colors.peachLight }]}>
           <Feather name="zap" size={20} color={colors.peach} />
@@ -183,6 +189,8 @@ const styles = StyleSheet.create({
   bonusChipText: { fontSize: 13 },
   noBonusBox: { borderRadius: 16, padding: 16, width: "100%", marginBottom: 20 },
   noBonusText: { fontSize: 14, textAlign: "center" },
+  rewardReminder: { borderRadius: 16, padding: 16, width: "100%", marginBottom: 16, borderWidth: 1.5 },
+  rewardReminderText: { fontSize: 15, textAlign: "center", lineHeight: 22 },
   streakBox: { flexDirection: "row", alignItems: "center", gap: 8, paddingHorizontal: 20, paddingVertical: 12, borderRadius: 20, marginBottom: 24 },
   streakText: { fontSize: 16 },
   playAgainBtn: { width: "100%", paddingVertical: 18, borderRadius: 16, alignItems: "center", marginBottom: 12, shadowColor: "#FF8B6A", shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 10, elevation: 6 },
