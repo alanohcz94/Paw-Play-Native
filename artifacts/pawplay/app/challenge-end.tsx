@@ -19,8 +19,9 @@ export default function ChallengeEndScreen() {
   const scoreAnim = useRef(new Animated.Value(0)).current;
 
   const result: ScoreResult | null = resultParam ? JSON.parse(resultParam) : null;
-  const score = result?.participationPoints ?? 0;
   const isExpert = difficulty === "expert";
+  const rawScore = result?.participationPoints ?? 0;
+  const score = isExpert ? rawScore : Math.max(0, rawScore);
 
   const apiBase = process.env.EXPO_PUBLIC_DOMAIN ? `https://${process.env.EXPO_PUBLIC_DOMAIN}` : "";
 

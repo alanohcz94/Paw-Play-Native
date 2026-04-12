@@ -48,11 +48,15 @@ export function calculateScore(inputs: RawCommandInput[], difficulty: Difficulty
     const secondsOver = Math.max(0, input.timeSeconds - input.windowSeconds);
 
     if (input.skipped) {
-      pointsEarned = -20 - Math.floor(secondsOver);
+      if (difficulty === "expert") {
+        pointsEarned = -20 - Math.floor(secondsOver);
+      } else {
+        pointsEarned = 0;
+      }
     } else if (input.timeSeconds <= input.windowSeconds) {
       pointsEarned = 20;
     } else {
-      pointsEarned = 20 - Math.floor(secondsOver);
+      pointsEarned = -Math.floor(secondsOver);
     }
 
     return {
@@ -110,14 +114,7 @@ export function calculateScore(inputs: RawCommandInput[], difficulty: Difficulty
 
   const totalRaw = rawScore + totalBonus;
 
-  let participationPoints: number;
-  if (difficulty === "expert") {
-    participationPoints = totalRaw;
-  } else {
-    participationPoints = Math.max(0, totalRaw);
-  }
-
-  return { rawScore: totalRaw, participationPoints, bonuses, commandResults };
+  return { rawScore: totalRaw, participationPoints: totalRaw, bonuses, commandResults };
 }
 
 export const ALL_COMMANDS = ["Sit", "Down", "Stay", "Come", "Heel", "Place", "Leave it"];
