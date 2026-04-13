@@ -58,6 +58,7 @@ export default function DashboardScreen() {
   const [sessions, setSessions] = useState<any[]>([]);
   const [leaderboard, setLeaderboard] = useState<any[]>([]);
   const [refreshing, setRefreshing] = useState(false);
+  const [sessionsThisWeek, setSessionsThisWeek] = useState(0);
   const [daysThisWeek, setDaysThisWeek] = useState(0);
   const [trainedDays, setTrainedDays] = useState<number[]>([]);
 
@@ -82,17 +83,20 @@ export default function DashboardScreen() {
 
         const now = new Date();
         const startOfWeek = new Date(now);
-        startOfWeek.setDate(now.getDate() - now.getDay() + 1);
+        startOfWeek.setDate(now.getDate() - ((now.getDay() + 6) % 7));
         startOfWeek.setHours(0, 0, 0, 0);
 
         const thisWeekDays = new Set<number>();
+        let weekSessionCount = 0;
         for (const sess of s) {
           const d = new Date(sess.createdAt);
           if (d >= startOfWeek) {
+            weekSessionCount++;
             const dayOfWeek = (d.getDay() + 6) % 7;
             thisWeekDays.add(dayOfWeek);
           }
         }
+        setSessionsThisWeek(weekSessionCount);
         setDaysThisWeek(thisWeekDays.size);
         setTrainedDays(Array.from(thisWeekDays));
       }
@@ -191,7 +195,7 @@ export default function DashboardScreen() {
         <View style={styles.statsRow}>
           <StatCard
             label="Sessions this week"
-            value={daysThisWeek}
+            value={sessionsThisWeek}
             bg={colors.peachLight}
           />
           <StatCard

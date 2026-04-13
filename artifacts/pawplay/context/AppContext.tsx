@@ -34,6 +34,9 @@ export interface AppState {
   lastTrainedDate: string | null;
   isNewUser: boolean;
   onboardingComplete: boolean;
+  seenAchievements: string[];
+  reminderTime: string | null; // "HH:MM" 24h format, e.g. "07:30"
+  soundEnabled: boolean;
 }
 
 interface AppContextValue extends AppState {
@@ -45,6 +48,9 @@ interface AppContextValue extends AppState {
   setIsNewUser: (v: boolean) => void;
   setOnboardingComplete: (v: boolean) => void;
   refreshStreak: () => void;
+  markAchievementSeen: (type: string) => void;
+  setReminderTime: (time: string | null) => void;
+  setSoundEnabled: (v: boolean) => void;
 }
 
 const AppContext = createContext<AppContextValue>({
@@ -55,6 +61,9 @@ const AppContext = createContext<AppContextValue>({
   lastTrainedDate: null,
   isNewUser: true,
   onboardingComplete: false,
+  seenAchievements: [],
+  reminderTime: null,
+  soundEnabled: true,
   setDog: () => {},
   setCommands: () => {},
   setFamilyId: () => {},
@@ -63,6 +72,9 @@ const AppContext = createContext<AppContextValue>({
   setIsNewUser: () => {},
   setOnboardingComplete: () => {},
   refreshStreak: () => {},
+  markAchievementSeen: () => {},
+  setReminderTime: () => {},
+  setSoundEnabled: () => {},
 });
 
 const STORAGE_KEY = "pawplay_app_state";
@@ -75,6 +87,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [lastTrainedDate, setLastTrainedDateState] = useState<string | null>(null);
   const [isNewUser, setIsNewUserState] = useState(true);
   const [onboardingComplete, setOnboardingCompleteState] = useState(false);
+  const [seenAchievements, setSeenAchievementsState] = useState<string[]>([]);
+  const [reminderTime, setReminderTimeState] = useState<string | null>(null);
+  const [soundEnabled, setSoundEnabledState] = useState(true);
 
   useEffect(() => {
     AsyncStorage.getItem(STORAGE_KEY).then((raw) => {
@@ -88,6 +103,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
         if (saved.lastTrainedDate) setLastTrainedDateState(saved.lastTrainedDate);
         if (saved.isNewUser !== undefined) setIsNewUserState(saved.isNewUser);
         if (saved.onboardingComplete !== undefined) setOnboardingCompleteState(saved.onboardingComplete);
+        if (saved.seenAchievements) setSeenAchievementsState(saved.seenAchievements);
+        if (saved.reminderTime !== undefined) setReminderTimeState(saved.reminderTime);
+        if (saved.soundEnabled !== undefined) setSoundEnabledState(saved.soundEnabled);
       } catch {}
     });
   }, []);
@@ -106,6 +124,16 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const setLastTrainedDate = (d: string | null) => { setLastTrainedDateState(d); save({ lastTrainedDate: d ?? undefined }); };
   const setIsNewUser = (v: boolean) => { setIsNewUserState(v); save({ isNewUser: v }); };
   const setOnboardingComplete = (v: boolean) => { setOnboardingCompleteState(v); save({ onboardingComplete: v }); };
+  const markAchievementSeen = (type: string) => {
+    setSeenAchievementsState((prev) => {
+      if (prev.includes(type)) return prev;
+      const next = [...prev, type];
+      save({ seenAchievements: next });
+      return next;
+    });
+  };
+  const setReminderTime = (time: string | null) => { setReminderTimeState(time); save({ reminderTime: time ?? undefined }); };
+  const setSoundEnabled = (v: boolean) => { setSoundEnabledState(v); save({ soundEnabled: v }); };
 
   const refreshStreak = () => {
     const today = new Date().toDateString();
@@ -127,7 +155,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
   return (
     <AppContext.Provider value={{
       dog, commands, familyId, streak, lastTrainedDate, isNewUser, onboardingComplete,
+      seenAchievements, reminderTime, soundEnabled,
       setDog, setCommands, setFamilyId, setStreak, setLastTrainedDate, setIsNewUser, setOnboardingComplete, refreshStreak,
+      markAchievementSeen, setReminderTime, setSoundEnabled,
     }}>
       {children}
     </AppContext.Provider>

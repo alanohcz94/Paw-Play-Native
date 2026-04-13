@@ -1,6 +1,6 @@
-import React, { useEffect, useRef } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import {
-  View, Text, StyleSheet, TouchableOpacity, ScrollView, Platform, Animated,
+  View, Text, StyleSheet, TouchableOpacity, ScrollView, Platform, Animated, SafeAreaView,
 } from "react-native";
 import { router, useLocalSearchParams } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -9,13 +9,20 @@ import { useColors } from "@/hooks/useColors";
 import { useApp } from "@/context/AppContext";
 import { useAuth } from "@/lib/auth";
 import type { ScoreResult } from "@/utils/scoring";
+import AchievementBanner from "@/components/AchievementBanner";
+import { useAchievements } from "@/hooks/useAchievements";
+import { useSound } from "@/hooks/useSound";
 
 export default function ChallengeEndScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const { result: resultParam, difficulty } = useLocalSearchParams<{ result: string; difficulty: string }>();
-  const { dog, setLastTrainedDate, setStreak, streak, setCommands } = useApp();
+  const { dog, setLastTrainedDate, setStreak, streak, setCommands, markAchievementSeen } = useApp();
   const { user } = useAuth();
+  const { getNewlyUnlocked } = useAchievements();
+  const { play } = useSound();
+  const [pendingAchievements, setPendingAchievements] = useState<{ type: string; label: string; icon: string }[]>([]);
+  const [shownAchievement, setShownAchievement] = useState<{ type: string; label: string; icon: string } | null>(null);
   const scoreAnim = useRef(new Animated.Value(0)).current;
   const bonusAnim = useRef(new Animated.Value(0)).current;
 
@@ -30,6 +37,8 @@ export default function ChallengeEndScreen() {
   useEffect(() => {
     Animated.spring(scoreAnim, { toValue: 1, useNativeDriver: true, tension: 60, friction: 8 }).start();
     Animated.spring(bonusAnim, { toValue: 1, useNativeDriver: true, tension: 40, friction: 10, delay: 400 }).start();
+
+    play("success");
 
     if (result && dog?.id && user?.id) {
       saveSession();
@@ -71,10 +80,27 @@ export default function ChallengeEndScreen() {
       if (cmdsRes.ok) {
         const { commands } = await cmdsRes.json();
         setCommands(commands);
+        // Check for newly unlocked achievements after commands update
+        setTimeout(() => {
+          const newOnes = getNewlyUnlocked();
+          if (newOnes.length > 0) {
+            setPendingAchievements(newOnes);
+            setShownAchievement(newOnes[0]);
+          }
+        }, 800);
       }
     } catch (e) {
       console.error(e);
     }
+  };
+
+  const dismissAchievement = () => {
+    if (!shownAchievement) return;
+    markAchievementSeen(shownAchievement.type);
+    play("achievement");
+    const remaining = pendingAchievements.filter((a) => a.type !== shownAchievement.type);
+    setPendingAchievements(remaining);
+    setShownAchievement(remaining[0] ?? null);
   };
 
   const scoreStyle = {
@@ -91,6 +117,15 @@ export default function ChallengeEndScreen() {
   const scoreLabelColor = isExpert && score < 0 ? "#ef4444" : colors.mutedForeground;
 
   return (
+    <View style={styles.root}>
+    {shownAchievement && (
+      <AchievementBanner
+        key={shownAchievement.type}
+        label={shownAchievement.label}
+        icon={shownAchievement.icon}
+        onDismiss={dismissAchievement}
+      />
+    )}
     <ScrollView
       style={[styles.container, { backgroundColor: colors.background }]}
       contentContainerStyle={[styles.content, { paddingTop: insets.top + (Platform.OS === "web" ? 67 : 24), paddingBottom: 40 + (Platform.OS === "web" ? 34 : insets.bottom) }]}
@@ -177,10 +212,12 @@ export default function ChallengeEndScreen() {
         <Text style={[styles.homeText, { color: colors.dark, fontFamily: "Nunito_700Bold" }]}>Go Home</Text>
       </TouchableOpacity>
     </ScrollView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
+  root: { flex: 1 },
   container: { flex: 1 },
   content: { paddingHorizontal: 24, alignItems: "center" },
   title: { fontSize: 30, textAlign: "center", marginBottom: 8 },

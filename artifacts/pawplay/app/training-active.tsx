@@ -2,6 +2,7 @@ import React, { useState, useRef, useCallback } from "react";
 import {
   View, Text, StyleSheet, TouchableOpacity, Platform,
 } from "react-native";
+
 import { router, useLocalSearchParams } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import * as Haptics from "expo-haptics";
@@ -9,6 +10,9 @@ import { Feather } from "@expo/vector-icons";
 import { useColors } from "@/hooks/useColors";
 import { useApp } from "@/context/AppContext";
 import { useAuth } from "@/lib/auth";
+import AchievementBanner from "@/components/AchievementBanner";
+import { useAchievements } from "@/hooks/useAchievements";
+import { useSound } from "@/hooks/useSound";
 import Animated, {
   useSharedValue, useAnimatedStyle, withSequence, withTiming,
 } from "react-native-reanimated";
@@ -55,8 +59,12 @@ export default function TrainingActiveScreen() {
   const { command, rewardType, variableSchedule: vsParam, reps: repsParam } = useLocalSearchParams<{
     command: string; rewardType: string; variableSchedule: string; reps: string;
   }>();
-  const { dog, setCommands } = useApp();
+  const { dog, setCommands, markAchievementSeen } = useApp();
   const { user } = useAuth();
+  const { getNewlyUnlocked } = useAchievements();
+  const { play } = useSound();
+  const [shownAchievement, setShownAchievement] = useState<{ type: string; label: string; icon: string } | null>(null);
+  const [pendingAchievements, setPendingAchievements] = useState<{ type: string; label: string; icon: string }[]>([]);
   const reps = parseInt(repsParam ?? "5");
   const variableSchedule = vsParam === "1";
 
@@ -114,8 +122,17 @@ export default function TrainingActiveScreen() {
     }, 1000);
   };
 
+  const dismissAchievement = () => {
+    if (!shownAchievement) return;
+    markAchievementSeen(shownAchievement.type);
+    const remaining = pendingAchievements.filter((a) => a.type !== shownAchievement.type);
+    setPendingAchievements(remaining);
+    setShownAchievement(remaining[0] ?? null);
+  };
+
   const handleComply = useCallback(() => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
+    play("ding");
     const newCompleted = completedReps + 1;
     setCompletedReps(newCompleted);
 
@@ -202,6 +219,14 @@ export default function TrainingActiveScreen() {
       if (cmdsRes.ok) {
         const { commands } = await cmdsRes.json();
         setCommands(commands);
+        setTimeout(() => {
+          const newOnes = getNewlyUnlocked();
+          if (newOnes.length > 0) {
+            play("achievement");
+            setPendingAchievements(newOnes);
+            setShownAchievement(newOnes[0]);
+          }
+        }, 600);
       }
     } catch (e) {
       console.error(e);
@@ -211,6 +236,15 @@ export default function TrainingActiveScreen() {
   // Complete screen
   if (phase === "complete") {
     return (
+      <View style={{ flex: 1 }}>
+      {shownAchievement && (
+        <AchievementBanner
+          key={shownAchievement.type}
+          label={shownAchievement.label}
+          icon={shownAchievement.icon}
+          onDismiss={dismissAchievement}
+        />
+      )}
       <View style={[styles.container, { backgroundColor: colors.background, paddingTop: insets.top + (Platform.OS === "web" ? 67 : 0) }]}>
         <View style={[styles.doneCircle, { backgroundColor: colors.mintLight }]}>
           <Feather name="check" size={48} color={colors.mint} />
@@ -251,6 +285,7 @@ export default function TrainingActiveScreen() {
         >
           <Text style={[styles.doneBtnOutlineText, { color: colors.dark, fontFamily: "Nunito_700Bold" }]}>Done</Text>
         </TouchableOpacity>
+      </View>
       </View>
     );
   }

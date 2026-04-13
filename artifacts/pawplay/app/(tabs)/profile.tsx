@@ -9,6 +9,8 @@ import {
   TextInput,
   Alert,
   Image,
+  Modal,
+  Pressable,
 } from "react-native";
 import { router } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -48,19 +50,21 @@ const MASTERY_LABELS: Record<MasteryLevel, string> = {
 function CommandChip({
   name,
   mastery,
-  colors: appColors,
+  onPress,
 }: {
   name: string;
   mastery: MasteryLevel;
-  colors: any;
+  onPress: () => void;
 }) {
   const mc = MASTERY_COLORS[mastery];
   return (
-    <View
+    <TouchableOpacity
       style={[
         styles.commandChip,
         { backgroundColor: mc.bg, borderColor: mc.border, borderWidth: 1.5 },
       ]}
+      onPress={onPress}
+      activeOpacity={0.75}
     >
       <Text
         style={[
@@ -73,7 +77,7 @@ function CommandChip({
       {mastery === "reliable" && (
         <Feather name="check" size={12} color={mc.text} />
       )}
-    </View>
+    </TouchableOpacity>
   );
 }
 
@@ -101,6 +105,7 @@ export default function ProfileScreen() {
   const [showAddCommands, setShowAddCommands] = useState(false);
   const [addingCommand, setAddingCommand] = useState<string | null>(null);
   const [customCommandInput, setCustomCommandInput] = useState("");
+  const [selectedCommandId, setSelectedCommandId] = useState<string | null>(null);
 
   const apiBase = process.env.EXPO_PUBLIC_DOMAIN
     ? `https://${process.env.EXPO_PUBLIC_DOMAIN}`
@@ -237,7 +242,16 @@ export default function ProfileScreen() {
     }
   };
 
+  const selectedCmd = selectedCommandId ? (commands.find((c) => c.id === selectedCommandId) ?? null) : null;
+  const ttReps = selectedCmd ? selectedCmd.trainingSessionsCount + selectedCmd.qbSuccessesCount : 0;
+  const ttMastery: MasteryLevel = selectedCmd ? getCommandMastery(selectedCmd) : "added";
+  const ttMc = MASTERY_COLORS[ttMastery];
+  const ttNextTarget = ttMastery === "added" ? 1 : 100;
+  const ttNextLabel = ttMastery === "added" ? "Learning" : "Reliable";
+  const ttPct = ttMastery === "reliable" ? 100 : Math.min(100, Math.round((ttReps / ttNextTarget) * 100));
+
   return (
+    <>
     <ScrollView
       style={[styles.container, { backgroundColor: colors.background }]}
       contentContainerStyle={[
@@ -651,7 +665,7 @@ export default function ProfileScreen() {
                 key={cmd.id}
                 name={cmd.name}
                 mastery={mastery}
-                colors={colors}
+                onPress={() => setSelectedCommandId(cmd.id)}
               />
             );
           })}
@@ -725,6 +739,92 @@ export default function ProfileScreen() {
         />
       </TouchableOpacity>
     </ScrollView>
+
+    <Modal
+      transparent
+      animationType="fade"
+      visible={selectedCommandId !== null}
+      onRequestClose={() => setSelectedCommandId(null)}
+    >
+      <Pressable style={styles.modalBackdrop} onPress={() => setSelectedCommandId(null)}>
+        <Pressable style={[styles.tooltipCard, { backgroundColor: colors.card, borderColor: ttMc.border }]} onPress={() => {}}>
+          {selectedCmd && (
+            <>
+              <View style={styles.tooltipHeader}>
+                <Text style={[styles.tooltipTitle, { color: colors.dark, fontFamily: "FredokaOne_400Regular" }]}>
+                  {selectedCmd.name}
+                </Text>
+                <View style={[styles.tooltipBadge, { backgroundColor: ttMc.bg, borderColor: ttMc.border }]}>
+                  <Text style={[styles.tooltipBadgeText, { color: ttMc.text, fontFamily: "Nunito_700Bold" }]}>
+                    {MASTERY_LABELS[ttMastery]}
+                  </Text>
+                </View>
+              </View>
+
+              <Text style={[styles.tooltipReps, { color: colors.mutedForeground, fontFamily: "Nunito_400Regular" }]}>
+                Total reps
+              </Text>
+              <Text style={[styles.tooltipRepsValue, { color: colors.dark, fontFamily: "FredokaOne_400Regular" }]}>
+                {ttReps}
+              </Text>
+
+              {ttMastery !== "reliable" && (
+                <>
+                  <View style={styles.tooltipProgressRow}>
+                    <Text style={[styles.tooltipProgressLabel, { color: colors.mutedForeground, fontFamily: "Nunito_700Bold" }]}>
+                      {ttReps} / {ttNextTarget} → {ttNextLabel}
+                    </Text>
+                    <Text style={[styles.tooltipProgressPct, { color: ttMc.text, fontFamily: "Nunito_900Black" }]}>
+                      {ttPct}%
+                    </Text>
+                  </View>
+                  <View style={[styles.tooltipTrack, { backgroundColor: colors.muted }]}>
+                    <View style={[styles.tooltipFill, { width: `${ttPct}%` as any, backgroundColor: ttMc.border }]} />
+                  </View>
+                </>
+              )}
+
+              {ttMastery === "reliable" && (
+                <View style={[styles.tooltipReliableBanner, { backgroundColor: colors.mintLight }]}>
+                  <Feather name="check-circle" size={16} color={colors.mint} />
+                  <Text style={[styles.tooltipReliableText, { color: colors.mint, fontFamily: "Nunito_700Bold" }]}>
+                    Fully mastered!
+                  </Text>
+                </View>
+              )}
+
+              <View style={styles.tooltipStats}>
+                <View style={styles.tooltipStatItem}>
+                  <Text style={[styles.tooltipStatValue, { color: colors.peach, fontFamily: "Nunito_900Black" }]}>
+                    {selectedCmd.trainingSessionsCount}
+                  </Text>
+                  <Text style={[styles.tooltipStatLabel, { color: colors.mutedForeground, fontFamily: "Nunito_400Regular" }]}>
+                    Training reps
+                  </Text>
+                </View>
+                <View style={styles.tooltipStatItem}>
+                  <Text style={[styles.tooltipStatValue, { color: colors.lavender, fontFamily: "Nunito_900Black" }]}>
+                    {selectedCmd.qbSuccessesCount}
+                  </Text>
+                  <Text style={[styles.tooltipStatLabel, { color: colors.mutedForeground, fontFamily: "Nunito_400Regular" }]}>
+                    Quick Bites hits
+                  </Text>
+                </View>
+              </View>
+
+              <TouchableOpacity
+                style={[styles.tooltipCloseBtn, { borderColor: colors.border }]}
+                onPress={() => setSelectedCommandId(null)}
+                activeOpacity={0.7}
+              >
+                <Text style={[styles.tooltipCloseBtnText, { color: colors.dark, fontFamily: "Nunito_700Bold" }]}>Close</Text>
+              </TouchableOpacity>
+            </>
+          )}
+        </Pressable>
+      </Pressable>
+    </Modal>
+    </>
   );
 }
 
@@ -873,4 +973,26 @@ const styles = StyleSheet.create({
   customInputRow: { flexDirection: "row", alignItems: "center", gap: 8, marginTop: 10, paddingTop: 10, borderTopWidth: 1 },
   customInput: { flex: 1, borderWidth: 1, borderRadius: 12, paddingHorizontal: 12, paddingVertical: 10, fontSize: 14 },
   customInputBtn: { width: 40, height: 40, borderRadius: 12, alignItems: "center", justifyContent: "center" },
+  // Command tooltip modal
+  modalBackdrop: { flex: 1, backgroundColor: "rgba(0,0,0,0.45)", justifyContent: "center", alignItems: "center", padding: 24 },
+  tooltipCard: { width: "100%", borderRadius: 20, padding: 20, borderWidth: 1.5, gap: 4 },
+  tooltipHeader: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 12 },
+  tooltipTitle: { fontSize: 26 },
+  tooltipBadge: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 12, borderWidth: 1 },
+  tooltipBadgeText: { fontSize: 12 },
+  tooltipReps: { fontSize: 12, marginTop: 4 },
+  tooltipRepsValue: { fontSize: 48, lineHeight: 52, marginBottom: 12 },
+  tooltipProgressRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 6 },
+  tooltipProgressLabel: { fontSize: 13 },
+  tooltipProgressPct: { fontSize: 14 },
+  tooltipTrack: { height: 8, borderRadius: 4, overflow: "hidden", marginBottom: 12 },
+  tooltipFill: { height: "100%", borderRadius: 4 },
+  tooltipReliableBanner: { flexDirection: "row", alignItems: "center", gap: 8, borderRadius: 12, padding: 12, marginBottom: 12 },
+  tooltipReliableText: { fontSize: 14 },
+  tooltipStats: { flexDirection: "row", gap: 16, marginTop: 8, marginBottom: 16 },
+  tooltipStatItem: { alignItems: "center", gap: 2 },
+  tooltipStatValue: { fontSize: 22 },
+  tooltipStatLabel: { fontSize: 11 },
+  tooltipCloseBtn: { borderWidth: 1.5, borderRadius: 14, paddingVertical: 12, alignItems: "center", marginTop: 4 },
+  tooltipCloseBtnText: { fontSize: 15 },
 });
