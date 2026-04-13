@@ -80,7 +80,7 @@ export default function SettingsScreen() {
         </TouchableOpacity>
       </View>
 
-      <Text style={[styles.version, { color: colors.mutedForeground, fontFamily: "Nunito_400Regular" }]}>PawPlay v1.0.0</Text>
+      <Text style={[styles.version, { color: colors.mutedForeground, fontFamily: "Nunito_400Regular" }]}>QuickMix v1.0.0</Text>
     </ScrollView>
   );
 }

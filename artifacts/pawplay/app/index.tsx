@@ -28,7 +28,7 @@ export default function WelcomeScreen() {
   if (isLoading) {
     return (
       <View style={[styles.container, { backgroundColor: colors.background }]}>
-        <Text style={[styles.appName, { color: colors.peach, fontFamily: "FredokaOne_400Regular" }]}>PawPlay</Text>
+        <Text style={[styles.appName, { color: colors.peach, fontFamily: "FredokaOne_400Regular" }]}>QuickMix</Text>
       </View>
     );
   }
@@ -44,7 +44,7 @@ export default function WelcomeScreen() {
         <View style={[styles.pawIconContainer, { backgroundColor: colors.peach }]}>
           <Text style={styles.pawEmoji}>🐾</Text>
         </View>
-        <Text style={[styles.appName, { color: colors.dark, fontFamily: "FredokaOne_400Regular" }]}>PawPlay</Text>
+        <Text style={[styles.appName, { color: colors.dark, fontFamily: "FredokaOne_400Regular" }]}>QuickMix</Text>
         <Text style={[styles.tagline, { color: colors.mutedForeground, fontFamily: "Nunito_700Bold" }]}>
           Gamified dog training for the whole family
         </Text>
