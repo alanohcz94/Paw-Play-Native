@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "PawPlay",
+    "name": "Quick-mix",
     "slug": "pawplay",
     "version": "1.0.0",
     "orientation": "portrait",
@@ -28,7 +28,13 @@
         }
       ],
       "expo-font",
-      "expo-web-browser"
+      "expo-web-browser",
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Allow Quick-mix to access your photos to set a profile picture for your dog."
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true,

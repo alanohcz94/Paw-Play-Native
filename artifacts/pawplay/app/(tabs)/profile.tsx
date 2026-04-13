@@ -266,20 +266,16 @@ export default function ProfileScreen() {
               ) : (
                 <Text style={styles.avatarEmoji}>🐾</Text>
               )}
-              {uploading && (
+              {uploading ? (
                 <View style={styles.avatarOverlay}>
                   <Text style={styles.avatarOverlayText}>...</Text>
                 </View>
+              ) : (
+                <View style={styles.avatarCameraOverlay}>
+                  <Feather name="camera" size={16} color="#fff" />
+                </View>
               )}
             </View>
-          </TouchableOpacity>
-          {/* "+" badge to open add-command panel */}
-          <TouchableOpacity
-            style={[styles.avatarAddBadge, { backgroundColor: colors.peach }]}
-            onPress={() => setShowAddCommands((v) => !v)}
-            activeOpacity={0.85}
-          >
-            <Feather name={showAddCommands ? "x" : "plus"} size={14} color="#fff" />
           </TouchableOpacity>
         </View>
         <Text
@@ -522,7 +518,19 @@ export default function ProfileScreen() {
         </View>
       )}
 
-      <Text style={[styles.sectionTitle, { color: colors.dark, fontFamily: "Nunito_900Black" }]}>Command Library</Text>
+      <View style={styles.sectionHeader}>
+        <Text style={[styles.sectionTitle, { color: colors.dark, fontFamily: "Nunito_900Black", marginBottom: 0 }]}>Command Library</Text>
+        <TouchableOpacity
+          style={[styles.addCommandBtn, { backgroundColor: colors.peach }]}
+          onPress={() => setShowAddCommands((v) => !v)}
+          activeOpacity={0.85}
+        >
+          <Feather name={showAddCommands ? "x" : "plus"} size={14} color="#fff" />
+          <Text style={[styles.addCommandBtnText, { fontFamily: "Nunito_700Bold" }]}>
+            {showAddCommands ? "Close" : "Add Command"}
+          </Text>
+        </TouchableOpacity>
+      </View>
 
       {showAddCommands && (() => {
         const PRESET_SUGGESTIONS = ["Shake", "Hi-5", "Hop/Over", "Up", "Home", "Roll Over", "Spin", "Fetch", "Drop It", "Wait"];
@@ -843,18 +851,25 @@ const styles = StyleSheet.create({
   achievementsNavLeft: { flexDirection: "row", alignItems: "center", gap: 12 },
   achievementsNavSub: { fontSize: 13 },
   avatarWrapper: { position: "relative" },
-  avatarAddBadge: {
+  avatarCameraOverlay: {
     position: "absolute",
-    bottom: 2,
-    right: 2,
-    width: 26,
-    height: 26,
-    borderRadius: 13,
+    bottom: 0,
+    left: 0,
+    right: 0,
+    height: 28,
+    backgroundColor: "rgba(0,0,0,0.35)",
     alignItems: "center",
     justifyContent: "center",
-    borderWidth: 2,
-    borderColor: "#fff",
   },
+  addCommandBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 5,
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+    borderRadius: 20,
+  },
+  addCommandBtnText: { color: "#fff", fontSize: 13 },
   customInputRow: { flexDirection: "row", alignItems: "center", gap: 8, marginTop: 10, paddingTop: 10, borderTopWidth: 1 },
   customInput: { flex: 1, borderWidth: 1, borderRadius: 12, paddingHorizontal: 12, paddingVertical: 10, fontSize: 14 },
   customInputBtn: { width: 40, height: 40, borderRadius: 12, alignItems: "center", justifyContent: "center" },
