@@ -106,7 +106,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   avatarEmoji: { fontSize: 22 },
-  dogName: { fontSize: 11, textAlign: "center" },
+  dogName: { fontSize: 11, textAlign: "center", marginBottom: 10 },
   addCircle: {
     alignItems: "center",
     justifyContent: "center",

@@ -69,7 +69,8 @@ export default function DashboardScreen() {
     : "";
 
   const loadDogs = async () => {
-    if (!familyId || !user?.id || dogsLoadedForFamily.current === familyId) return;
+    if (!familyId || !user?.id || dogsLoadedForFamily.current === familyId)
+      return;
     await loadDogsFromApi();
     dogsLoadedForFamily.current = familyId;
   };
@@ -128,7 +129,7 @@ export default function DashboardScreen() {
     useCallback(() => {
       loadDogs();
       loadData();
-    }, [dog?.id, familyId])
+    }, [dog?.id, familyId]),
   );
 
   const onRefresh = async () => {
@@ -170,23 +171,6 @@ export default function DashboardScreen() {
         <DogPicker />
 
         <View style={styles.topBar}>
-          <TouchableOpacity onPress={() => router.push("/(tabs)/profile")} activeOpacity={0.8}>
-            <View style={[styles.topAvatarCircle, { backgroundColor: colors.peachLight, borderColor: colors.peach }]}>
-              {dog?.avatarUrl ? (
-                <Image source={{ uri: dog.avatarUrl }} style={styles.topAvatarImage} />
-              ) : (
-                <Text style={styles.topAvatarEmoji}>🐾</Text>
-              )}
-            </View>
-          </TouchableOpacity>
-          <Text
-            style={[
-              styles.greeting,
-              { color: colors.dark, fontFamily: "FredokaOne_400Regular" },
-            ]}
-          >
-            {dog ? `${dog.name}'s Day` : "Welcome!"}
-          </Text>
           {streak > 0 ? (
             <View
               style={[styles.streakPill, { backgroundColor: colors.peach }]}
@@ -222,21 +206,49 @@ export default function DashboardScreen() {
         </View>
 
         {/* Today history log */}
-        <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
+        <View
+          style={[
+            styles.card,
+            { backgroundColor: colors.card, borderColor: colors.border },
+          ]}
+        >
           <View style={styles.cardHeader}>
-            <Text style={[styles.cardTitle, { color: colors.dark, fontFamily: "Nunito_900Black" }]}>
+            <Text
+              style={[
+                styles.cardTitle,
+                { color: colors.dark, fontFamily: "Nunito_900Black" },
+              ]}
+            >
               Today
             </Text>
             {todaySessions.length > 0 && (
-              <View style={[styles.countBadge, { backgroundColor: colors.peachLight }]}>
-                <Text style={[styles.countBadgeText, { color: colors.peach, fontFamily: "Nunito_900Black" }]}>
+              <View
+                style={[
+                  styles.countBadge,
+                  { backgroundColor: colors.peachLight },
+                ]}
+              >
+                <Text
+                  style={[
+                    styles.countBadgeText,
+                    { color: colors.peach, fontFamily: "Nunito_900Black" },
+                  ]}
+                >
                   {todaySessions.length}
                 </Text>
               </View>
             )}
           </View>
           {todaySessions.length === 0 ? (
-            <Text style={[styles.cardSubtitle, { color: colors.mutedForeground, fontFamily: "Nunito_400Regular" }]}>
+            <Text
+              style={[
+                styles.cardSubtitle,
+                {
+                  color: colors.mutedForeground,
+                  fontFamily: "Nunito_400Regular",
+                },
+              ]}
+            >
               No activity yet today
             </Text>
           ) : (
@@ -244,30 +256,86 @@ export default function DashboardScreen() {
               const isQB = s.mode === "quickbites" || s.mode === "challenge";
               const modeLabel = isQB ? "Quick Bites" : "Training";
               const modeIcon = isQB ? "zap" : "book-open";
-              const cmdName = !isQB && s.commandsUsed?.[0]?.name ? s.commandsUsed[0].name : null;
-              const reps = !isQB && s.durationSeconds ? Math.round(s.durationSeconds / 30) : null;
+              const cmdName =
+                !isQB && s.commandsUsed?.[0]?.name
+                  ? s.commandsUsed[0].name
+                  : null;
+              const reps =
+                !isQB && s.durationSeconds
+                  ? Math.round(s.durationSeconds / 30)
+                  : null;
               return (
-                <View key={s.id ?? i} style={[styles.historyRow, i > 0 && { borderTopWidth: 1, borderTopColor: colors.border }]}>
-                  <Feather name={modeIcon as any} size={16} color={isQB ? colors.peach : colors.mint} />
+                <View
+                  key={s.id ?? i}
+                  style={[
+                    styles.historyRow,
+                    i > 0 && {
+                      borderTopWidth: 1,
+                      borderTopColor: colors.border,
+                    },
+                  ]}
+                >
+                  <Feather
+                    name={modeIcon as any}
+                    size={16}
+                    color={isQB ? colors.peach : colors.mint}
+                  />
                   <View style={{ flex: 1 }}>
-                    <Text style={[styles.historyLabel, { color: colors.dark, fontFamily: "Nunito_700Bold" }]}>
-                      {modeLabel}{cmdName ? ` — ${cmdName}` : ""}
+                    <Text
+                      style={[
+                        styles.historyLabel,
+                        { color: colors.dark, fontFamily: "Nunito_700Bold" },
+                      ]}
+                    >
+                      {modeLabel}
+                      {cmdName ? ` — ${cmdName}` : ""}
                     </Text>
                     {reps && reps > 0 && (
-                      <Text style={[styles.historyMeta, { color: colors.mutedForeground, fontFamily: "Nunito_400Regular" }]}>
+                      <Text
+                        style={[
+                          styles.historyMeta,
+                          {
+                            color: colors.mutedForeground,
+                            fontFamily: "Nunito_400Regular",
+                          },
+                        ]}
+                      >
                         {reps} rep{reps !== 1 ? "s" : ""}
                       </Text>
                     )}
                   </View>
                   {s.difficulty && (
-                    <View style={[styles.diffChip, { backgroundColor: colors.lavLight }]}>
-                      <Text style={[styles.diffChipText, { color: colors.lavender, fontFamily: "Nunito_700Bold" }]}>
+                    <View
+                      style={[
+                        styles.diffChip,
+                        { backgroundColor: colors.lavLight },
+                      ]}
+                    >
+                      <Text
+                        style={[
+                          styles.diffChipText,
+                          {
+                            color: colors.lavender,
+                            fontFamily: "Nunito_700Bold",
+                          },
+                        ]}
+                      >
                         {s.difficulty}
                       </Text>
                     </View>
                   )}
-                  <Text style={[styles.historyPts, { color: colors.mutedForeground, fontFamily: "Nunito_700Bold" }]}>
-                    {s.participationPoints > 0 ? `+${s.participationPoints} pts` : ""}
+                  <Text
+                    style={[
+                      styles.historyPts,
+                      {
+                        color: colors.mutedForeground,
+                        fontFamily: "Nunito_700Bold",
+                      },
+                    ]}
+                  >
+                    {s.participationPoints > 0
+                      ? `+${s.participationPoints} pts`
+                      : ""}
                   </Text>
                 </View>
               );
@@ -524,13 +592,26 @@ const styles = StyleSheet.create({
   emptyText: { fontSize: 14, textAlign: "center", lineHeight: 22 },
   countBadge: { paddingHorizontal: 8, paddingVertical: 3, borderRadius: 12 },
   countBadgeText: { fontSize: 13 },
-  historyRow: { flexDirection: "row", alignItems: "center", gap: 8, paddingVertical: 10 },
+  historyRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    paddingVertical: 10,
+  },
   historyLabel: { fontSize: 14 },
   historyMeta: { fontSize: 12, marginTop: 1 },
   diffChip: { paddingHorizontal: 8, paddingVertical: 3, borderRadius: 10 },
   diffChipText: { fontSize: 11, textTransform: "capitalize" as const },
   historyPts: { fontSize: 13 },
-  topAvatarCircle: { width: 36, height: 36, borderRadius: 18, borderWidth: 2, alignItems: "center", justifyContent: "center", overflow: "hidden" },
+  topAvatarCircle: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    borderWidth: 2,
+    alignItems: "center",
+    justifyContent: "center",
+    overflow: "hidden",
+  },
   topAvatarImage: { width: 32, height: 32, borderRadius: 16 },
   topAvatarEmoji: { fontSize: 18 },
   fab: {
