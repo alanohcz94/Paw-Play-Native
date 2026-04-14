@@ -1,5 +1,12 @@
 import React from "react";
-import { View, Text, ScrollView, TouchableOpacity, Image, StyleSheet } from "react-native";
+import {
+  View,
+  Text,
+  ScrollView,
+  TouchableOpacity,
+  Image,
+  StyleSheet,
+} from "react-native";
 import { Feather } from "@expo/vector-icons";
 import { router } from "expo-router";
 import { useColors } from "@/hooks/useColors";
@@ -13,9 +20,14 @@ export default function DogPicker() {
 
   return (
     <View style={styles.container}>
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.scroll}>
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={styles.scroll}
+      >
         {dogs.map((d) => {
-          const isActive = d.id === activeDogId || (!activeDogId && d.id === dogs[0]?.id);
+          const isActive =
+            d.id === activeDogId || (!activeDogId && d.id === dogs[0]?.id);
           return (
             <TouchableOpacity
               key={d.id}
@@ -32,7 +44,12 @@ export default function DogPicker() {
               {d.avatarUrl ? (
                 <Image source={{ uri: d.avatarUrl }} style={styles.avatar} />
               ) : (
-                <View style={[styles.avatarPlaceholder, { backgroundColor: colors.peachLight }]}>
+                <View
+                  style={[
+                    styles.avatarPlaceholder,
+                    { backgroundColor: colors.peachLight },
+                  ]}
+                >
                   <Text style={styles.avatarEmoji}>🐾</Text>
                 </View>
               )}
@@ -57,7 +74,14 @@ export default function DogPicker() {
           activeOpacity={0.8}
         >
           <Feather name="plus" size={22} color={colors.mutedForeground} />
-          <Text style={[styles.dogName, { color: colors.mutedForeground, fontFamily: "Nunito_700Bold" }]}>Add</Text>
+          <Text
+            style={[
+              styles.dogName,
+              { color: colors.mutedForeground, fontFamily: "Nunito_700Bold" },
+            ]}
+          >
+            Add
+          </Text>
         </TouchableOpacity>
       </ScrollView>
     </View>
@@ -86,7 +110,7 @@ const styles = StyleSheet.create({
   addCircle: {
     alignItems: "center",
     justifyContent: "center",
-    gap: 4,
+    gap: 3,
     width: 64,
     borderRadius: 32,
     borderWidth: 1.5,
