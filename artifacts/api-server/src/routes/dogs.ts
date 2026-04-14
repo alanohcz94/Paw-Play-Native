@@ -11,13 +11,10 @@ router.get("/family/:familyId/dogs", async (req: Request, res: Response) => {
     return;
   }
   const { familyId } = req.params;
-  const userId = (req.user as any)?.id;
-  if (userId) {
-    const [pawUser] = await db.select().from(pawplayUsersTable).where(eq(pawplayUsersTable.id, userId));
-    if (!pawUser || pawUser.familyId !== familyId) {
-      res.status(403).json({ error: "Forbidden" });
-      return;
-    }
+  const [pawUser] = await db.select().from(pawplayUsersTable).where(eq(pawplayUsersTable.id, req.user.id));
+  if (!pawUser || pawUser.familyId !== familyId) {
+    res.status(403).json({ error: "Forbidden" });
+    return;
   }
   const dogs = await db.select().from(dogsTable).where(eq(dogsTable.familyId, familyId));
   res.json({ dogs });

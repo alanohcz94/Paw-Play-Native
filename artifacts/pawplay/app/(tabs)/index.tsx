@@ -54,7 +54,7 @@ const WEEK_DAYS = ["M", "T", "W", "T", "F", "S", "S"];
 export default function DashboardScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
-  const { dog, dogs, streak, familyId, setDogs, setActiveDogId, setCommands } = useApp();
+  const { dog, dogs, streak, familyId, setCommands, loadDogsFromApi } = useApp();
   const { user } = useAuth();
   const [sessions, setSessions] = useState<any[]>([]);
   const [leaderboard, setLeaderboard] = useState<any[]>([]);
@@ -70,23 +70,8 @@ export default function DashboardScreen() {
 
   const loadDogs = async () => {
     if (!familyId || !user?.id || dogsLoadedForFamily.current === familyId) return;
-    try {
-      const { getItemAsync } = await import("expo-secure-store");
-      const token = await getItemAsync("auth_session_token");
-      const res = await fetch(`${apiBase}/api/family/${familyId}/dogs`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (res.ok) {
-        const { dogs: fetchedDogs } = await res.json();
-        if (fetchedDogs && fetchedDogs.length > 0) {
-          setDogs(fetchedDogs);
-          if (!dog) setActiveDogId(fetchedDogs[0].id);
-        }
-      }
-      dogsLoadedForFamily.current = familyId;
-    } catch (e) {
-      console.error("Failed to load dogs:", e);
-    }
+    await loadDogsFromApi();
+    dogsLoadedForFamily.current = familyId;
   };
 
   const loadCommandsForDog = async (dogId: string) => {
@@ -201,7 +186,7 @@ export default function DashboardScreen() {
         }
         showsVerticalScrollIndicator={false}
       >
-        {dogs.length > 1 && <DogPicker />}
+        <DogPicker />
 
         <View style={styles.topBar}>
           <TouchableOpacity onPress={() => router.push("/(tabs)/profile")} activeOpacity={0.8}>

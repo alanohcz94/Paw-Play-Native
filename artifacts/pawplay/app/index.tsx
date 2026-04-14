@@ -9,18 +9,20 @@ import { LinearGradient } from "expo-linear-gradient";
 
 export default function WelcomeScreen() {
   const { isAuthenticated, isLoading, login } = useAuth();
-  const { onboardingComplete } = useApp();
+  const { onboardingComplete, familyId, loadDogsFromApi } = useApp();
   const colors = useColors();
   const insets = useSafeAreaInsets();
 
   useEffect(() => {
-    if (!isLoading) {
-      if (isAuthenticated) {
-        if (onboardingComplete) {
-          router.replace("/(tabs)");
+    if (!isLoading && isAuthenticated) {
+      if (onboardingComplete) {
+        if (familyId) {
+          loadDogsFromApi().then(() => router.replace("/(tabs)"));
         } else {
-          router.replace("/onboarding");
+          router.replace("/(tabs)");
         }
+      } else {
+        router.replace("/onboarding");
       }
     }
   }, [isAuthenticated, isLoading, onboardingComplete]);

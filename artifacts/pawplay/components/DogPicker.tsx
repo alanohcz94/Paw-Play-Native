@@ -9,7 +9,7 @@ export default function DogPicker() {
   const colors = useColors();
   const { dogs, activeDogId, setActiveDogId } = useApp();
 
-  if (dogs.length <= 1) return null;
+  if (dogs.length === 0) return null;
 
   return (
     <View style={styles.container}>
