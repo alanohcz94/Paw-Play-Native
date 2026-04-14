@@ -10,7 +10,8 @@ PawPlay is a gamified dog training mobile app for families. Built as a pnpm work
 - **Demo Mode** — Quick Bites session with local state only, no API calls, uses calculateScore()
 - **Replit Auth** — OIDC/PKCE mobile auth via expo-auth-session
 - **Onboarding** — 4-step flow: dog info → commands → family invite → done
-- **Dashboard** — streak, weekly activity grid, leaderboard, calendar link
+- **Multi-dog support** — families can have multiple dogs; DogPicker component on dashboard lets users switch active dog; all commands, scores, achievements scoped to the active dog; "Add Dog" screen accessible from dashboard and profile
+- **Dashboard** — dog picker (when 2+ dogs), streak, weekly activity grid, leaderboard, calendar link
 - **Games Hub** — Quick Bites, Training Mode, Obedience Challenge (locked til 7 reliable commands)
 - **Quick Bites (challenge-active)** — HOLD button with 1-3s random hold countdown, timer continues past 0 as negative, reset button with 25% deduction per press, purple bonus bubbles during gameplay
 - **Training Mode** — zero scoring, variable reward 49/51 schedule, "Release cue command" button, inter-trial wait timers, Train Again + Done end screen
@@ -63,7 +64,7 @@ PawPlay is a gamified dog training mobile app for families. Built as a pnpm work
 - `users` — auth users (Replit Auth)
 - `pawplay_users` — extended user profile (familyId, role, expoPushToken)
 - `families` — family groups with 6-char invite code
-- `dogs` — dog profiles (name, breed, age, level, xp, release_cue, marker_cue, avatar_url)
+- `dogs` — dog profiles per family (name, breed, age, level, xp, release_cue, marker_cue, avatar_url); multiple dogs per family supported
 - `commands` — command library per dog (with level tracking)
 - `sessions_record` — training session history with scoring
 - `achievements` — dog/user achievement records

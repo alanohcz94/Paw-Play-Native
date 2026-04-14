@@ -27,6 +27,8 @@ export interface Command {
 }
 
 export interface AppState {
+  dogs: Dog[];
+  activeDogId: string | null;
   dog: Dog | null;
   commands: Command[];
   familyId: string | null;
@@ -35,12 +37,14 @@ export interface AppState {
   isNewUser: boolean;
   onboardingComplete: boolean;
   seenAchievements: string[];
-  reminderTime: string | null; // "HH:MM" 24h format, e.g. "07:30"
+  reminderTime: string | null;
   soundEnabled: boolean;
 }
 
 interface AppContextValue extends AppState {
   setDog: (dog: Dog | null) => void;
+  setDogs: (dogs: Dog[]) => void;
+  setActiveDogId: (id: string | null) => void;
   setCommands: (commands: Command[]) => void;
   setFamilyId: (id: string | null) => void;
   setStreak: (streak: number) => void;
@@ -51,9 +55,12 @@ interface AppContextValue extends AppState {
   markAchievementSeen: (type: string) => void;
   setReminderTime: (time: string | null) => void;
   setSoundEnabled: (v: boolean) => void;
+  addDog: (dog: Dog) => void;
 }
 
 const AppContext = createContext<AppContextValue>({
+  dogs: [],
+  activeDogId: null,
   dog: null,
   commands: [],
   familyId: null,
@@ -65,6 +72,8 @@ const AppContext = createContext<AppContextValue>({
   reminderTime: null,
   soundEnabled: true,
   setDog: () => {},
+  setDogs: () => {},
+  setActiveDogId: () => {},
   setCommands: () => {},
   setFamilyId: () => {},
   setStreak: () => {},
@@ -75,12 +84,14 @@ const AppContext = createContext<AppContextValue>({
   markAchievementSeen: () => {},
   setReminderTime: () => {},
   setSoundEnabled: () => {},
+  addDog: () => {},
 });
 
 const STORAGE_KEY = "pawplay_app_state";
 
 export function AppProvider({ children }: { children: ReactNode }) {
-  const [dog, setDogState] = useState<Dog | null>(null);
+  const [dogs, setDogsState] = useState<Dog[]>([]);
+  const [activeDogId, setActiveDogIdState] = useState<string | null>(null);
   const [commands, setCommandsState] = useState<Command[]>([]);
   const [familyId, setFamilyIdState] = useState<string | null>(null);
   const [streak, setStreakState] = useState(0);
@@ -91,12 +102,20 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [reminderTime, setReminderTimeState] = useState<string | null>(null);
   const [soundEnabled, setSoundEnabledState] = useState(true);
 
+  const dog = dogs.find((d) => d.id === activeDogId) ?? dogs[0] ?? null;
+
   useEffect(() => {
     AsyncStorage.getItem(STORAGE_KEY).then((raw) => {
       if (!raw) return;
       try {
         const saved = JSON.parse(raw);
-        if (saved.dog) setDogState(saved.dog);
+        if (saved.dogs && saved.dogs.length > 0) {
+          setDogsState(saved.dogs);
+          setActiveDogIdState(saved.activeDogId ?? saved.dogs[0]?.id ?? null);
+        } else if (saved.dog) {
+          setDogsState([saved.dog]);
+          setActiveDogIdState(saved.dog.id);
+        }
         if (saved.commands) setCommandsState(saved.commands);
         if (saved.familyId) setFamilyIdState(saved.familyId);
         if (saved.streak !== undefined) setStreakState(saved.streak);
@@ -110,14 +129,49 @@ export function AppProvider({ children }: { children: ReactNode }) {
     });
   }, []);
 
-  const save = (patch: Partial<AppState>) => {
+  const save = (patch: Partial<Record<string, unknown>>) => {
     AsyncStorage.getItem(STORAGE_KEY).then((raw) => {
       const existing = raw ? JSON.parse(raw) : {};
       AsyncStorage.setItem(STORAGE_KEY, JSON.stringify({ ...existing, ...patch }));
     });
   };
 
-  const setDog = (d: Dog | null) => { setDogState(d); save({ dog: d ?? undefined }); };
+  const setDog = (d: Dog | null) => {
+    if (!d) return;
+    setDogsState((prev) => {
+      const idx = prev.findIndex((p) => p.id === d.id);
+      const next = idx >= 0 ? prev.map((p) => (p.id === d.id ? d : p)) : [...prev, d];
+      save({ dogs: next, activeDogId: d.id });
+      return next;
+    });
+    setActiveDogIdState(d.id);
+  };
+
+  const setDogs = (d: Dog[]) => {
+    setDogsState(d);
+    const currentStillValid = d.some((dog) => dog.id === activeDogId);
+    if (!currentStillValid && d.length > 0) {
+      setActiveDogIdState(d[0].id);
+      save({ dogs: d, activeDogId: d[0].id });
+    } else {
+      save({ dogs: d });
+    }
+  };
+
+  const setActiveDogId = (id: string | null) => {
+    setActiveDogIdState(id);
+    save({ activeDogId: id });
+  };
+
+  const addDog = (d: Dog) => {
+    setDogsState((prev) => {
+      const next = [...prev, d];
+      save({ dogs: next, activeDogId: d.id });
+      return next;
+    });
+    setActiveDogIdState(d.id);
+  };
+
   const setCommands = (c: Command[]) => { setCommandsState(c); save({ commands: c }); };
   const setFamilyId = (id: string | null) => { setFamilyIdState(id); save({ familyId: id ?? undefined }); };
   const setStreak = (s: number) => { setStreakState(s); save({ streak: s }); };
@@ -154,9 +208,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   return (
     <AppContext.Provider value={{
-      dog, commands, familyId, streak, lastTrainedDate, isNewUser, onboardingComplete,
+      dogs, activeDogId, dog, commands, familyId, streak, lastTrainedDate, isNewUser, onboardingComplete,
       seenAchievements, reminderTime, soundEnabled,
-      setDog, setCommands, setFamilyId, setStreak, setLastTrainedDate, setIsNewUser, setOnboardingComplete, refreshStreak,
+      setDog, setDogs, setActiveDogId, addDog, setCommands, setFamilyId, setStreak, setLastTrainedDate,
+      setIsNewUser, setOnboardingComplete, refreshStreak,
       markAchievementSeen, setReminderTime, setSoundEnabled,
     }}>
       {children}

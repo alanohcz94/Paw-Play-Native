@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from "react";
+import React, { useState, useCallback, useRef } from "react";
 import {
   View,
   Text,
@@ -15,6 +15,7 @@ import { Feather } from "@expo/vector-icons";
 import { useColors } from "@/hooks/useColors";
 import { useApp } from "@/context/AppContext";
 import { useAuth } from "@/lib/auth";
+import DogPicker from "@/components/DogPicker";
 
 function StatCard({
   label,
@@ -53,7 +54,7 @@ const WEEK_DAYS = ["M", "T", "W", "T", "F", "S", "S"];
 export default function DashboardScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
-  const { dog, streak, familyId } = useApp();
+  const { dog, dogs, streak, familyId, setDogs, setActiveDogId, setCommands } = useApp();
   const { user } = useAuth();
   const [sessions, setSessions] = useState<any[]>([]);
   const [leaderboard, setLeaderboard] = useState<any[]>([]);
@@ -61,10 +62,49 @@ export default function DashboardScreen() {
   const [sessionsThisWeek, setSessionsThisWeek] = useState(0);
   const [daysThisWeek, setDaysThisWeek] = useState(0);
   const [trainedDays, setTrainedDays] = useState<number[]>([]);
+  const dogsLoadedForFamily = useRef<string | null>(null);
 
   const apiBase = process.env.EXPO_PUBLIC_DOMAIN
     ? `https://${process.env.EXPO_PUBLIC_DOMAIN}`
     : "";
+
+  const loadDogs = async () => {
+    if (!familyId || !user?.id || dogsLoadedForFamily.current === familyId) return;
+    try {
+      const { getItemAsync } = await import("expo-secure-store");
+      const token = await getItemAsync("auth_session_token");
+      const res = await fetch(`${apiBase}/api/family/${familyId}/dogs`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (res.ok) {
+        const { dogs: fetchedDogs } = await res.json();
+        if (fetchedDogs && fetchedDogs.length > 0) {
+          setDogs(fetchedDogs);
+          if (!dog) setActiveDogId(fetchedDogs[0].id);
+        }
+      }
+      dogsLoadedForFamily.current = familyId;
+    } catch (e) {
+      console.error("Failed to load dogs:", e);
+    }
+  };
+
+  const loadCommandsForDog = async (dogId: string) => {
+    if (!user?.id) return;
+    try {
+      const { getItemAsync } = await import("expo-secure-store");
+      const token = await getItemAsync("auth_session_token");
+      const res = await fetch(`${apiBase}/api/dogs/${dogId}/commands`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (res.ok) {
+        const { commands } = await res.json();
+        setCommands(commands);
+      }
+    } catch (e) {
+      console.error("Failed to load commands:", e);
+    }
+  };
 
   const loadData = async () => {
     if (!dog?.id || !user?.id) return;
@@ -72,6 +112,8 @@ export default function DashboardScreen() {
       const { getItemAsync } = await import("expo-secure-store");
       const token = await getItemAsync("auth_session_token");
       const headers = { Authorization: `Bearer ${token}` };
+
+      await loadCommandsForDog(dog.id);
 
       const res = await fetch(
         `${apiBase}/api/sessions?dogId=${dog.id}&limit=50`,
@@ -118,6 +160,7 @@ export default function DashboardScreen() {
 
   useFocusEffect(
     useCallback(() => {
+      loadDogs();
       loadData();
     }, [dog?.id, familyId])
   );
@@ -158,6 +201,8 @@ export default function DashboardScreen() {
         }
         showsVerticalScrollIndicator={false}
       >
+        {dogs.length > 1 && <DogPicker />}
+
         <View style={styles.topBar}>
           <TouchableOpacity onPress={() => router.push("/(tabs)/profile")} activeOpacity={0.8}>
             <View style={[styles.topAvatarCircle, { backgroundColor: colors.peachLight, borderColor: colors.peach }]}>

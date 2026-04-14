@@ -1,9 +1,27 @@
 import { Router, type Request, type Response } from "express";
 import { db } from "@workspace/db";
-import { dogsTable } from "@workspace/db";
-import { eq } from "drizzle-orm";
+import { dogsTable, pawplayUsersTable } from "@workspace/db";
+import { eq, and } from "drizzle-orm";
 
 const router = Router();
+
+router.get("/family/:familyId/dogs", async (req: Request, res: Response) => {
+  if (!req.isAuthenticated()) {
+    res.status(401).json({ error: "Unauthorized" });
+    return;
+  }
+  const { familyId } = req.params;
+  const userId = (req.user as any)?.id;
+  if (userId) {
+    const [pawUser] = await db.select().from(pawplayUsersTable).where(eq(pawplayUsersTable.id, userId));
+    if (!pawUser || pawUser.familyId !== familyId) {
+      res.status(403).json({ error: "Forbidden" });
+      return;
+    }
+  }
+  const dogs = await db.select().from(dogsTable).where(eq(dogsTable.familyId, familyId));
+  res.json({ dogs });
+});
 
 router.post("/dogs", async (req: Request, res: Response) => {
   if (!req.isAuthenticated()) {

@@ -96,7 +96,7 @@ const ACHIEVEMENT_TYPES = [
 export default function ProfileScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
-  const { dog, commands, streak, setDog, setCommands } = useApp();
+  const { dog, dogs, commands, streak, setDog, setCommands } = useApp();
   const { user } = useAuth();
   const [editMode, setEditMode] = useState(false);
   const [releaseCue, setReleaseCue] = useState(dog?.releaseCue ?? "Free");
@@ -323,6 +323,21 @@ export default function ProfileScreen() {
             Lv.{level} · {levelTitle}
           </Text>
         </View>
+
+        {dogs.length > 1 && (
+          <Text style={[styles.dogCountLabel, { color: colors.mutedForeground, fontFamily: "Nunito_400Regular" }]}>
+            {dogs.length} dogs in your family
+          </Text>
+        )}
+
+        <TouchableOpacity
+          style={[styles.addDogBtn, { backgroundColor: colors.mintLight, borderColor: colors.mint }]}
+          onPress={() => router.push("/add-dog")}
+          activeOpacity={0.85}
+        >
+          <Feather name="plus-circle" size={16} color={colors.mint} />
+          <Text style={[styles.addDogBtnText, { color: colors.mint, fontFamily: "Nunito_700Bold" }]}>Add Another Dog</Text>
+        </TouchableOpacity>
       </View>
 
       <View style={styles.statsRow}>
@@ -995,4 +1010,7 @@ const styles = StyleSheet.create({
   tooltipStatLabel: { fontSize: 11 },
   tooltipCloseBtn: { borderWidth: 1.5, borderRadius: 14, paddingVertical: 12, alignItems: "center", marginTop: 4 },
   tooltipCloseBtnText: { fontSize: 15 },
+  dogCountLabel: { fontSize: 13, marginTop: 6 },
+  addDogBtn: { flexDirection: "row", alignItems: "center", gap: 6, paddingHorizontal: 16, paddingVertical: 10, borderRadius: 24, borderWidth: 1.5, marginTop: 10 },
+  addDogBtnText: { fontSize: 14 },
 });
