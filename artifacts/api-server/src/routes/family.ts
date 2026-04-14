@@ -51,6 +51,20 @@ router.post("/family/join/:code", async (req: Request, res: Response) => {
   res.json({ ...family, memberIds });
 });
 
+router.get("/family/:familyId", async (req: Request, res: Response) => {
+  if (!req.isAuthenticated()) {
+    res.status(401).json({ error: "Unauthorized" });
+    return;
+  }
+  const { familyId } = req.params;
+  const [family] = await db.select().from(familiesTable).where(eq(familiesTable.id, familyId));
+  if (!family) {
+    res.status(404).json({ error: "Family not found" });
+    return;
+  }
+  res.json({ ...family, memberIds: family.memberIds as string[] });
+});
+
 router.get("/family/:familyId/leaderboard", async (req: Request, res: Response) => {
   if (!req.isAuthenticated()) {
     res.status(401).json({ error: "Unauthorized" });

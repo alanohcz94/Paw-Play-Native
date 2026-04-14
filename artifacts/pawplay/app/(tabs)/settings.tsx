@@ -1,6 +1,6 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
-  View, Text, StyleSheet, ScrollView, TouchableOpacity, Switch, Platform, Modal, Pressable,
+  View, Text, StyleSheet, ScrollView, TouchableOpacity, Switch, Platform, Modal, Pressable, Share, Clipboard,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Feather } from "@expo/vector-icons";
@@ -31,8 +31,47 @@ function from24h(time: string): { h: number; m: string; period: "AM" | "PM" } {
 export default function SettingsScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
-  const { familyId, reminderTime, setReminderTime, soundEnabled, setSoundEnabled } = useApp();
+  const { familyId, inviteCode, setInviteCode, reminderTime, setReminderTime, soundEnabled, setSoundEnabled } = useApp();
   const { user, logout } = useAuth();
+
+  const [fetchedCode, setFetchedCode] = useState<string | null>(null);
+  const [copied, setCopied] = useState(false);
+
+  const displayCode = inviteCode ?? fetchedCode;
+
+  useEffect(() => {
+    if (!familyId || inviteCode) return;
+    const loadCode = async () => {
+      try {
+        const token = await import("expo-secure-store").then((m) => m.getItemAsync("auth_session_token"));
+        const apiBase = process.env.EXPO_PUBLIC_DOMAIN ? `https://${process.env.EXPO_PUBLIC_DOMAIN}` : "";
+        const res = await fetch(`${apiBase}/api/family/${familyId}`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (res.ok) {
+          const fam = await res.json();
+          setFetchedCode(fam.inviteCode);
+          setInviteCode(fam.inviteCode);
+        }
+      } catch {}
+    };
+    loadCode();
+  }, [familyId, inviteCode]);
+
+  const handleCopyCode = () => {
+    if (!displayCode) return;
+    Clipboard.setString(displayCode);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  const handleShareInvite = () => {
+    if (!displayCode) return;
+    Share.share({
+      message: `Join my family on QuickMix! Use invite code: ${displayCode}\n\nDownload QuickMix, go through onboarding, tap "I have a code" and enter the code above to train our dog together.`,
+      title: "QuickMix Family Invite",
+    });
+  };
 
   const [notifications, setNotifications] = useState(true);
   const [remindersOn, setRemindersOn] = useState(reminderTime !== null);
@@ -138,13 +177,47 @@ export default function SettingsScreen() {
       {familyId && (
         <View style={[styles.section, { backgroundColor: colors.card, borderColor: colors.border }]}>
           <Text style={[styles.sectionTitle, { color: colors.dark, fontFamily: "Nunito_900Black" }]}>Family</Text>
+
+          {/* Invite code display */}
           <View style={styles.settingRow}>
             <View style={styles.settingInfo}>
               <Feather name="users" size={18} color={colors.mutedForeground} />
               <Text style={[styles.settingLabel, { color: colors.dark, fontFamily: "Nunito_700Bold" }]}>Invite Code</Text>
             </View>
-            <Text style={[styles.inviteCode, { color: colors.lavender, fontFamily: "Nunito_900Black" }]}>{familyId.slice(0, 6).toUpperCase()}</Text>
+            <Text style={[styles.inviteCode, { color: colors.lavender, fontFamily: "Nunito_900Black" }]}>
+              {displayCode ?? "..."}
+            </Text>
           </View>
+
+          {displayCode && (
+            <>
+              <View style={[styles.divider, { backgroundColor: colors.border }]} />
+
+              {/* Copy code */}
+              <TouchableOpacity style={styles.settingRow} onPress={handleCopyCode} activeOpacity={0.7}>
+                <View style={styles.settingInfo}>
+                  <Feather name="copy" size={18} color={colors.mutedForeground} />
+                  <Text style={[styles.settingLabel, { color: colors.dark, fontFamily: "Nunito_700Bold" }]}>Copy Code</Text>
+                </View>
+                {copied ? (
+                  <Text style={[styles.settingValue, { color: colors.mint, fontFamily: "Nunito_700Bold" }]}>Copied!</Text>
+                ) : (
+                  <Feather name="chevron-right" size={16} color={colors.mutedForeground} />
+                )}
+              </TouchableOpacity>
+
+              <View style={[styles.divider, { backgroundColor: colors.border }]} />
+
+              {/* Share invite */}
+              <TouchableOpacity style={styles.settingRow} onPress={handleShareInvite} activeOpacity={0.7}>
+                <View style={styles.settingInfo}>
+                  <Feather name="share-2" size={18} color={colors.mutedForeground} />
+                  <Text style={[styles.settingLabel, { color: colors.dark, fontFamily: "Nunito_700Bold" }]}>Share Invite</Text>
+                </View>
+                <Feather name="chevron-right" size={16} color={colors.mutedForeground} />
+              </TouchableOpacity>
+            </>
+          )}
         </View>
       )}
 

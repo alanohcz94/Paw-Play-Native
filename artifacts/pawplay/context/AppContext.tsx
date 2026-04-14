@@ -37,6 +37,7 @@ export interface AppState {
   dog: Dog | null;
   commands: Command[];
   familyId: string | null;
+  inviteCode: string | null;
   streak: number;
   lastTrainedDate: string | null;
   isNewUser: boolean;
@@ -52,6 +53,7 @@ interface AppContextValue extends AppState {
   setActiveDogId: (id: string | null) => void;
   setCommands: (commands: Command[]) => void;
   setFamilyId: (id: string | null) => void;
+  setInviteCode: (code: string | null) => void;
   setStreak: (streak: number) => void;
   setLastTrainedDate: (date: string | null) => void;
   setIsNewUser: (v: boolean) => void;
@@ -70,6 +72,7 @@ const AppContext = createContext<AppContextValue>({
   dog: null,
   commands: [],
   familyId: null,
+  inviteCode: null,
   streak: 0,
   lastTrainedDate: null,
   isNewUser: true,
@@ -82,6 +85,7 @@ const AppContext = createContext<AppContextValue>({
   setActiveDogId: () => {},
   setCommands: () => {},
   setFamilyId: () => {},
+  setInviteCode: () => {},
   setStreak: () => {},
   setLastTrainedDate: () => {},
   setIsNewUser: () => {},
@@ -101,6 +105,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [activeDogId, setActiveDogIdState] = useState<string | null>(null);
   const [commands, setCommandsState] = useState<Command[]>([]);
   const [familyId, setFamilyIdState] = useState<string | null>(null);
+  const [inviteCode, setInviteCodeState] = useState<string | null>(null);
   const [dogStreaks, setDogStreaksState] = useState<Record<string, DogStreak>>({});
   const [dogSeenAchievements, setDogSeenAchievementsState] = useState<Record<string, string[]>>({});
   const [isNewUser, setIsNewUserState] = useState(true);
@@ -128,6 +133,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         }
         if (saved.commands) setCommandsState(saved.commands);
         if (saved.familyId) setFamilyIdState(saved.familyId);
+        if (saved.inviteCode) setInviteCodeState(saved.inviteCode);
 
         if (saved.dogStreaks) {
           setDogStreaksState(saved.dogStreaks);
@@ -266,6 +272,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   const setCommands = (c: Command[]) => { setCommandsState(c); save({ commands: c }); };
   const setFamilyId = (id: string | null) => { setFamilyIdState(id); save({ familyId: id ?? undefined }); };
+  const setInviteCode = (code: string | null) => { setInviteCodeState(code); save({ inviteCode: code ?? undefined }); };
 
   const setStreak = (s: number) => {
     setDogStreaksState((prev) => {
@@ -323,9 +330,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   return (
     <AppContext.Provider value={{
-      dogs, activeDogId, dog, commands, familyId, streak, lastTrainedDate, isNewUser, onboardingComplete,
+      dogs, activeDogId, dog, commands, familyId, inviteCode, streak, lastTrainedDate, isNewUser, onboardingComplete,
       seenAchievements, reminderTime, soundEnabled,
-      setDog, setDogs, setActiveDogId, addDog, setCommands, setFamilyId, setStreak, setLastTrainedDate,
+      setDog, setDogs, setActiveDogId, addDog, setCommands, setFamilyId, setInviteCode, setStreak, setLastTrainedDate,
       setIsNewUser, setOnboardingComplete, refreshStreak,
       markAchievementSeen, setReminderTime, setSoundEnabled, loadDogsFromApi,
     }}>
