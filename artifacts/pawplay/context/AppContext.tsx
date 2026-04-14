@@ -181,8 +181,14 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   const setDogs = (d: Dog[]) => {
     setDogsState(d);
+    if (d.length === 0) {
+      setActiveDogIdState(null);
+      setCommandsState([]);
+      save({ dogs: d, activeDogId: null, commands: [] });
+      return;
+    }
     const currentStillValid = d.some((dg) => dg.id === activeDogId);
-    if (!currentStillValid && d.length > 0) {
+    if (!currentStillValid) {
       setActiveDogIdState(d[0].id);
       save({ dogs: d, activeDogId: d[0].id });
     } else {
