@@ -184,9 +184,31 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  const loadCommandsForDog = async (dogId: string) => {
+    try {
+      const { getItemAsync } = await import("expo-secure-store");
+      const token = await getItemAsync("auth_session_token");
+      if (!token) return;
+      const apiBase = process.env.EXPO_PUBLIC_DOMAIN ? `https://${process.env.EXPO_PUBLIC_DOMAIN}` : "";
+      const res = await fetch(`${apiBase}/api/dogs/${dogId}/commands`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (res.ok) {
+        const { commands: cmds } = await res.json();
+        setCommandsState(cmds);
+        save({ commands: cmds });
+      }
+    } catch (e) {
+      console.error("Failed to load commands for dog:", e);
+    }
+  };
+
   const setActiveDogId = (id: string | null) => {
     setActiveDogIdState(id);
     save({ activeDogId: id });
+    if (id) {
+      loadCommandsForDog(id);
+    }
   };
 
   const addDog = (d: Dog) => {
@@ -211,12 +233,18 @@ export function AppProvider({ children }: { children: ReactNode }) {
       if (res.ok) {
         const { dogs: fetchedDogs } = await res.json();
         if (fetchedDogs && fetchedDogs.length > 0) {
-          setDogs(fetchedDogs);
+          setDogsState(fetchedDogs);
           const storedActiveId = activeDogId;
           const validActive = fetchedDogs.some((d: Dog) => d.id === storedActiveId);
-          if (!validActive) {
-            setActiveDogId(fetchedDogs[0].id);
-          }
+          const newActiveId = validActive ? storedActiveId! : fetchedDogs[0].id;
+          setActiveDogIdState(newActiveId);
+          save({ dogs: fetchedDogs, activeDogId: newActiveId });
+          await loadCommandsForDog(newActiveId);
+        } else {
+          setDogsState([]);
+          setActiveDogIdState(null);
+          setCommandsState([]);
+          save({ dogs: [], activeDogId: null, commands: [] });
         }
       }
     } catch (e) {

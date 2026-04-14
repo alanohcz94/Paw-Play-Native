@@ -54,7 +54,7 @@ const WEEK_DAYS = ["M", "T", "W", "T", "F", "S", "S"];
 export default function DashboardScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
-  const { dog, dogs, streak, familyId, setCommands, loadDogsFromApi } = useApp();
+  const { dog, dogs, streak, familyId, loadDogsFromApi } = useApp();
   const { user } = useAuth();
   const [sessions, setSessions] = useState<any[]>([]);
   const [leaderboard, setLeaderboard] = useState<any[]>([]);
@@ -74,31 +74,12 @@ export default function DashboardScreen() {
     dogsLoadedForFamily.current = familyId;
   };
 
-  const loadCommandsForDog = async (dogId: string) => {
-    if (!user?.id) return;
-    try {
-      const { getItemAsync } = await import("expo-secure-store");
-      const token = await getItemAsync("auth_session_token");
-      const res = await fetch(`${apiBase}/api/dogs/${dogId}/commands`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (res.ok) {
-        const { commands } = await res.json();
-        setCommands(commands);
-      }
-    } catch (e) {
-      console.error("Failed to load commands:", e);
-    }
-  };
-
   const loadData = async () => {
     if (!dog?.id || !user?.id) return;
     try {
       const { getItemAsync } = await import("expo-secure-store");
       const token = await getItemAsync("auth_session_token");
       const headers = { Authorization: `Bearer ${token}` };
-
-      await loadCommandsForDog(dog.id);
 
       const res = await fetch(
         `${apiBase}/api/sessions?dogId=${dog.id}&limit=50`,
