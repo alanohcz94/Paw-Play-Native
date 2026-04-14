@@ -163,7 +163,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
   };
 
   const setDog = (d: Dog | null) => {
-    if (!d) return;
+    if (!d) {
+      setDogsState([]);
+      setActiveDogIdState(null);
+      setCommandsState([]);
+      save({ dogs: [], activeDogId: null, commands: [] });
+      return;
+    }
     setDogsState((prev) => {
       const idx = prev.findIndex((p) => p.id === d.id);
       const next = idx >= 0 ? prev.map((p) => (p.id === d.id ? d : p)) : [...prev, d];

@@ -1,9 +1,14 @@
 import { Router, type Request, type Response } from "express";
 import { db } from "@workspace/db";
 import { dogsTable, pawplayUsersTable } from "@workspace/db";
-import { eq, and } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 
 const router = Router();
+
+async function getUserFamilyId(userId: string): Promise<string | null> {
+  const [pawUser] = await db.select().from(pawplayUsersTable).where(eq(pawplayUsersTable.id, userId));
+  return pawUser?.familyId ?? null;
+}
 
 router.get("/family/:familyId/dogs", async (req: Request, res: Response) => {
   if (!req.isAuthenticated()) {
@@ -11,8 +16,8 @@ router.get("/family/:familyId/dogs", async (req: Request, res: Response) => {
     return;
   }
   const { familyId } = req.params;
-  const [pawUser] = await db.select().from(pawplayUsersTable).where(eq(pawplayUsersTable.id, req.user.id));
-  if (!pawUser || pawUser.familyId !== familyId) {
+  const userFamilyId = await getUserFamilyId(req.user.id);
+  if (userFamilyId !== familyId) {
     res.status(403).json({ error: "Forbidden" });
     return;
   }
@@ -30,6 +35,11 @@ router.post("/dogs", async (req: Request, res: Response) => {
     res.status(400).json({ error: "name and familyId are required" });
     return;
   }
+  const userFamilyId = await getUserFamilyId(req.user.id);
+  if (userFamilyId !== familyId) {
+    res.status(403).json({ error: "Forbidden: you can only add dogs to your own family" });
+    return;
+  }
   const [dog] = await db.insert(dogsTable).values({ name, familyId, age: age ?? null, breed: breed ?? null }).returning();
   res.status(201).json(dog);
 });
@@ -45,6 +55,11 @@ router.get("/dogs/:dogId", async (req: Request, res: Response) => {
     res.status(404).json({ error: "Dog not found" });
     return;
   }
+  const userFamilyId = await getUserFamilyId(req.user.id);
+  if (userFamilyId !== dog.familyId) {
+    res.status(403).json({ error: "Forbidden" });
+    return;
+  }
   res.json(dog);
 });
 
@@ -54,6 +69,16 @@ router.patch("/dogs/:dogId", async (req: Request, res: Response) => {
     return;
   }
   const { dogId } = req.params;
+  const [existingDog] = await db.select().from(dogsTable).where(eq(dogsTable.id, dogId));
+  if (!existingDog) {
+    res.status(404).json({ error: "Dog not found" });
+    return;
+  }
+  const userFamilyId = await getUserFamilyId(req.user.id);
+  if (userFamilyId !== existingDog.familyId) {
+    res.status(403).json({ error: "Forbidden" });
+    return;
+  }
   const { name, age, breed, avatarUrl, releaseCue, markerCue } = req.body;
   const updates: Record<string, unknown> = {};
   if (name !== undefined) updates.name = name;
@@ -63,10 +88,6 @@ router.patch("/dogs/:dogId", async (req: Request, res: Response) => {
   if (releaseCue !== undefined) updates.releaseCue = releaseCue;
   if (markerCue !== undefined) updates.markerCue = markerCue;
   const [dog] = await db.update(dogsTable).set(updates).where(eq(dogsTable.id, dogId)).returning();
-  if (!dog) {
-    res.status(404).json({ error: "Dog not found" });
-    return;
-  }
   res.json(dog);
 });
 
