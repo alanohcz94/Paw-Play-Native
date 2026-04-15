@@ -64,6 +64,7 @@ interface AppContextValue extends AppState {
   setSoundEnabled: (v: boolean) => void;
   addDog: (dog: Dog) => void;
   loadDogsFromApi: () => Promise<void>;
+  resetState: () => void;
 }
 
 const AppContext = createContext<AppContextValue>({
@@ -96,6 +97,7 @@ const AppContext = createContext<AppContextValue>({
   setSoundEnabled: () => {},
   addDog: () => {},
   loadDogsFromApi: async () => {},
+  resetState: () => {},
 });
 
 const STORAGE_KEY = "pawplay_app_state";
@@ -306,6 +308,19 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const setReminderTime = (time: string | null) => { setReminderTimeState(time); save({ reminderTime: time ?? undefined }); };
   const setSoundEnabled = (v: boolean) => { setSoundEnabledState(v); save({ soundEnabled: v }); };
 
+  const resetState = () => {
+    setDogsState([]);
+    setActiveDogIdState(null);
+    setCommandsState([]);
+    setFamilyIdState(null);
+    setInviteCodeState(null);
+    setDogStreaksState({});
+    setDogSeenAchievementsState({});
+    setIsNewUserState(true);
+    setOnboardingCompleteState(false);
+    AsyncStorage.removeItem(STORAGE_KEY);
+  };
+
   const refreshStreak = () => {
     const today = new Date().toDateString();
     const yesterday = new Date(Date.now() - 86400000).toDateString();
@@ -334,7 +349,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       seenAchievements, reminderTime, soundEnabled,
       setDog, setDogs, setActiveDogId, addDog, setCommands, setFamilyId, setInviteCode, setStreak, setLastTrainedDate,
       setIsNewUser, setOnboardingComplete, refreshStreak,
-      markAchievementSeen, setReminderTime, setSoundEnabled, loadDogsFromApi,
+      markAchievementSeen, setReminderTime, setSoundEnabled, loadDogsFromApi, resetState,
     }}>
       {children}
     </AppContext.Provider>

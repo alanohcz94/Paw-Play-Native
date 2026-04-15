@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity, Switch, Platform, Modal, Pressable, Share, Clipboard,
 } from "react-native";
+import { router } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Feather } from "@expo/vector-icons";
 import { useColors } from "@/hooks/useColors";
@@ -31,8 +32,14 @@ function from24h(time: string): { h: number; m: string; period: "AM" | "PM" } {
 export default function SettingsScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
-  const { familyId, inviteCode, setInviteCode, reminderTime, setReminderTime, soundEnabled, setSoundEnabled } = useApp();
+  const { familyId, inviteCode, setInviteCode, reminderTime, setReminderTime, soundEnabled, setSoundEnabled, resetState } = useApp();
   const { user, logout } = useAuth();
+
+  const handleLogout = async () => {
+    resetState();
+    await logout();
+    router.replace("/");
+  };
 
   const [fetchedCode, setFetchedCode] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
@@ -232,7 +239,7 @@ export default function SettingsScreen() {
           <Text style={[styles.settingValue, { color: colors.mutedForeground, fontFamily: "Nunito_400Regular" }]}>{user?.email ?? ""}</Text>
         </View>
         <View style={[styles.divider, { backgroundColor: colors.border }]} />
-        <TouchableOpacity style={styles.signOutRow} onPress={() => logout()} activeOpacity={0.7}>
+        <TouchableOpacity style={styles.signOutRow} onPress={handleLogout} activeOpacity={0.7}>
           <Feather name="log-out" size={18} color={colors.destructive} />
           <Text style={[styles.signOutText, { color: colors.destructive, fontFamily: "Nunito_700Bold" }]}>Sign Out</Text>
         </TouchableOpacity>
