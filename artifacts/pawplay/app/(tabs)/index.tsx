@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useRef } from "react";
+import React, { useState, useCallback, useRef, useEffect } from "react";
 import {
   View,
   Text,
@@ -63,6 +63,14 @@ export default function DashboardScreen() {
   const [daysThisWeek, setDaysThisWeek] = useState(0);
   const [trainedDays, setTrainedDays] = useState<number[]>([]);
   const dogsLoadedForFamily = useRef<string | null>(null);
+
+  // Clear stale data immediately when the active dog changes
+  useEffect(() => {
+    setSessions([]);
+    setSessionsThisWeek(0);
+    setDaysThisWeek(0);
+    setTrainedDays([]);
+  }, [dog?.id]);
 
   const apiBase = process.env.EXPO_PUBLIC_DOMAIN
     ? `https://${process.env.EXPO_PUBLIC_DOMAIN}`
@@ -448,14 +456,21 @@ export default function DashboardScreen() {
               { backgroundColor: colors.skyLight, borderColor: colors.border },
             ]}
           >
-            <Text
-              style={[
-                styles.cardTitle,
-                { color: colors.dark, fontFamily: "Nunito_900Black" },
-              ]}
-            >
-              Family Leaderboard
-            </Text>
+            <View style={styles.cardHeader}>
+              <Text
+                style={[
+                  styles.cardTitle,
+                  { color: colors.dark, fontFamily: "Nunito_900Black" },
+                ]}
+              >
+                Family Leaderboard
+              </Text>
+              <View style={[styles.countBadge, { backgroundColor: colors.lemonLight }]}>
+                <Text style={[styles.countBadgeText, { color: colors.dark, fontFamily: "Nunito_900Black" }]}>
+                  {leaderboard.reduce((sum, e) => sum + e.totalPoints, 0)} pts
+                </Text>
+              </View>
+            </View>
             {leaderboard.map((entry, i) => (
               <View key={entry.userId} style={styles.leaderboardRow}>
                 <Text

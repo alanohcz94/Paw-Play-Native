@@ -1,7 +1,7 @@
 import { Router, type Request, type Response } from "express";
 import { db } from "@workspace/db";
 import { familiesTable, pawplayUsersTable, sessionsRecordTable } from "@workspace/db";
-import { eq, sql } from "drizzle-orm";
+import { eq, sql, and, inArray } from "drizzle-orm";
 import crypto from "crypto";
 
 const router = Router();
@@ -111,10 +111,17 @@ router.get("/family/:familyId/calendar", async (req: Request, res: Response) => 
   const memberIds = members.map((m) => m.id);
 
   const startDate = new Date(Number(year), Number(month) - 1, 1);
-  const endDate = new Date(Number(year), Number(month), 0);
+  // end of the last day of the month (not midnight — that misses the whole day)
+  const endDate = new Date(Number(year), Number(month), 0, 23, 59, 59, 999);
 
-  const sessions = await db.select().from(sessionsRecordTable)
-    .where(sql`${sessionsRecordTable.createdAt} >= ${startDate} AND ${sessionsRecordTable.createdAt} <= ${endDate}`);
+  const sessions = memberIds.length > 0
+    ? await db.select().from(sessionsRecordTable).where(
+        and(
+          sql`${sessionsRecordTable.createdAt} >= ${startDate} AND ${sessionsRecordTable.createdAt} <= ${endDate}`,
+          inArray(sessionsRecordTable.userId, memberIds)
+        )
+      )
+    : [];
 
   const daysInMonth = endDate.getDate();
   const days = [];

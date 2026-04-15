@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   View,
   Text,
@@ -96,8 +96,9 @@ const ACHIEVEMENT_TYPES = [
 export default function ProfileScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
-  const { dog, dogs, commands, streak, setDog, setCommands } = useApp();
+  const { dog, dogs, commands, streak, setDog, setCommands, familyId } = useApp();
   const { user } = useAuth();
+  const [familyMembers, setFamilyMembers] = useState<{ userId: string; displayName: string; totalPoints: number }[]>([]);
   const [editMode, setEditMode] = useState(false);
   const [releaseCue, setReleaseCue] = useState(dog?.releaseCue ?? "Free");
   const [markerCue, setMarkerCue] = useState(dog?.markerCue ?? "Yes");
@@ -112,6 +113,24 @@ export default function ProfileScreen() {
   const apiBase = process.env.EXPO_PUBLIC_DOMAIN
     ? `https://${process.env.EXPO_PUBLIC_DOMAIN}`
     : "";
+
+  useEffect(() => {
+    if (!familyId) return;
+    const load = async () => {
+      try {
+        const { getItemAsync } = await import("expo-secure-store");
+        const token = await getItemAsync("auth_session_token");
+        const res = await fetch(`${apiBase}/api/family/${familyId}/leaderboard`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (res.ok) {
+          const { entries } = await res.json();
+          setFamilyMembers(entries);
+        }
+      } catch {}
+    };
+    load();
+  }, [familyId]);
 
   const level3Count = commands.filter(
     (c) =>
@@ -839,6 +858,40 @@ export default function ProfileScreen() {
           ))}
         </View>
 
+        {familyMembers.length > 0 && (
+          <>
+            <Text style={[styles.sectionTitle, { color: colors.dark, fontFamily: "Nunito_900Black" }]}>
+              Family Members
+            </Text>
+            <View style={[styles.familyCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
+              {familyMembers.map((member, i) => (
+                <View
+                  key={member.userId}
+                  style={[
+                    styles.familyRow,
+                    i < familyMembers.length - 1 && { borderBottomWidth: 1, borderBottomColor: colors.border },
+                  ]}
+                >
+                  <View style={[styles.familyAvatar, { backgroundColor: colors.lavLight }]}>
+                    <Text style={[styles.familyAvatarText, { color: colors.lavender, fontFamily: "Nunito_900Black" }]}>
+                      {(member.displayName ?? "?")[0].toUpperCase()}
+                    </Text>
+                  </View>
+                  <View style={styles.familyInfo}>
+                    <Text style={[styles.familyName, { color: colors.dark, fontFamily: "Nunito_700Bold" }]}>
+                      {member.displayName}
+                      {member.userId === user?.id ? " (you)" : ""}
+                    </Text>
+                  </View>
+                  <Text style={[styles.familyPts, { color: colors.peach, fontFamily: "Nunito_900Black" }]}>
+                    {member.totalPoints} pts
+                  </Text>
+                </View>
+              ))}
+            </View>
+          </>
+        )}
+
         <TouchableOpacity
           style={[
             styles.achievementsNav,
@@ -1329,6 +1382,13 @@ const styles = StyleSheet.create({
   },
   tooltipCloseBtnText: { fontSize: 15 },
   dogCountLabel: { fontSize: 13, marginTop: 6 },
+  familyCard: { borderRadius: 16, borderWidth: 1, marginBottom: 28 },
+  familyRow: { flexDirection: "row", alignItems: "center", paddingHorizontal: 16, paddingVertical: 12, gap: 12 },
+  familyAvatar: { width: 36, height: 36, borderRadius: 18, alignItems: "center", justifyContent: "center" },
+  familyAvatarText: { fontSize: 16 },
+  familyInfo: { flex: 1 },
+  familyName: { fontSize: 15 },
+  familyPts: { fontSize: 14 },
   addDogBtn: {
     flexDirection: "row",
     alignItems: "center",
