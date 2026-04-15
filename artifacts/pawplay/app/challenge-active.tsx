@@ -22,6 +22,7 @@ export default function ChallengeActiveScreen() {
   const isExpert = difficulty === "expert";
 
   const [commandIndex, setCommandIndex] = useState(0);
+  const [countdownStep, setCountdownStep] = useState<"Ready" | "Set" | "Go!" | null>("Ready");
   const [score, setScore] = useState(0);
   const [holdPhase, setHoldPhase] = useState<"waiting" | "holding" | "idle">("idle");
   const [holdCountdown, setHoldCountdown] = useState(0);
@@ -82,13 +83,37 @@ export default function ChallengeActiveScreen() {
   }, [windowSec, timerProgress]);
 
   useEffect(() => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     setResetCount(0);
     setMaxPoints(20);
     setPointsFlash(null);
     setBonusBubble(null);
     skippedRef.current = false;
-    startTimer();
+
+    if (commandIndex === 0) {
+      // Show Ready → Set → Go! before the first command
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      const t1 = setTimeout(() => {
+        setCountdownStep("Set");
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+      }, 1000);
+      const t2 = setTimeout(() => {
+        setCountdownStep("Go!");
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
+      }, 2000);
+      const t3 = setTimeout(() => {
+        setCountdownStep(null);
+        startTimer();
+      }, 2800);
+      return () => {
+        clearTimeout(t1); clearTimeout(t2); clearTimeout(t3);
+        clearInterval(intervalRef.current!);
+        clearInterval(holdTimerRef.current!);
+      };
+    } else {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      startTimer();
+    }
+
     return () => {
       clearInterval(intervalRef.current!);
       clearInterval(holdTimerRef.current!);
@@ -262,8 +287,19 @@ export default function ChallengeActiveScreen() {
       <Text style={[styles.diffLabel, { color: colors.lavender, fontFamily: "Nunito_700Bold" }]}>{difficulty.toUpperCase()}</Text>
 
       <Animated.View style={commandShakeStyle}>
-        <Text style={[styles.commandWord, { color: colors.dark, fontFamily: "FredokaOne_400Regular" }]}>{currentCommand}</Text>
+        <Text style={[styles.commandWord, { color: countdownStep ? colors.muted : colors.dark, fontFamily: "FredokaOne_400Regular" }]}>{currentCommand}</Text>
       </Animated.View>
+
+      {countdownStep && (
+        <View style={styles.countdownBox}>
+          <Text style={[
+            styles.countdownText,
+            { color: countdownStep === "Go!" ? colors.mint : colors.peach, fontFamily: "FredokaOne_400Regular" },
+          ]}>
+            {countdownStep}
+          </Text>
+        </View>
+      )}
 
       {resetCount > 0 && (
         <Text style={[styles.maxPtsLabel, { color: colors.mutedForeground, fontFamily: "Nunito_700Bold" }]}>
@@ -349,6 +385,8 @@ const styles = StyleSheet.create({
   pip: { height: 8, flex: 1, borderRadius: 4 },
   diffLabel: { fontSize: 13, letterSpacing: 2, marginBottom: 8 },
   commandWord: { fontSize: 52, textAlign: "center", marginBottom: 16 },
+  countdownBox: { alignItems: "center", justifyContent: "center", marginBottom: 16 },
+  countdownText: { fontSize: 72, textAlign: "center" },
   maxPtsLabel: { fontSize: 13, marginBottom: 8 },
   timerContainer: { width: "100%", height: 10, backgroundColor: "#EDE6DE", borderRadius: 5, overflow: "hidden", marginBottom: 8 },
   timerBar: { height: "100%", borderRadius: 5 },

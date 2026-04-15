@@ -72,7 +72,8 @@ export default function TrainingActiveScreen() {
   const releaseCue = (dog as any)?.releaseCue ?? "Free";
 
   const [currentRep, setCurrentRep] = useState(1);
-  const [phase, setPhase] = useState<TrainingPhase>("ready");
+  const [phase, setPhase] = useState<TrainingPhase>("countdown");
+  const [countdownStep, setCountdownStep] = useState<"Ready" | "Set" | "Go!" | null>("Ready");
   const [completedReps, setCompletedReps] = useState(0);
   const [interTrialCountdown, setInterTrialCountdown] = useState<number | null>(null);
   const [rewardResult, setRewardResult] = useState<"reward" | "hold" | null>(null);
@@ -89,6 +90,24 @@ export default function TrainingActiveScreen() {
   }));
 
   const apiBase = process.env.EXPO_PUBLIC_DOMAIN ? `https://${process.env.EXPO_PUBLIC_DOMAIN}` : "";
+
+  // Ready → Set → Go! countdown before the first rep
+  useEffect(() => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    const t1 = setTimeout(() => {
+      setCountdownStep("Set");
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    }, 1000);
+    const t2 = setTimeout(() => {
+      setCountdownStep("Go!");
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
+    }, 2000);
+    const t3 = setTimeout(() => {
+      setCountdownStep(null);
+      setPhase("ready");
+    }, 2800);
+    return () => { clearTimeout(t1); clearTimeout(t2); clearTimeout(t3); };
+  }, []);
 
   const clearTimers = () => {
     if (timerRef.current) clearTimeout(timerRef.current);
@@ -320,6 +339,18 @@ export default function TrainingActiveScreen() {
         </Text>
       </Animated.View>
 
+      {/* Countdown phase — Ready / Set / Go! */}
+      {phase === "countdown" && countdownStep && (
+        <View style={styles.countdownBox}>
+          <Text style={[
+            styles.countdownText,
+            { color: countdownStep === "Go!" ? colors.mint : colors.peach, fontFamily: "FredokaOne_400Regular" },
+          ]}>
+            {countdownStep}
+          </Text>
+        </View>
+      )}
+
       {/* Marking phase — marker cue flash */}
       {phase === "marking" && (
         <View style={[styles.waitBox, { backgroundColor: colors.mintLight }]}>
@@ -402,6 +433,8 @@ const styles = StyleSheet.create({
   pipsRow: { flexDirection: "row", gap: 6, width: "100%", marginBottom: 48 },
   pip: { height: 6, flex: 1, borderRadius: 3 },
   commandWord: { fontSize: 56, textAlign: "center", marginBottom: 32 },
+  countdownBox: { alignItems: "center", justifyContent: "center", marginBottom: 32 },
+  countdownText: { fontSize: 72, textAlign: "center" },
   waitBox: { borderRadius: 16, paddingHorizontal: 24, paddingVertical: 16, marginBottom: 32, alignItems: "center", gap: 8, width: "100%" },
   waitText: { fontSize: 18, textAlign: "center" },
   rewardEmoji: { fontSize: 36 },
