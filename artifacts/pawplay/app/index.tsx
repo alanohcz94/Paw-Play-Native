@@ -8,24 +8,51 @@ import { useColors } from "@/hooks/useColors";
 import { LinearGradient } from "expo-linear-gradient";
 
 export default function WelcomeScreen() {
-  const { isAuthenticated, isLoading, login } = useAuth();
-  const { onboardingComplete, familyId, loadDogsFromApi } = useApp();
+  const { isAuthenticated, isLoading, login, user } = useAuth();
+  const { onboardingComplete, familyId, loadDogsFromApi, setFamilyId, setOnboardingComplete, setDogs } = useApp();
   const colors = useColors();
   const insets = useSafeAreaInsets();
 
   useEffect(() => {
-    if (!isLoading && isAuthenticated) {
-      if (onboardingComplete) {
-        if (familyId) {
-          loadDogsFromApi().then(() => router.replace("/(tabs)"));
-        } else {
+    if (!isLoading && isAuthenticated && user?.id) {
+      const restore = async () => {
+        // Fast path: local state already hydrated
+        if (onboardingComplete && familyId) {
+          await loadDogsFromApi();
           router.replace("/(tabs)");
+          return;
         }
-      } else {
+        // Check server for existing family (handles reinstall / new device)
+        try {
+          const token = await import("expo-secure-store").then((m) => m.getItemAsync("auth_session_token"));
+          const apiBase = process.env.EXPO_PUBLIC_DOMAIN ? `https://${process.env.EXPO_PUBLIC_DOMAIN}` : "";
+          const res = await fetch(`${apiBase}/api/users/${user.id}`, {
+            headers: { Authorization: `Bearer ${token}` },
+          });
+          if (res.ok) {
+            const pawplayUser = await res.json();
+            if (pawplayUser?.familyId) {
+              // Returning user — restore from server without relying on stale state
+              setFamilyId(pawplayUser.familyId);
+              setOnboardingComplete(true);
+              const dogsRes = await fetch(`${apiBase}/api/family/${pawplayUser.familyId}/dogs`, {
+                headers: { Authorization: `Bearer ${token}` },
+              });
+              if (dogsRes.ok) {
+                const { dogs: fetchedDogs } = await dogsRes.json();
+                setDogs(fetchedDogs);
+              }
+              router.replace("/(tabs)");
+              return;
+            }
+          }
+        } catch {}
+        // New user — go through onboarding
         router.replace("/onboarding");
-      }
+      };
+      restore();
     }
-  }, [isAuthenticated, isLoading, onboardingComplete]);
+  }, [isAuthenticated, isLoading, user?.id]);
 
   if (isLoading) {
     return (

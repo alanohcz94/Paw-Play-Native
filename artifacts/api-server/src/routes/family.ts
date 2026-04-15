@@ -16,6 +16,17 @@ router.post("/family", async (req: Request, res: Response) => {
     return;
   }
   const userId = req.user.id;
+
+  // Return existing family if user already has one (idempotent)
+  const [existing] = await db.select().from(pawplayUsersTable).where(eq(pawplayUsersTable.id, userId));
+  if (existing?.familyId) {
+    const [existingFamily] = await db.select().from(familiesTable).where(eq(familiesTable.id, existing.familyId));
+    if (existingFamily) {
+      res.status(200).json({ ...existingFamily, memberIds: existingFamily.memberIds as string[] });
+      return;
+    }
+  }
+
   const inviteCode = generateInviteCode();
   const [family] = await db.insert(familiesTable).values({
     createdBy: userId,
