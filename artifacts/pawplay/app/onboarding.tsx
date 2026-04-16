@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import {
   View, Text, StyleSheet, TouchableOpacity, TextInput, ScrollView, Platform, ActivityIndicator,
 } from "react-native";
+import { Feather } from "@expo/vector-icons";
 import { router } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useColors } from "@/hooks/useColors";
@@ -19,7 +20,6 @@ export default function OnboardingScreen() {
   const { user } = useAuth();
   const [step, setStep] = useState<Step>("dog");
   const [dogName, setDogName] = useState("");
-  const [dogAge, setDogAge] = useState("");
   const [selectedCommands, setSelectedCommands] = useState<string[]>([]);
 
   // Family step state
@@ -96,7 +96,7 @@ export default function OnboardingScreen() {
         const dogRes = await fetch(`${apiBase}/api/dogs`, {
           method: "POST",
           headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-          body: JSON.stringify({ name: dogName, familyId: family.id, age: dogAge ? parseFloat(dogAge) : undefined }),
+          body: JSON.stringify({ name: dogName, familyId: family.id }),
         });
         if (dogRes.ok) {
           const dog = await dogRes.json();
@@ -159,23 +159,13 @@ export default function OnboardingScreen() {
             placeholderTextColor={colors.mutedForeground}
           />
 
-          <Text style={[styles.label, { color: colors.dark, fontFamily: "Nunito_700Bold" }]}>Dog's age *</Text>
-          <TextInput
-            style={[styles.input, { backgroundColor: colors.card, borderColor: colors.border, color: colors.dark, fontFamily: "Nunito_400Regular" }]}
-            value={dogAge}
-            onChangeText={setDogAge}
-            placeholder="e.g. 2.5"
-            keyboardType="numeric"
-            placeholderTextColor={colors.mutedForeground}
-          />
-
           <TouchableOpacity
-            style={[styles.nextButton, { backgroundColor: dogName && dogAge ? colors.peach : colors.muted }]}
+            style={[styles.nextButton, { backgroundColor: dogName ? colors.peach : colors.muted }]}
             onPress={() => setStep("commands")}
-            disabled={!dogName || !dogAge}
+            disabled={!dogName}
             activeOpacity={0.85}
           >
-            <Text style={[styles.nextButtonText, { color: dogName && dogAge ? "#fff" : colors.mutedForeground, fontFamily: "Nunito_900Black" }]}>Next</Text>
+            <Text style={[styles.nextButtonText, { color: dogName ? "#fff" : colors.mutedForeground, fontFamily: "Nunito_900Black" }]}>Next</Text>
           </TouchableOpacity>
         </ScrollView>
       )}
@@ -184,6 +174,13 @@ export default function OnboardingScreen() {
         <ScrollView style={styles.stepContent} showsVerticalScrollIndicator={false}>
           <Text style={[styles.stepTitle, { color: colors.dark, fontFamily: "FredokaOne_400Regular" }]}>What does {dogName} know?</Text>
           <Text style={[styles.stepSubtitle, { color: colors.mutedForeground, fontFamily: "Nunito_400Regular" }]}>Select commands they already know</Text>
+
+          <View style={[styles.infoPanel, { backgroundColor: colors.lavLight, borderLeftColor: colors.lavender }]}>
+            <Feather name="info" size={15} color={colors.lavender} />
+            <Text style={[styles.infoPanelText, { color: colors.dark, fontFamily: "Nunito_400Regular" }]}>
+              You can always add or edit commands later from your dog's Profile page.
+            </Text>
+          </View>
 
           <View style={styles.commandsGrid}>
             {ALL_COMMANDS.map((cmd) => {
@@ -316,6 +313,8 @@ const styles = StyleSheet.create({
   commandsGrid: { flexDirection: "row", flexWrap: "wrap", gap: 10, marginBottom: 24 },
   commandChip: { paddingHorizontal: 16, paddingVertical: 10, borderRadius: 24 },
   commandChipText: { fontSize: 15 },
+  infoPanel: { flexDirection: "row", alignItems: "flex-start", gap: 8, borderLeftWidth: 3, borderRadius: 10, padding: 12, marginBottom: 16 },
+  infoPanelText: { flex: 1, fontSize: 13, lineHeight: 20 },
   celebrationContainer: { flex: 1, alignItems: "center", justifyContent: "center", gap: 16 },
   celebrationCircle: { width: 120, height: 120, borderRadius: 60, alignItems: "center", justifyContent: "center" },
   celebrationEmoji: { fontSize: 56 },

@@ -146,8 +146,9 @@ export default function DashboardScreen() {
     setRefreshing(false);
   };
 
-  const totalHours =
-    sessions.reduce((sum, s) => sum + (s.durationSeconds || 0), 0) / 3600;
+  const totalMins = Math.round(
+    sessions.reduce((sum, s) => sum + (s.durationSeconds || 0), 0) / 60
+  );
   const totalPoints = sessions.reduce(
     (sum, s) => sum + (s.participationPoints || 0),
     0,
@@ -202,8 +203,8 @@ export default function DashboardScreen() {
             bg={colors.peachLight}
           />
           <StatCard
-            label="Training hours"
-            value={totalHours.toFixed(1)}
+            label="Training mins"
+            value={totalMins}
             bg={colors.mintLight}
           />
           <StatCard

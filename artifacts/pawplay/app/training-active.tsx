@@ -398,21 +398,23 @@ export default function TrainingActiveScreen() {
         </View>
       )}
 
-      {/* Actions — only shown in ready phase */}
-      {phase === "ready" && (
+      {/* Actions — shown in ready and countdown phases; disabled during countdown */}
+      {(phase === "ready" || phase === "countdown") && (
         <View style={styles.actions}>
           <TouchableOpacity
-            style={[styles.markDoneBtn, { backgroundColor: colors.mint }]}
+            style={[styles.markDoneBtn, { backgroundColor: phase === "countdown" ? colors.muted : colors.mint }]}
             onPress={handleComply}
+            disabled={phase === "countdown"}
             activeOpacity={0.85}
           >
-            <Text style={[styles.markDoneText, { fontFamily: "Nunito_900Black" }]}>
+            <Text style={[styles.markDoneText, { color: phase === "countdown" ? colors.mutedForeground : "#fff", fontFamily: "Nunito_900Black" }]}>
               {markerCue}
             </Text>
           </TouchableOpacity>
           <TouchableOpacity
-            style={[styles.resetBtn, { borderColor: colors.border }]}
+            style={[styles.resetBtn, { borderColor: colors.border, opacity: phase === "countdown" ? 0.4 : 1 }]}
             onPress={handleReset}
+            disabled={phase === "countdown"}
             activeOpacity={0.8}
           >
             <Feather name="refresh-cw" size={20} color={colors.mutedForeground} />

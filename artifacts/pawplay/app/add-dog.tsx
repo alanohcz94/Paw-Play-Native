@@ -17,7 +17,6 @@ export default function AddDogScreen() {
   const { user } = useAuth();
   const [step, setStep] = useState<"dog" | "commands">("dog");
   const [dogName, setDogName] = useState("");
-  const [dogAge, setDogAge] = useState("");
   const [selectedCommands, setSelectedCommands] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(false);
 
@@ -40,7 +39,7 @@ export default function AddDogScreen() {
       const dogRes = await fetch(`${apiBase}/api/dogs`, {
         method: "POST",
         headers,
-        body: JSON.stringify({ name: dogName, familyId, age: dogAge ? parseFloat(dogAge) : undefined }),
+        body: JSON.stringify({ name: dogName, familyId }),
       });
       if (!dogRes.ok) {
         Alert.alert("Error", "Could not create dog. Please try again.");
@@ -104,16 +103,6 @@ export default function AddDogScreen() {
             placeholderTextColor={colors.mutedForeground}
           />
 
-          <Text style={[styles.label, { color: colors.dark, fontFamily: "Nunito_700Bold" }]}>Dog's age</Text>
-          <TextInput
-            style={[styles.input, { backgroundColor: colors.card, borderColor: colors.border, color: colors.dark, fontFamily: "Nunito_400Regular" }]}
-            value={dogAge}
-            onChangeText={setDogAge}
-            placeholder="e.g. 2.5"
-            keyboardType="numeric"
-            placeholderTextColor={colors.mutedForeground}
-          />
-
           <TouchableOpacity
             style={[styles.nextButton, { backgroundColor: dogName ? colors.peach : colors.muted }]}
             onPress={() => setStep("commands")}
@@ -129,6 +118,13 @@ export default function AddDogScreen() {
         <ScrollView style={styles.stepContent} showsVerticalScrollIndicator={false}>
           <Text style={[styles.stepTitle, { color: colors.dark, fontFamily: "FredokaOne_400Regular" }]}>What does {dogName} know?</Text>
           <Text style={[styles.stepSubtitle, { color: colors.mutedForeground, fontFamily: "Nunito_400Regular" }]}>Select commands they already know</Text>
+
+          <View style={[styles.infoPanel, { backgroundColor: colors.lavLight, borderLeftColor: colors.lavender }]}>
+            <Feather name="info" size={15} color={colors.lavender} />
+            <Text style={[styles.infoPanelText, { color: colors.dark, fontFamily: "Nunito_400Regular" }]}>
+              You can always add or edit commands later from your dog's Profile page.
+            </Text>
+          </View>
 
           <View style={styles.commandsGrid}>
             {ALL_COMMANDS.map((cmd) => {
@@ -176,4 +172,6 @@ const styles = StyleSheet.create({
   commandsGrid: { flexDirection: "row", flexWrap: "wrap", gap: 10, marginBottom: 24 },
   commandChip: { paddingHorizontal: 16, paddingVertical: 10, borderRadius: 24 },
   commandChipText: { fontSize: 15 },
+  infoPanel: { flexDirection: "row", alignItems: "flex-start", gap: 8, borderLeftWidth: 3, borderRadius: 10, padding: 12, marginBottom: 16 },
+  infoPanelText: { flex: 1, fontSize: 13, lineHeight: 20 },
 });
