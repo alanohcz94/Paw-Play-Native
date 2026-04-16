@@ -311,17 +311,31 @@ export default function TrainingActiveScreen() {
 
   // Dedicated full-screen countdown before the game starts
   if (phase === "countdown") {
+    const isGo = countdownStep === "Go!";
     return (
       <View style={[styles.container, { backgroundColor: colors.background, paddingTop: insets.top + (Platform.OS === "web" ? 67 : 0), justifyContent: "center" }]}>
-        <Text style={[styles.commandWord, { color: colors.mutedForeground, fontFamily: "Nunito_700Bold", fontSize: 18, marginBottom: 48, textAlign: "center" }]}>
+        <Text style={[styles.commandWord, { color: isGo ? colors.dark : colors.mutedForeground, fontFamily: "FredokaOne_400Regular", marginBottom: 24 }]}>
           {command}
         </Text>
         <Text style={[
           styles.countdownText,
-          { color: countdownStep === "Go!" ? colors.mint : colors.peach, fontFamily: "FredokaOne_400Regular" },
+          { color: isGo ? colors.mint : colors.peach, fontFamily: "FredokaOne_400Regular", marginBottom: isGo ? 48 : 0 },
         ]}>
           {countdownStep ?? ""}
         </Text>
+
+        {/* Buttons appear (disabled) on Go! so user knows what to press */}
+        {isGo && (
+          <View style={[styles.actions, { opacity: 0.4 }]}>
+            <View style={[styles.markDoneBtn, { backgroundColor: colors.mint }]}>
+              <Text style={[styles.markDoneText, { fontFamily: "Nunito_900Black" }]}>{markerCue}</Text>
+            </View>
+            <View style={[styles.resetBtn, { borderColor: colors.border }]}>
+              <Feather name="refresh-cw" size={20} color={colors.mutedForeground} />
+              <Text style={[styles.resetText, { color: colors.mutedForeground, fontFamily: "Nunito_700Bold" }]}>Reset</Text>
+            </View>
+          </View>
+        )}
       </View>
     );
   }

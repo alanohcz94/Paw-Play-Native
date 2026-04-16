@@ -267,6 +267,45 @@ export default function ChallengeActiveScreen() {
   const scoreColor = isExpert && score < 0 ? "#ef4444" : colors.dark;
   const scorePrefix = isExpert && score < 0 ? "" : "";
 
+  // Dedicated full-screen countdown before the game starts
+  if (countdownStep) {
+    const isGo = countdownStep === "Go!";
+    return (
+      <View style={[styles.container, { backgroundColor: colors.background, paddingTop: insets.top + (Platform.OS === "web" ? 67 : 0), justifyContent: "center" }]}>
+        <Text style={[styles.commandWord, { color: isGo ? colors.dark : colors.mutedForeground, fontFamily: "FredokaOne_400Regular", marginBottom: 24 }]}>
+          {currentCommand}
+        </Text>
+        <Text style={[
+          styles.countdownText,
+          { color: isGo ? colors.mint : colors.peach, fontFamily: "FredokaOne_400Regular", marginBottom: isGo ? 48 : 0 },
+        ]}>
+          {countdownStep}
+        </Text>
+
+        {/* Buttons appear (disabled) on Go! so user knows what to press */}
+        {isGo && (
+          <View style={{ alignItems: "center", gap: 14, width: "100%", opacity: 0.4 }}>
+            <View
+              style={[
+                styles.holdButton,
+                { borderColor: colors.peachMid, backgroundColor: colors.peach },
+              ]}
+            >
+              <View style={styles.holdInner}>
+                <Text style={[styles.holdText, { fontFamily: "Nunito_900Black" }]}>HOLD</Text>
+                <Text style={[styles.holdSubtext, { fontFamily: "Nunito_400Regular" }]}>waiting...</Text>
+              </View>
+            </View>
+            <View style={[styles.resetBtn, { borderColor: colors.border }]}>
+              <Text style={[styles.resetText, { color: colors.mutedForeground, fontFamily: "Nunito_700Bold" }]}>Reset</Text>
+            </View>
+            <Text style={[styles.skipText, { color: colors.mutedForeground, fontFamily: "Nunito_400Regular" }]}>skip command</Text>
+          </View>
+        )}
+      </View>
+    );
+  }
+
   return (
     <View style={[styles.container, { backgroundColor: colors.background, paddingTop: insets.top + (Platform.OS === "web" ? 67 : 0) }]}>
       <View style={styles.topBar}>
@@ -287,19 +326,8 @@ export default function ChallengeActiveScreen() {
       <Text style={[styles.diffLabel, { color: colors.lavender, fontFamily: "Nunito_700Bold" }]}>{difficulty.toUpperCase()}</Text>
 
       <Animated.View style={commandShakeStyle}>
-        <Text style={[styles.commandWord, { color: countdownStep ? colors.muted : colors.dark, fontFamily: "FredokaOne_400Regular" }]}>{currentCommand}</Text>
+        <Text style={[styles.commandWord, { color: colors.dark, fontFamily: "FredokaOne_400Regular" }]}>{currentCommand}</Text>
       </Animated.View>
-
-      {countdownStep && (
-        <View style={styles.countdownBox}>
-          <Text style={[
-            styles.countdownText,
-            { color: countdownStep === "Go!" ? colors.mint : colors.peach, fontFamily: "FredokaOne_400Regular" },
-          ]}>
-            {countdownStep}
-          </Text>
-        </View>
-      )}
 
       {resetCount > 0 && (
         <Text style={[styles.maxPtsLabel, { color: colors.mutedForeground, fontFamily: "Nunito_700Bold" }]}>
