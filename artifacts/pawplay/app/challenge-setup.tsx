@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback, useMemo } from "react";
 import {
   View, Text, StyleSheet, TouchableOpacity, ScrollView, Platform,
 } from "react-native";
@@ -26,28 +26,36 @@ export default function ChallengeSetupScreen() {
   const { commands } = useApp();
   const [difficulty, setDifficulty] = useState<Difficulty>("easy");
 
-  const pool = commands.length >= 1 ? commands.map((c) => c.name) : ALL_COMMANDS;
-  const generateHolds = (count: number) => Array.from({ length: count }, () => Math.floor(Math.random() * 8) + 1);
+  const pool = useMemo(
+    () => commands.length >= 1 ? commands.map((c) => c.name) : ALL_COMMANDS,
+    [commands],
+  );
+
+  const generateHolds = useCallback(
+    (count: number) => Array.from({ length: count }, () => Math.floor(Math.random() * 8) + 1),
+    [],
+  );
+
   const [sequence, setSequence] = useState<string[]>(() => sampleWithReplacement(pool, getCommandCount("easy")));
   const [holdDurations, setHoldDurations] = useState<number[]>(() => generateHolds(getCommandCount("easy")));
 
-  const shuffle = () => {
+  const shuffle = useCallback(() => {
     const count = getCommandCount(difficulty);
     setSequence(sampleWithReplacement(pool, count));
     setHoldDurations(generateHolds(count));
-  };
+  }, [difficulty, pool, generateHolds]);
 
   useEffect(() => {
     shuffle();
-  }, [difficulty]);
+  }, [shuffle]);
 
   const window = DIFFICULTY_WINDOW[difficulty];
 
-  const difficultyOptions: { key: Difficulty; label: string; color: string; bg: string }[] = [
-    { key: "easy", label: "Easy", color: colors.mint, bg: colors.mintLight },
-    { key: "medium", label: "Medium", color: colors.lemon, bg: colors.lemonLight },
-    { key: "expert", label: "Expert", color: colors.peach, bg: colors.peachLight },
-  ];
+  const difficultyOptions = useMemo(() => [
+    { key: "easy" as Difficulty, label: "Easy", color: colors.mint, bg: colors.mintLight },
+    { key: "medium" as Difficulty, label: "Medium", color: colors.lemon, bg: colors.lemonLight },
+    { key: "expert" as Difficulty, label: "Expert", color: colors.peach, bg: colors.peachLight },
+  ], [colors.mint, colors.mintLight, colors.lemon, colors.lemonLight, colors.peach, colors.peachLight]);
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background, paddingTop: insets.top + (Platform.OS === "web" ? 67 : 0) }]}>

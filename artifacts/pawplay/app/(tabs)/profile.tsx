@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback, useMemo } from "react";
 import {
   View,
   Text,
@@ -132,22 +132,25 @@ export default function ProfileScreen() {
     load();
   }, [familyId]);
 
-  const level3Count = commands.filter(
-    (c) =>
-      c.level >= 3 ||
-      (c.qbSuccessesCount >= 10 && c.qbSessionsWithSuccess >= 3),
-  ).length;
-
-  const hasAnySessions = commands.some(
-    (c) => c.trainingSessionsCount > 0 || c.qbSuccessesCount > 0,
+  const level3Count = useMemo(
+    () => commands.filter((c) => c.level >= 3 || (c.qbSuccessesCount >= 10 && c.qbSessionsWithSuccess >= 3)).length,
+    [commands],
   );
 
-  const unlockedAchievements = new Set<string>();
-  if (hasAnySessions) unlockedAchievements.add("first_session");
-  if (streak >= 7) unlockedAchievements.add("streak_7");
-  if (streak >= 30) unlockedAchievements.add("streak_30");
-  if (level3Count >= 1) unlockedAchievements.add("reliable_handler");
-  if (level3Count >= 7) unlockedAchievements.add("full_pack");
+  const hasAnySessions = useMemo(
+    () => commands.some((c) => c.trainingSessionsCount > 0 || c.qbSuccessesCount > 0),
+    [commands],
+  );
+
+  const unlockedAchievements = useMemo(() => {
+    const s = new Set<string>();
+    if (hasAnySessions) s.add("first_session");
+    if (streak >= 7) s.add("streak_7");
+    if (streak >= 30) s.add("streak_30");
+    if (level3Count >= 1) s.add("reliable_handler");
+    if (level3Count >= 7) s.add("full_pack");
+    return s;
+  }, [hasAnySessions, streak, level3Count]);
 
   const LEVEL_TITLES: Record<number, string> = {
     1: "Puppy Pal",
@@ -160,7 +163,7 @@ export default function ProfileScreen() {
   const level = dog?.level ?? 1;
   const levelTitle = LEVEL_TITLES[Math.min(level, 5)] ?? "Champion";
 
-  const handleAvatarPick = async () => {
+  const handleAvatarPick = useCallback(async () => {
     try {
       const ImagePicker = await import("expo-image-picker");
       const { status } =
@@ -213,9 +216,9 @@ export default function ProfileScreen() {
       setUploading(false);
       Alert.alert("Upload failed", "Please try again.");
     }
-  };
+  }, [dog, user, apiBase, setDog]);
 
-  const saveCueWords = async () => {
+  const saveCueWords = useCallback(async () => {
     if (!dog?.id || !user?.id) return;
     try {
       const { getItemAsync } = await import("expo-secure-store");
@@ -233,9 +236,9 @@ export default function ProfileScreen() {
     } catch (e) {
       console.error(e);
     }
-  };
+  }, [dog, user, apiBase, releaseCue, markerCue, setDog]);
 
-  const handleAddCommand = async (name: string) => {
+  const handleAddCommand = useCallback(async (name: string) => {
     if (!dog?.id || addingCommand) return;
     setAddingCommand(name);
     try {
@@ -243,10 +246,7 @@ export default function ProfileScreen() {
       const token = await getItemAsync("auth_session_token");
       await fetch(`${apiBase}/api/dogs/${dog.id}/commands`, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
         body: JSON.stringify({ name }),
       });
       const cmdsRes = await fetch(`${apiBase}/api/dogs/${dog.id}/commands`, {
@@ -261,7 +261,7 @@ export default function ProfileScreen() {
     } finally {
       setAddingCommand(null);
     }
-  };
+  }, [dog, addingCommand, apiBase, setCommands]);
 
   const selectedCmd = selectedCommandId
     ? (commands.find((c) => c.id === selectedCommandId) ?? null)

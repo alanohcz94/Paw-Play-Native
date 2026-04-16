@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useRef, useEffect } from "react";
+import React, { useState, useCallback, useMemo, useRef, useEffect } from "react";
 import {
   View,
   Text,
@@ -146,22 +146,23 @@ export default function DashboardScreen() {
     setRefreshing(false);
   };
 
-  const totalMins = Math.round(
-    sessions.reduce((sum, s) => sum + (s.durationSeconds || 0), 0) / 60
+  const totalMins = useMemo(
+    () => Math.round(sessions.reduce((sum, s) => sum + (s.durationSeconds || 0), 0) / 60),
+    [sessions],
   );
-  const totalPoints = sessions.reduce(
-    (sum, s) => sum + (s.participationPoints || 0),
-    0,
+  const totalPoints = useMemo(
+    () => sessions.reduce((sum, s) => sum + (s.participationPoints || 0), 0),
+    [sessions],
   );
+  const todaySessions = useMemo(() => {
+    const todayStr = new Date().toDateString();
+    return sessions.filter((s) => new Date(s.createdAt).toDateString() === todayStr);
+  }, [sessions]);
 
-  const todaySessions = sessions.filter((s) => {
-    const d = new Date(s.createdAt);
-    return d.toDateString() === new Date().toDateString();
-  });
-
-  const topPaddingStyle = {
-    paddingTop: insets.top + (Platform.OS === "web" ? 67 : 16),
-  };
+  const topPaddingStyle = useMemo(
+    () => ({ paddingTop: insets.top + (Platform.OS === "web" ? 67 : 16) }),
+    [insets.top],
+  );
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>

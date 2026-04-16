@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback, useMemo } from "react";
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity, Switch, Platform, Modal, Pressable, Share, Clipboard,
 } from "react-native";
@@ -35,11 +35,11 @@ export default function SettingsScreen() {
   const { familyId, inviteCode, setInviteCode, reminderTime, setReminderTime, soundEnabled, setSoundEnabled, resetState } = useApp();
   const { user, logout } = useAuth();
 
-  const handleLogout = async () => {
+  const handleLogout = useCallback(async () => {
     resetState();
     await logout();
     router.replace("/");
-  };
+  }, [resetState, logout]);
 
   const [fetchedCode, setFetchedCode] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
@@ -65,20 +65,20 @@ export default function SettingsScreen() {
     loadCode();
   }, [familyId, inviteCode]);
 
-  const handleCopyCode = () => {
+  const handleCopyCode = useCallback(() => {
     if (!displayCode) return;
     Clipboard.setString(displayCode);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
-  };
+  }, [displayCode]);
 
-  const handleShareInvite = () => {
+  const handleShareInvite = useCallback(() => {
     if (!displayCode) return;
     Share.share({
       message: `Join my family on QuickMix! Use invite code: ${displayCode}\n\nDownload QuickMix, go through onboarding, tap "I have a code" and enter the code above to train our dog together.`,
       title: "QuickMix Family Invite",
     });
-  };
+  }, [displayCode]);
 
   const [notifications, setNotifications] = useState(true);
   const [remindersOn, setRemindersOn] = useState(reminderTime !== null);
@@ -89,23 +89,24 @@ export default function SettingsScreen() {
   const [pickerM, setPickerM] = useState(parsed.m);
   const [pickerP, setPickerP] = useState<"AM" | "PM">(parsed.period);
 
-  const reminderDisplay = reminderTime
-    ? (() => { const p = from24h(reminderTime); return `${p.h}:${p.m} ${p.period}`; })()
-    : "Not set";
+  const reminderDisplay = useMemo(() =>
+    reminderTime ? (() => { const p = from24h(reminderTime); return `${p.h}:${p.m} ${p.period}`; })() : "Not set",
+    [reminderTime],
+  );
 
-  const handleReminderToggle = (val: boolean) => {
+  const handleReminderToggle = useCallback((val: boolean) => {
     setRemindersOn(val);
     if (!val) {
       setReminderTime(null);
     } else {
       setShowTimePicker(true);
     }
-  };
+  }, [setReminderTime]);
 
-  const confirmTime = () => {
+  const confirmTime = useCallback(() => {
     setReminderTime(to24h(pickerH, pickerM, pickerP));
     setShowTimePicker(false);
-  };
+  }, [pickerH, pickerM, pickerP, setReminderTime]);
 
   return (
     <>

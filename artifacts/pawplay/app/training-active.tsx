@@ -200,7 +200,7 @@ export default function TrainingActiveScreen() {
     }, 700);
   }, [currentRep, reps, completedReps, variableSchedule, markerCue, dog?.name]);
 
-  const handleReset = () => {
+  const handleReset = useCallback(() => {
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
     setResetCount((c) => c + 1);
     shakeX.value = withSequence(
@@ -209,9 +209,9 @@ export default function TrainingActiveScreen() {
       withTiming(-10, { duration: 50 }),
       withTiming(0, { duration: 50 })
     );
-  };
+  }, [shakeX]);
 
-  const saveSession = async (completed: number) => {
+  const saveSession = useCallback(async (completed: number) => {
     if (!dog?.id || !user?.id) return;
     try {
       const { getItemAsync } = await import("expo-secure-store");
@@ -250,7 +250,7 @@ export default function TrainingActiveScreen() {
     } catch (e) {
       console.error(e);
     }
-  };
+  }, [dog?.id, dog?.name, user?.id, apiBase, command, setCommands, getNewlyUnlocked, play]);
 
   // Complete screen
   if (phase === "complete") {

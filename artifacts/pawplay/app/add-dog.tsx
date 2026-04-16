@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useCallback } from "react";
 import {
   View, Text, StyleSheet, TouchableOpacity, TextInput, ScrollView, Platform, Alert,
 } from "react-native";
@@ -22,13 +22,13 @@ export default function AddDogScreen() {
 
   const apiBase = process.env.EXPO_PUBLIC_DOMAIN ? `https://${process.env.EXPO_PUBLIC_DOMAIN}` : "";
 
-  const toggleCommand = (cmd: string) => {
+  const toggleCommand = useCallback((cmd: string) => {
     setSelectedCommands((prev) =>
       prev.includes(cmd) ? prev.filter((c) => c !== cmd) : [...prev, cmd]
     );
-  };
+  }, []);
 
-  const handleCreate = async () => {
+  const handleCreate = useCallback(async () => {
     if (!user?.id || !familyId) return;
     setIsLoading(true);
     try {
@@ -77,7 +77,7 @@ export default function AddDogScreen() {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [user?.id, familyId, apiBase, dogName, selectedCommands, addDog, setCommands, setActiveDogId]);
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background, paddingTop: insets.top + (Platform.OS === "web" ? 67 : 0), paddingBottom: insets.bottom + (Platform.OS === "web" ? 34 : 0) }]}>

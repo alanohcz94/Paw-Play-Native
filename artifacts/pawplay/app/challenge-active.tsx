@@ -1,11 +1,21 @@
 import React, { useState, useRef, useEffect, useCallback } from "react";
 import {
-  View, Text, StyleSheet, TouchableOpacity, Platform,
+  View,
+  Text,
+  StyleSheet,
+  TouchableOpacity,
+  Platform,
 } from "react-native";
 import { router, useLocalSearchParams } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Animated, {
-  useSharedValue, useAnimatedStyle, withTiming, withSequence, Easing, interpolateColor, runOnJS,
+  useSharedValue,
+  useAnimatedStyle,
+  withTiming,
+  withSequence,
+  Easing,
+  interpolateColor,
+  runOnJS,
 } from "react-native-reanimated";
 import * as Haptics from "expo-haptics";
 import { useColors } from "@/hooks/useColors";
@@ -15,16 +25,23 @@ import type { Difficulty, RawCommandInput } from "@/utils/scoring";
 export default function ChallengeActiveScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
-  const { sequence: seqParam, difficulty: diffParam } = useLocalSearchParams<{ sequence: string; difficulty: string }>();
+  const { sequence: seqParam, difficulty: diffParam } = useLocalSearchParams<{
+    sequence: string;
+    difficulty: string;
+  }>();
   const sequence: string[] = seqParam ? JSON.parse(seqParam) : [];
   const difficulty = (diffParam || "easy") as Difficulty;
   const windowSec = DIFFICULTY_WINDOW[difficulty];
   const isExpert = difficulty === "expert";
 
   const [commandIndex, setCommandIndex] = useState(0);
-  const [countdownStep, setCountdownStep] = useState<"Ready" | "Set" | "Go!" | null>("Ready");
+  const [countdownStep, setCountdownStep] = useState<
+    "Ready" | "Set" | "Go!" | null
+  >("Ready");
   const [score, setScore] = useState(0);
-  const [holdPhase, setHoldPhase] = useState<"waiting" | "holding" | "idle">("idle");
+  const [holdPhase, setHoldPhase] = useState<"waiting" | "holding" | "idle">(
+    "idle",
+  );
   const [holdCountdown, setHoldCountdown] = useState(0);
   const [resetCount, setResetCount] = useState(0);
   const [maxPoints, setMaxPoints] = useState(20);
@@ -49,7 +66,7 @@ export default function ChallengeActiveScreen() {
     backgroundColor: interpolateColor(
       Math.max(0, timerProgress.value),
       [0, 0.3, 1],
-      ["#ef4444", "#f59e0b", colors.mint]
+      ["#ef4444", "#f59e0b", colors.mint],
     ),
   }));
 
@@ -68,7 +85,10 @@ export default function ChallengeActiveScreen() {
     setWindowExceeded(false);
     setHoldPhase("idle");
     timerProgress.value = 1;
-    timerProgress.value = withTiming(0, { duration: windowSec * 1000, easing: Easing.linear });
+    timerProgress.value = withTiming(0, {
+      duration: windowSec * 1000,
+      easing: Easing.linear,
+    });
     startTime.current = Date.now();
 
     intervalRef.current = setInterval(() => {
@@ -105,7 +125,9 @@ export default function ChallengeActiveScreen() {
         startTimer();
       }, 2800);
       return () => {
-        clearTimeout(t1); clearTimeout(t2); clearTimeout(t3);
+        clearTimeout(t1);
+        clearTimeout(t2);
+        clearTimeout(t3);
         clearInterval(intervalRef.current!);
         clearInterval(holdTimerRef.current!);
       };
@@ -131,7 +153,10 @@ export default function ChallengeActiveScreen() {
     const lastInput = allInputs[allInputs.length - 1];
     if (!lastInput) return;
 
-    if (!lastInput.skipped && lastInput.timeSeconds <= lastInput.windowSeconds / 2) {
+    if (
+      !lastInput.skipped &&
+      lastInput.timeSeconds <= lastInput.windowSeconds / 2
+    ) {
       setBonusBubble("+5 Speed");
       setTimeout(() => setBonusBubble(null), 1500);
       return;
@@ -139,7 +164,10 @@ export default function ChallengeActiveScreen() {
 
     let streak = 0;
     for (let i = allInputs.length - 1; i >= 0; i--) {
-      if (!allInputs[i].skipped && allInputs[i].timeSeconds <= allInputs[i].windowSeconds) {
+      if (
+        !allInputs[i].skipped &&
+        allInputs[i].timeSeconds <= allInputs[i].windowSeconds
+      ) {
         streak++;
       } else break;
     }
@@ -149,7 +177,7 @@ export default function ChallengeActiveScreen() {
     }
   };
 
-  const advanceOrEnd = (newInputs: RawCommandInput[], pts: number) => {
+  const advanceOrEnd = useCallback((newInputs: RawCommandInput[], pts: number) => {
     clearInterval(intervalRef.current!);
     clearInterval(holdTimerRef.current!);
     const result = calculateScore(newInputs, difficulty);
@@ -162,21 +190,14 @@ export default function ChallengeActiveScreen() {
     if (commandIndex + 1 >= sequence.length) {
       setTimeout(() => {
         const finalResult = calculateScore(newInputs, difficulty);
-        router.replace({
-          pathname: "/challenge-end",
-          params: {
-            result: JSON.stringify(finalResult),
-            difficulty,
-            dogName: "",
-          },
-        });
+        router.replace({ pathname: "/challenge-end", params: { result: JSON.stringify(finalResult), difficulty, dogName: "" } });
       }, 800);
     } else {
       setTimeout(() => setCommandIndex((i) => i + 1), 800);
     }
-  };
+  }, [difficulty, isExpert, commandIndex, sequence.length, showPointsFlash, checkBonusBubble]);
 
-  const handleHoldStart = () => {
+  const handleHoldStart = useCallback(() => {
     if (holdPhase === "holding") return;
     setHoldPhase("holding");
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
@@ -198,7 +219,10 @@ export default function ChallengeActiveScreen() {
 
         const elapsed = capturedElapsed.current;
         const secondsOver = Math.max(0, elapsed - windowSec);
-        let pts = elapsed <= windowSec ? maxPoints : maxPoints - Math.floor(secondsOver);
+        let pts =
+          elapsed <= windowSec
+            ? maxPoints
+            : maxPoints - Math.floor(secondsOver);
         if (!isExpert) {
           pts = Math.max(0, pts);
         }
@@ -214,18 +238,9 @@ export default function ChallengeActiveScreen() {
         runOnJS(advanceOrEnd)([...inputs.current, newInput], pts);
       }
     }, 1000);
-  };
+  }, [holdPhase, windowSec, maxPoints, isExpert, sequence, commandIndex, resetCount, advanceOrEnd]);
 
-  const handleHoldRelease = () => {
-    if (holdPhase !== "holding") return;
-    if (holdCountdown > 0) {
-      clearInterval(holdTimerRef.current!);
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
-      handleReset();
-    }
-  };
-
-  const handleReset = () => {
+  const handleReset = useCallback(() => {
     clearInterval(holdTimerRef.current!);
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
     const deduction = Math.floor(maxPoints * 0.25);
@@ -236,12 +251,21 @@ export default function ChallengeActiveScreen() {
       withTiming(-10, { duration: 50 }),
       withTiming(10, { duration: 50 }),
       withTiming(-10, { duration: 50 }),
-      withTiming(0, { duration: 50 })
+      withTiming(0, { duration: 50 }),
     );
     startTimer();
-  };
+  }, [maxPoints, shakeX, startTimer]);
 
-  const handleSkip = () => {
+  const handleHoldRelease = useCallback(() => {
+    if (holdPhase !== "holding") return;
+    if (holdCountdown > 0) {
+      clearInterval(holdTimerRef.current!);
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+      handleReset();
+    }
+  }, [holdPhase, holdCountdown, handleReset]);
+
+  const handleSkip = useCallback(() => {
     if (skippedRef.current) return;
     skippedRef.current = true;
     clearInterval(intervalRef.current!);
@@ -256,12 +280,9 @@ export default function ChallengeActiveScreen() {
       resetCount,
     };
     const secondsOver = Math.max(0, elapsed - windowSec);
-    let pts = 0;
-    if (isExpert) {
-      pts = -20 - Math.floor(secondsOver);
-    }
+    const pts = isExpert ? -20 - Math.floor(secondsOver) : 0;
     advanceOrEnd([...inputs.current, newInput], pts);
-  };
+  }, [sequence, commandIndex, windowSec, resetCount, isExpert, advanceOrEnd]);
 
   const currentCommand = sequence[commandIndex] ?? "";
   const scoreColor = isExpert && score < 0 ? "#ef4444" : colors.dark;
@@ -271,20 +292,51 @@ export default function ChallengeActiveScreen() {
   if (countdownStep) {
     const isGo = countdownStep === "Go!";
     return (
-      <View style={[styles.container, { backgroundColor: colors.background, paddingTop: insets.top + (Platform.OS === "web" ? 67 : 0), justifyContent: "center" }]}>
-        <Text style={[styles.commandWord, { color: isGo ? colors.dark : colors.mutedForeground, fontFamily: "FredokaOne_400Regular", marginBottom: 24 }]}>
+      <View
+        style={[
+          styles.container,
+          {
+            backgroundColor: colors.background,
+            paddingTop: insets.top + (Platform.OS === "web" ? 67 : 0),
+            justifyContent: "center",
+          },
+        ]}
+      >
+        <Text
+          style={[
+            styles.commandWord,
+            {
+              color: isGo ? colors.dark : colors.mutedForeground,
+              fontFamily: "FredokaOne_400Regular",
+              marginBottom: 24,
+            },
+          ]}
+        >
           {currentCommand}
         </Text>
-        <Text style={[
-          styles.countdownText,
-          { color: isGo ? colors.mint : colors.peach, fontFamily: "FredokaOne_400Regular", marginBottom: isGo ? 48 : 0 },
-        ]}>
+        <Text
+          style={[
+            styles.countdownText,
+            {
+              color: isGo ? colors.mint : colors.peach,
+              fontFamily: "FredokaOne_400Regular",
+              marginBottom: isGo ? 48 : 0,
+            },
+          ]}
+        >
           {countdownStep}
         </Text>
 
         {/* Buttons appear (disabled) on Go! so user knows what to press */}
         {isGo && (
-          <View style={{ alignItems: "center", gap: 14, width: "100%", opacity: 0.4 }}>
+          <View
+            style={{
+              alignItems: "center",
+              gap: 14,
+              width: "100%",
+              opacity: 0.4,
+            }}
+          >
             <View
               style={[
                 styles.holdButton,
@@ -292,14 +344,45 @@ export default function ChallengeActiveScreen() {
               ]}
             >
               <View style={styles.holdInner}>
-                <Text style={[styles.holdText, { fontFamily: "Nunito_900Black" }]}>HOLD</Text>
-                <Text style={[styles.holdSubtext, { fontFamily: "Nunito_400Regular" }]}>waiting...</Text>
+                <Text
+                  style={[styles.holdText, { fontFamily: "Nunito_900Black" }]}
+                >
+                  HOLD
+                </Text>
+                <Text
+                  style={[
+                    styles.holdSubtext,
+                    { fontFamily: "Nunito_400Regular" },
+                  ]}
+                >
+                  waiting...
+                </Text>
               </View>
             </View>
             <View style={[styles.resetBtn, { borderColor: colors.border }]}>
-              <Text style={[styles.resetText, { color: colors.mutedForeground, fontFamily: "Nunito_700Bold" }]}>Reset</Text>
+              <Text
+                style={[
+                  styles.resetText,
+                  {
+                    color: colors.mutedForeground,
+                    fontFamily: "Nunito_700Bold",
+                  },
+                ]}
+              >
+                Reset
+              </Text>
             </View>
-            <Text style={[styles.skipText, { color: colors.mutedForeground, fontFamily: "Nunito_400Regular" }]}>skip command</Text>
+            <Text
+              style={[
+                styles.skipText,
+                {
+                  color: colors.mutedForeground,
+                  fontFamily: "Nunito_400Regular",
+                },
+              ]}
+            >
+              skip command
+            </Text>
           </View>
         )}
       </View>
@@ -307,30 +390,90 @@ export default function ChallengeActiveScreen() {
   }
 
   return (
-    <View style={[styles.container, { backgroundColor: colors.background, paddingTop: insets.top + (Platform.OS === "web" ? 67 : 0) }]}>
+    <View
+      style={[
+        styles.container,
+        {
+          backgroundColor: colors.background,
+          paddingTop: insets.top + (Platform.OS === "web" ? 67 : 0),
+        },
+      ]}
+    >
       <View style={styles.topBar}>
-        <Text style={[styles.counter, { color: colors.mutedForeground, fontFamily: "Nunito_700Bold" }]}>
+        <Text
+          style={[
+            styles.counter,
+            { color: colors.mutedForeground, fontFamily: "Nunito_700Bold" },
+          ]}
+        >
           {commandIndex + 1} of {sequence.length}
         </Text>
-        <View style={[styles.scorePill, { backgroundColor: isExpert && score < 0 ? "#fef2f2" : colors.lemon }]}>
-          <Text style={[styles.scoreText, { color: scoreColor, fontFamily: "Nunito_900Black" }]}>{scorePrefix}{score} pts</Text>
+        <View
+          style={[
+            styles.scorePill,
+            {
+              backgroundColor: isExpert && score < 0 ? "#fef2f2" : colors.lemon,
+            },
+          ]}
+        >
+          <Text
+            style={[
+              styles.scoreText,
+              { color: scoreColor, fontFamily: "Nunito_900Black" },
+            ]}
+          >
+            {scorePrefix}
+            {score} pts
+          </Text>
         </View>
       </View>
 
       <View style={styles.pipsRow}>
         {sequence.map((_, i) => (
-          <View key={i} style={[styles.pip, { backgroundColor: i < commandIndex ? colors.peach : i === commandIndex ? colors.peachMid : colors.muted }]} />
+          <View
+            key={i}
+            style={[
+              styles.pip,
+              {
+                backgroundColor:
+                  i < commandIndex
+                    ? colors.peach
+                    : i === commandIndex
+                      ? colors.peachMid
+                      : colors.muted,
+              },
+            ]}
+          />
         ))}
       </View>
 
-      <Text style={[styles.diffLabel, { color: colors.lavender, fontFamily: "Nunito_700Bold" }]}>{difficulty.toUpperCase()}</Text>
+      <Text
+        style={[
+          styles.diffLabel,
+          { color: colors.lavender, fontFamily: "Nunito_700Bold" },
+        ]}
+      >
+        {difficulty.toUpperCase()}
+      </Text>
 
       <Animated.View style={commandShakeStyle}>
-        <Text style={[styles.commandWord, { color: colors.dark, fontFamily: "FredokaOne_400Regular" }]}>{currentCommand}</Text>
+        <Text
+          style={[
+            styles.commandWord,
+            { color: colors.dark, fontFamily: "FredokaOne_400Regular" },
+          ]}
+        >
+          {currentCommand}
+        </Text>
       </Animated.View>
 
       {resetCount > 0 && (
-        <Text style={[styles.maxPtsLabel, { color: colors.mutedForeground, fontFamily: "Nunito_700Bold" }]}>
+        <Text
+          style={[
+            styles.maxPtsLabel,
+            { color: colors.mutedForeground, fontFamily: "Nunito_700Bold" },
+          ]}
+        >
           Max: {maxPoints} pts
         </Text>
       )}
@@ -338,7 +481,15 @@ export default function ChallengeActiveScreen() {
       <View style={styles.timerContainer}>
         <Animated.View style={[styles.timerBar, animStyle]} />
       </View>
-      <Text style={[styles.timerText, { color: windowExceeded ? "#ef4444" : colors.mutedForeground, fontFamily: windowExceeded ? "Nunito_900Black" : "Nunito_700Bold" }]}>
+      <Text
+        style={[
+          styles.timerText,
+          {
+            color: windowExceeded ? "#ef4444" : colors.mutedForeground,
+            fontFamily: windowExceeded ? "Nunito_900Black" : "Nunito_700Bold",
+          },
+        ]}
+      >
         {windowExceeded
           ? `-${Math.abs(displayTime).toFixed(1)}s over`
           : displayTime <= 0
@@ -347,15 +498,33 @@ export default function ChallengeActiveScreen() {
       </Text>
 
       {bonusBubble && (
-        <View style={[styles.bonusBubble, { backgroundColor: colors.lavLight }]}>
-          <Text style={[styles.bonusBubbleText, { color: colors.lavender, fontFamily: "Nunito_900Black" }]}>{bonusBubble}</Text>
+        <View
+          style={[styles.bonusBubble, { backgroundColor: colors.lavLight }]}
+        >
+          <Text
+            style={[
+              styles.bonusBubbleText,
+              { color: colors.lavender, fontFamily: "Nunito_900Black" },
+            ]}
+          >
+            {bonusBubble}
+          </Text>
         </View>
       )}
 
       {pointsFlash !== null && (
         <Animated.View style={[styles.flashContainer, flashStyle]}>
-          <Text style={[styles.flashText, { color: pointsFlash >= 0 ? colors.mint : "#ef4444", fontFamily: "FredokaOne_400Regular" }]}>
-            {pointsFlash >= 0 ? "+" : ""}{pointsFlash}
+          <Text
+            style={[
+              styles.flashText,
+              {
+                color: pointsFlash >= 0 ? colors.mint : "#ef4444",
+                fontFamily: "FredokaOne_400Regular",
+              },
+            ]}
+          >
+            {pointsFlash >= 0 ? "+" : ""}
+            {pointsFlash}
           </Text>
         </Animated.View>
       )}
@@ -364,8 +533,14 @@ export default function ChallengeActiveScreen() {
         style={[
           styles.holdButton,
           {
-            borderColor: holdPhase === "holding" ? colors.mint : colors.peachMid,
-            backgroundColor: holdPhase === "holding" ? colors.mint : holdPhase === "idle" ? colors.peach : colors.peachMid,
+            borderColor:
+              holdPhase === "holding" ? colors.mint : colors.peachMid,
+            backgroundColor:
+              holdPhase === "holding"
+                ? colors.mint
+                : holdPhase === "idle"
+                  ? colors.peach
+                  : colors.peachMid,
             opacity: holdPhase === "idle" ? 0.7 : 1,
           },
         ]}
@@ -375,14 +550,32 @@ export default function ChallengeActiveScreen() {
       >
         {holdPhase === "holding" ? (
           <View style={styles.holdInner}>
-            <Text style={[styles.holdText, { fontFamily: "Nunito_900Black" }]}>HOLD</Text>
-            <Text style={[styles.holdCountdownText, { fontFamily: "Nunito_700Bold" }]}>Hold... {holdCountdown}s</Text>
+            <Text style={[styles.holdText, { fontFamily: "Nunito_900Black" }]}>
+              HOLD
+            </Text>
+            <Text
+              style={[
+                styles.holdCountdownText,
+                { fontFamily: "Nunito_700Bold" },
+              ]}
+            >
+              Hold... {holdCountdown}s
+            </Text>
           </View>
         ) : (
           <View style={styles.holdInner}>
-            <Text style={[styles.holdText, { fontFamily: "Nunito_900Black" }]}>HOLD</Text>
+            <Text style={[styles.holdText, { fontFamily: "Nunito_900Black" }]}>
+              HOLD
+            </Text>
             {holdPhase === "idle" && (
-              <Text style={[styles.holdSubtext, { fontFamily: "Nunito_400Regular" }]}>waiting...</Text>
+              <Text
+                style={[
+                  styles.holdSubtext,
+                  { fontFamily: "Nunito_400Regular" },
+                ]}
+              >
+                waiting...
+              </Text>
             )}
           </View>
         )}
@@ -393,11 +586,25 @@ export default function ChallengeActiveScreen() {
         onPress={handleReset}
         activeOpacity={0.8}
       >
-        <Text style={[styles.resetText, { color: colors.mutedForeground, fontFamily: "Nunito_700Bold" }]}>Reset</Text>
+        <Text
+          style={[
+            styles.resetText,
+            { color: colors.mutedForeground, fontFamily: "Nunito_700Bold" },
+          ]}
+        >
+          Reset
+        </Text>
       </TouchableOpacity>
 
       <TouchableOpacity onPress={handleSkip} activeOpacity={0.7}>
-        <Text style={[styles.skipText, { color: colors.mutedForeground, fontFamily: "Nunito_400Regular" }]}>skip command</Text>
+        <Text
+          style={[
+            styles.skipText,
+            { color: colors.mutedForeground, fontFamily: "Nunito_400Regular" },
+          ]}
+        >
+          skip command
+        </Text>
       </TouchableOpacity>
     </View>
   );
@@ -405,7 +612,14 @@ export default function ChallengeActiveScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, paddingHorizontal: 24, alignItems: "center" },
-  topBar: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", width: "100%", marginTop: 16, marginBottom: 12 },
+  topBar: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    width: "100%",
+    marginTop: 16,
+    marginBottom: 12,
+  },
   counter: { fontSize: 16 },
   scorePill: { paddingHorizontal: 14, paddingVertical: 6, borderRadius: 20 },
   scoreText: { fontSize: 15 },
@@ -413,22 +627,57 @@ const styles = StyleSheet.create({
   pip: { height: 8, flex: 1, borderRadius: 4 },
   diffLabel: { fontSize: 13, letterSpacing: 2, marginBottom: 8 },
   commandWord: { fontSize: 52, textAlign: "center", marginBottom: 16 },
-  countdownBox: { alignItems: "center", justifyContent: "center", marginBottom: 16 },
+  countdownBox: {
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 16,
+  },
   countdownText: { fontSize: 72, textAlign: "center" },
   maxPtsLabel: { fontSize: 13, marginBottom: 8 },
-  timerContainer: { width: "100%", height: 10, backgroundColor: "#EDE6DE", borderRadius: 5, overflow: "hidden", marginBottom: 8 },
+  timerContainer: {
+    width: "100%",
+    height: 10,
+    backgroundColor: "#EDE6DE",
+    borderRadius: 5,
+    overflow: "hidden",
+    marginBottom: 8,
+  },
   timerBar: { height: "100%", borderRadius: 5 },
   timerText: { fontSize: 14, marginBottom: 16 },
-  bonusBubble: { paddingHorizontal: 16, paddingVertical: 8, borderRadius: 20, marginBottom: 8 },
+  bonusBubble: {
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 20,
+    marginBottom: 8,
+  },
   bonusBubbleText: { fontSize: 14 },
   flashContainer: { marginBottom: 8 },
   flashText: { fontSize: 32 },
-  holdButton: { width: 180, height: 180, borderRadius: 90, borderWidth: 3, alignItems: "center", justifyContent: "center", shadowColor: "#FF8B6A", shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.3, shadowRadius: 16, elevation: 8, marginBottom: 16 },
+  holdButton: {
+    width: 180,
+    height: 180,
+    borderRadius: 90,
+    borderWidth: 3,
+    alignItems: "center",
+    justifyContent: "center",
+    shadowColor: "#FF8B6A",
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.3,
+    shadowRadius: 16,
+    elevation: 8,
+    marginBottom: 16,
+  },
   holdInner: { alignItems: "center", gap: 4 },
   holdText: { color: "#FFFFFF", fontSize: 24, letterSpacing: 3 },
   holdSubtext: { color: "rgba(255,255,255,0.7)", fontSize: 12 },
   holdCountdownText: { color: "#FFFFFF", fontSize: 14 },
-  resetBtn: { paddingHorizontal: 32, paddingVertical: 12, borderRadius: 16, borderWidth: 1.5, marginBottom: 12 },
+  resetBtn: {
+    paddingHorizontal: 32,
+    paddingVertical: 12,
+    borderRadius: 16,
+    borderWidth: 1.5,
+    marginBottom: 12,
+  },
   resetText: { fontSize: 15 },
   skipText: { fontSize: 14, textDecorationLine: "underline" },
 });

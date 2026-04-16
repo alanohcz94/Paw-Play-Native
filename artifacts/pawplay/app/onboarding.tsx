@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useCallback } from "react";
 import {
   View, Text, StyleSheet, TouchableOpacity, TextInput, ScrollView, Platform, ActivityIndicator,
 } from "react-native";
@@ -33,13 +33,13 @@ export default function OnboardingScreen() {
 
   const apiBase = process.env.EXPO_PUBLIC_DOMAIN ? `https://${process.env.EXPO_PUBLIC_DOMAIN}` : "";
 
-  const toggleCommand = (cmd: string) => {
+  const toggleCommand = useCallback((cmd: string) => {
     setSelectedCommands((prev) =>
       prev.includes(cmd) ? prev.filter((c) => c !== cmd) : [...prev, cmd]
     );
-  };
+  }, []);
 
-  const handleJoinFamily = async () => {
+  const handleJoinFamily = useCallback(async () => {
     const code = joinCode.trim().toUpperCase();
     if (!code) { setJoinError("Please enter an invite code."); return; }
     setJoinError("");
@@ -72,9 +72,9 @@ export default function OnboardingScreen() {
     } finally {
       setJoinLoading(false);
     }
-  };
+  }, [joinCode, apiBase, setFamilyId, setInviteCode, user?.id]);
 
-  const handleCreateFamily = async (userId: string) => {
+  const handleCreateFamily = useCallback(async (userId: string) => {
     try {
       const token = await import("expo-secure-store").then((m) => m.getItemAsync("auth_session_token"));
       const res = await fetch(`${apiBase}/api/family`, {
@@ -123,9 +123,9 @@ export default function OnboardingScreen() {
     } catch (err) {
       console.error("Onboarding error:", err);
     }
-  };
+  }, [apiBase, dogName, selectedCommands, setDog, setCommands, setFamilyId, setInviteCode, user?.firstName]);
 
-  const handleComplete = async () => {
+  const handleComplete = useCallback(async () => {
     if (!user?.id) return;
     setIsLoading(true);
     if (!isJoining) {
@@ -135,7 +135,7 @@ export default function OnboardingScreen() {
     setOnboardingComplete(true);
     setIsLoading(false);
     router.replace("/(tabs)");
-  };
+  }, [user?.id, isJoining, handleCreateFamily, setOnboardingComplete]);
 
   const progress = (STEPS.indexOf(step) + 1) / STEPS.length;
 

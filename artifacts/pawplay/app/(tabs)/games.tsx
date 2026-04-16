@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useMemo } from "react";
 import {
   View,
   Text,
@@ -18,7 +18,7 @@ export default function GamesScreen() {
   const insets = useSafeAreaInsets();
   const { commands } = useApp();
 
-  const level3Count = commands.filter((c) => c.level >= 3).length;
+  const level3Count = useMemo(() => commands.filter((c) => c.level >= 3).length, [commands]);
   const obedienceUnlocked = level3Count >= 7;
 
   return (
