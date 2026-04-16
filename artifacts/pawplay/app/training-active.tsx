@@ -309,6 +309,23 @@ export default function TrainingActiveScreen() {
     );
   }
 
+  // Dedicated full-screen countdown before the game starts
+  if (phase === "countdown") {
+    return (
+      <View style={[styles.container, { backgroundColor: colors.background, paddingTop: insets.top + (Platform.OS === "web" ? 67 : 0), justifyContent: "center" }]}>
+        <Text style={[styles.commandWord, { color: colors.mutedForeground, fontFamily: "Nunito_700Bold", fontSize: 18, marginBottom: 48, textAlign: "center" }]}>
+          {command}
+        </Text>
+        <Text style={[
+          styles.countdownText,
+          { color: countdownStep === "Go!" ? colors.mint : colors.peach, fontFamily: "FredokaOne_400Regular" },
+        ]}>
+          {countdownStep ?? ""}
+        </Text>
+      </View>
+    );
+  }
+
   return (
     <View style={[styles.container, { backgroundColor: colors.background, paddingTop: insets.top + (Platform.OS === "web" ? 67 : 0) }]}>
       <TouchableOpacity onPress={() => { clearTimers(); router.back(); }} style={styles.backBtn} activeOpacity={0.7}>
@@ -338,18 +355,6 @@ export default function TrainingActiveScreen() {
           {command}
         </Text>
       </Animated.View>
-
-      {/* Countdown phase — Ready / Set / Go! */}
-      {phase === "countdown" && countdownStep && (
-        <View style={styles.countdownBox}>
-          <Text style={[
-            styles.countdownText,
-            { color: countdownStep === "Go!" ? colors.mint : colors.peach, fontFamily: "FredokaOne_400Regular" },
-          ]}>
-            {countdownStep}
-          </Text>
-        </View>
-      )}
 
       {/* Marking phase — marker cue flash */}
       {phase === "marking" && (
@@ -398,23 +403,21 @@ export default function TrainingActiveScreen() {
         </View>
       )}
 
-      {/* Actions — shown in ready and countdown phases; disabled during countdown */}
-      {(phase === "ready" || phase === "countdown") && (
+      {/* Actions — only shown in ready phase */}
+      {phase === "ready" && (
         <View style={styles.actions}>
           <TouchableOpacity
-            style={[styles.markDoneBtn, { backgroundColor: phase === "countdown" ? colors.muted : colors.mint }]}
+            style={[styles.markDoneBtn, { backgroundColor: colors.mint }]}
             onPress={handleComply}
-            disabled={phase === "countdown"}
             activeOpacity={0.85}
           >
-            <Text style={[styles.markDoneText, { color: phase === "countdown" ? colors.mutedForeground : "#fff", fontFamily: "Nunito_900Black" }]}>
+            <Text style={[styles.markDoneText, { fontFamily: "Nunito_900Black" }]}>
               {markerCue}
             </Text>
           </TouchableOpacity>
           <TouchableOpacity
-            style={[styles.resetBtn, { borderColor: colors.border, opacity: phase === "countdown" ? 0.4 : 1 }]}
+            style={[styles.resetBtn, { borderColor: colors.border }]}
             onPress={handleReset}
-            disabled={phase === "countdown"}
             activeOpacity={0.8}
           >
             <Feather name="refresh-cw" size={20} color={colors.mutedForeground} />

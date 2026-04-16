@@ -38,7 +38,7 @@ export default function SettingsScreen() {
   const handleLogout = async () => {
     resetState();
     await logout();
-    router.replace("/demo");
+    router.replace("/");
   };
 
   const [fetchedCode, setFetchedCode] = useState<string | null>(null);
