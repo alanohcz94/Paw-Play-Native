@@ -79,3 +79,31 @@ PawPlay is a gamified dog training mobile app for families. Built as a pnpm work
 - `pnpm --filter @workspace/api-server run dev` — run API server locally
 
 See the `pnpm-workspace` skill for workspace structure, TypeScript setup, and package details.
+
+## EAS Build & Submit (iOS / Android)
+
+PawPlay ships to the App Store and Google Play via Expo Application Services. The EAS CLI (`eas-cli`) and `expo-dev-client` are installed in the `pawplay` artifact, and `eas.json` defines `development`, `preview`, and `production` profiles. Bundle identifier: `com.quickmix.pawplay` (both platforms).
+
+### One-time setup (do these once on your machine / Repl shell)
+1. `cd artifacts/pawplay`
+2. `./node_modules/.bin/eas login` — log in with your Expo account.
+3. `./node_modules/.bin/eas init` — links this folder to an EAS project and writes `extra.eas.projectId` into `app.json`. Commit the change.
+
+### Build commands (run from repo root)
+- `pnpm --filter @workspace/pawplay run eas:build:ios` — production iOS build (.ipa)
+- `pnpm --filter @workspace/pawplay run eas:build:android` — production Android build (.aab)
+- `pnpm --filter @workspace/pawplay run eas:build:all` — both platforms in parallel
+
+For an internal test build that installs on a device without going through the stores, run `eas build --profile preview -p ios` or `-p android` from `artifacts/pawplay`. For a dev client (lets you connect Metro to a custom build), use `--profile development`.
+
+The first iOS build will prompt you to log in to your Apple Developer account so EAS can generate distribution certificates and provisioning profiles. The first Android build will generate an upload keystore. EAS stores both remotely (`credentialsSource: remote`).
+
+### Submit commands
+- `pnpm --filter @workspace/pawplay run eas:submit:ios` — upload latest iOS build to App Store Connect
+- `pnpm --filter @workspace/pawplay run eas:submit:android` — upload latest Android build to Play Console (internal track)
+
+Before the first submit you must provide credentials:
+
+**iOS** — when you run `eas submit -p ios` it will interactively prompt for your Apple ID, App Store Connect app ID (ascAppId), and Apple Team ID. You can also pre-fill them under `submit.production.ios` in `eas.json`.
+
+**Android** — drop a Google Play service account JSON file at `artifacts/pawplay/google-service-account.json` (the path referenced in `eas.json`). Generate it from Google Play Console → Setup → API access. The file is gitignore-worthy; do not commit it.
