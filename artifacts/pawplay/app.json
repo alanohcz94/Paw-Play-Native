@@ -20,11 +20,14 @@
     },
     "android": {
       "package": "com.quickmix.pawplay",
-      "versionCode": 1
+      "versionCode": 1,
+      "permissions": [
+        "android.permission.RECORD_AUDIO"
+      ]
     },
     "extra": {
       "eas": {
-        "projectId": ""
+        "projectId": "edca0086-a92b-45df-94be-985715d7d2ff"
       }
     },
     "web": {
@@ -49,6 +52,7 @@
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true
-    }
+    },
+    "owner": "alanohcz"
   }
 }
