@@ -16,11 +16,17 @@
     "ios": {
       "supportsTablet": false,
       "bundleIdentifier": "com.quickmix.pawplay",
-      "buildNumber": "1"
+      "buildNumber": "1",
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false
+      }
     },
     "android": {
       "package": "com.quickmix.pawplay",
-      "versionCode": 1
+      "versionCode": 1,
+      "permissions": [
+        "android.permission.RECORD_AUDIO"
+      ]
     },
     "extra": {
       "eas": {
