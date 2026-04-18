@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useMemo } from "react";
 import {
   View,
   Text,
@@ -12,6 +12,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Feather } from "@expo/vector-icons";
 import { useColors } from "@/hooks/useColors";
 import { useApp } from "@/context/AppContext";
+import type { FeatherIconName } from "@/types/api";
 
 const ACHIEVEMENT_TYPES = [
   {
@@ -155,34 +156,32 @@ export default function AchievementsScreen() {
   const insets = useSafeAreaInsets();
   const { commands, streak, dog } = useApp();
 
-  const level3Count = commands.filter(
-    (c) =>
-      c.level >= 3 ||
-      (c.qbSuccessesCount >= 10 && c.qbSessionsWithSuccess >= 3),
-  ).length;
-  const hasAnySessions = commands.some(
-    (c) => c.trainingSessionsCount > 0 || c.qbSuccessesCount > 0,
-  );
-
-  const maxCommandReps = commands.reduce((max, c) => {
-    const total = c.trainingSessionsCount + c.qbSuccessesCount;
-    return total > max ? total : max;
-  }, 0);
-  const basicCommandsAt100 = BASIC_COMMANDS.filter((name) => {
-    const cmd = commands.find((c) => c.name === name);
-    return cmd && cmd.trainingSessionsCount + cmd.qbSuccessesCount >= 100;
-  }).length;
-
-  const unlockedSet = new Set<string>();
-  if (hasAnySessions) unlockedSet.add("first_session");
-  if (streak >= 7) unlockedSet.add("streak_7");
-  if (streak >= 30) unlockedSet.add("streak_30");
-  if (level3Count >= 1) unlockedSet.add("reliable_handler");
-  if (level3Count >= 7) unlockedSet.add("full_pack");
-  if (maxCommandReps >= 100) unlockedSet.add("amazing_student");
-  if (basicCommandsAt100 >= 7) unlockedSet.add("distinction_student");
-
-  const unlockedCount = unlockedSet.size;
+  const { level3Count, hasAnySessions, maxCommandReps, basicCommandsAt100, unlockedSet, unlockedCount } =
+    useMemo(() => {
+      const level3Count = commands.filter(
+        (c) => c.level >= 3 || (c.qbSuccessesCount >= 10 && c.qbSessionsWithSuccess >= 3),
+      ).length;
+      const hasAnySessions = commands.some(
+        (c) => c.trainingSessionsCount > 0 || c.qbSuccessesCount > 0,
+      );
+      const maxCommandReps = commands.reduce((max, c) => {
+        const total = c.trainingSessionsCount + c.qbSuccessesCount;
+        return total > max ? total : max;
+      }, 0);
+      const basicCommandsAt100 = BASIC_COMMANDS.filter((name) => {
+        const cmd = commands.find((c) => c.name === name);
+        return cmd && cmd.trainingSessionsCount + cmd.qbSuccessesCount >= 100;
+      }).length;
+      const unlockedSet = new Set<string>();
+      if (hasAnySessions) unlockedSet.add("first_session");
+      if (streak >= 7) unlockedSet.add("streak_7");
+      if (streak >= 30) unlockedSet.add("streak_30");
+      if (level3Count >= 1) unlockedSet.add("reliable_handler");
+      if (level3Count >= 7) unlockedSet.add("full_pack");
+      if (maxCommandReps >= 100) unlockedSet.add("amazing_student");
+      if (basicCommandsAt100 >= 7) unlockedSet.add("distinction_student");
+      return { level3Count, hasAnySessions, maxCommandReps, basicCommandsAt100, unlockedSet, unlockedCount: unlockedSet.size };
+    }, [commands, streak]);
 
   return (
     <ScrollView
@@ -264,7 +263,7 @@ export default function AchievementsScreen() {
               ]}
             >
               <Feather
-                name={ach.icon as any}
+                name={ach.icon as FeatherIconName}
                 size={22}
                 color={unlocked ? colors.mint : colors.mutedForeground}
               />

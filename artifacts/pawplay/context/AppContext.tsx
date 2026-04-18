@@ -162,7 +162,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
         if (saved.onboardingComplete !== undefined) setOnboardingCompleteState(saved.onboardingComplete);
         if (saved.reminderTime !== undefined) setReminderTimeState(saved.reminderTime);
         if (saved.soundEnabled !== undefined) setSoundEnabledState(saved.soundEnabled);
-      } catch {}
+      } catch (e) {
+        console.warn("Failed to restore persisted app state:", e);
+      }
     });
   }, []);
 

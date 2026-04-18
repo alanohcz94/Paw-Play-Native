@@ -50,7 +50,9 @@ export default function WelcomeScreen() {
               return;
             }
           }
-        } catch {}
+        } catch (e) {
+          console.warn("Auth restore failed, redirecting to onboarding:", e);
+        }
         router.replace("/onboarding");
       };
       restore();

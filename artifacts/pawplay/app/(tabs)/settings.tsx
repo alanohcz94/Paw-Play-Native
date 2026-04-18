@@ -83,7 +83,9 @@ export default function SettingsScreen() {
           setFetchedCode(fam.inviteCode);
           setInviteCode(fam.inviteCode);
         }
-      } catch {}
+      } catch (e) {
+        console.warn("Failed to load invite code:", e);
+      }
     };
     loadCode();
   }, [familyId, inviteCode]);
