@@ -127,10 +127,25 @@ function getProgress(
   }
 }
 
+function getCommandStatus(cmd: { level: number; trainingSessionsCount: number; qbSuccessesCount: number; qbSessionsWithSuccess: number }) {
+  if (cmd.level >= 3 || (cmd.qbSuccessesCount >= 10 && cmd.qbSessionsWithSuccess >= 3)) {
+    return { label: "Reliable", barPct: 100, nextInfo: "Mastered!" };
+  }
+  if (cmd.trainingSessionsCount >= 5) {
+    const pct = 40 + Math.min(cmd.qbSuccessesCount / 10, 1) * 60;
+    if (cmd.qbSuccessesCount >= 5) {
+      return { label: "R1", barPct: pct, nextInfo: `${cmd.qbSuccessesCount}/10 QB to Reliable` };
+    }
+    return { label: "Practicing", barPct: pct, nextInfo: `${cmd.qbSuccessesCount}/10 QB to Reliable` };
+  }
+  const pct = Math.min(cmd.trainingSessionsCount / 5, 1) * 40;
+  return { label: "Learning", barPct: pct, nextInfo: `${cmd.trainingSessionsCount}/5 sessions to Practicing` };
+}
+
 export default function AchievementsScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
-  const { commands, streak } = useApp();
+  const { commands, streak, dog } = useApp();
 
   const level3Count = commands.filter(
     (c) => c.level >= 3 || (c.qbSuccessesCount >= 10 && c.qbSessionsWithSuccess >= 3)
@@ -189,6 +204,52 @@ export default function AchievementsScreen() {
           of {ACHIEVEMENT_TYPES.length} achievements unlocked
         </Text>
       </View>
+
+      {commands.length > 0 && (
+        <View style={[styles.cmdCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
+          <View style={styles.cmdCardHeader}>
+            <Text style={[styles.cmdCardTitle, { color: colors.dark, fontFamily: "Nunito_900Black" }]}>
+              Command Progress
+            </Text>
+            {dog && (
+              <Text style={[styles.cmdDogLabel, { color: colors.mutedForeground, fontFamily: "Nunito_400Regular" }]}>
+                {dog.name}{dog.breed ? `: ${dog.breed}` : ""}
+              </Text>
+            )}
+          </View>
+          {commands.map((cmd) => {
+            const status = getCommandStatus(cmd);
+            const barColor =
+              status.label === "Reliable" ? colors.mint
+              : status.label === "R1" ? colors.mint
+              : status.label === "Practicing" ? colors.peach
+              : colors.mutedForeground;
+            const labelColor =
+              status.label === "Reliable" ? colors.mint
+              : status.label === "R1" ? colors.mint
+              : status.label === "Practicing" ? colors.peach
+              : colors.mutedForeground;
+            return (
+              <View key={cmd.id} style={styles.cmdRow}>
+                <View style={styles.cmdRowTop}>
+                  <Text style={[styles.cmdName, { color: colors.dark, fontFamily: "Nunito_700Bold" }]}>
+                    {cmd.name}
+                  </Text>
+                  <Text style={[styles.cmdLevelLabel, { color: labelColor, fontFamily: "Nunito_700Bold" }]}>
+                    {status.label}
+                  </Text>
+                </View>
+                <View style={[styles.cmdTrack, { backgroundColor: colors.muted }]}>
+                  <View style={[styles.cmdFill, { width: `${status.barPct}%` as any, backgroundColor: barColor }]} />
+                </View>
+                <Text style={[styles.cmdNextInfo, { color: colors.mutedForeground, fontFamily: "Nunito_400Regular" }]}>
+                  {status.nextInfo}
+                </Text>
+              </View>
+            );
+          })}
+        </View>
+      )}
 
       {ACHIEVEMENT_TYPES.map((ach) => {
         const unlocked = unlockedSet.has(ach.type);
@@ -345,4 +406,33 @@ const styles = StyleSheet.create({
   },
   progressFill: { height: "100%", borderRadius: 3 },
   progressLabel: { fontSize: 12, width: 32, textAlign: "right" },
+  cmdCard: {
+    borderRadius: 16,
+    padding: 16,
+    marginBottom: 20,
+    borderWidth: 1,
+    gap: 14,
+  },
+  cmdCardHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+  cmdCardTitle: { fontSize: 17 },
+  cmdDogLabel: { fontSize: 13 },
+  cmdRow: { gap: 6 },
+  cmdRowTop: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+  cmdName: { fontSize: 15 },
+  cmdLevelLabel: { fontSize: 13 },
+  cmdTrack: {
+    height: 8,
+    borderRadius: 4,
+    overflow: "hidden",
+  },
+  cmdFill: { height: "100%", borderRadius: 4 },
+  cmdNextInfo: { fontSize: 12 },
 });

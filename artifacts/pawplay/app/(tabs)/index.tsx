@@ -474,34 +474,60 @@ export default function DashboardScreen() {
               </View>
             </View>
             {leaderboard.map((entry, i) => (
-              <View key={entry.userId} style={styles.leaderboardRow}>
-                <Text
+              <View
+                key={entry.userId}
+                style={[
+                  styles.leaderboardRow,
+                  {
+                    backgroundColor: i === 0 ? colors.lavMid : colors.cream,
+                    borderRadius: 14,
+                    paddingHorizontal: 12,
+                    paddingVertical: 10,
+                    marginBottom: 8,
+                  },
+                ]}
+              >
+                <View
                   style={[
-                    styles.rankText,
+                    styles.rankBadge,
                     {
-                      color: colors.mutedForeground,
-                      fontFamily: "Nunito_700Bold",
+                      backgroundColor: i === 0 ? colors.lavender : "transparent",
                     },
                   ]}
                 >
-                  {i === 0 ? "👑" : `#${i + 1}`}
-                </Text>
-                <Text
-                  style={[
-                    styles.memberName,
-                    { color: colors.dark, fontFamily: "Nunito_700Bold" },
-                  ]}
-                >
-                  {entry.displayName}
-                </Text>
-                <Text
-                  style={[
-                    styles.memberPoints,
-                    { color: colors.peach, fontFamily: "Nunito_900Black" },
-                  ]}
-                >
-                  {entry.totalPoints} pts
-                </Text>
+                  <Text
+                    style={[
+                      styles.rankText,
+                      {
+                        color: i === 0 ? "#fff" : colors.mutedForeground,
+                        fontFamily: "Nunito_700Bold",
+                      },
+                    ]}
+                  >
+                    {i + 1}
+                  </Text>
+                </View>
+                <View style={[styles.avatarCircle, { backgroundColor: colors.peachMid }]}>
+                  <Text style={[styles.avatarInitial, { color: colors.peach, fontFamily: "Nunito_900Black" }]}>
+                    {entry.displayName.charAt(0).toUpperCase()}
+                  </Text>
+                </View>
+                <View style={styles.memberInfo}>
+                  <Text style={[styles.memberName, { color: colors.dark, fontFamily: "Nunito_700Bold" }]}>
+                    {entry.displayName}
+                  </Text>
+                  <Text style={[styles.memberStreak, { color: colors.mutedForeground, fontFamily: "Nunito_400Regular" }]}>
+                    {entry.sessionCount} day streak
+                  </Text>
+                </View>
+                <View style={styles.pointsContainer}>
+                  <Text style={[styles.memberPoints, { color: colors.dark, fontFamily: "Nunito_900Black" }]}>
+                    {entry.totalPoints.toLocaleString()}
+                  </Text>
+                  <Text style={[styles.pointsLabel, { color: colors.mutedForeground, fontFamily: "Nunito_400Regular" }]}>
+                    points
+                  </Text>
+                </View>
               </View>
             ))}
           </View>
@@ -598,12 +624,30 @@ const styles = StyleSheet.create({
   leaderboardRow: {
     flexDirection: "row",
     alignItems: "center",
-    paddingVertical: 8,
-    gap: 12,
+    gap: 10,
   },
-  rankText: { fontSize: 18, width: 30, textAlign: "center" },
-  memberName: { flex: 1, fontSize: 15 },
-  memberPoints: { fontSize: 15 },
+  rankBadge: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  rankText: { fontSize: 14 },
+  avatarCircle: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  avatarInitial: { fontSize: 16 },
+  memberInfo: { flex: 1 },
+  memberName: { fontSize: 15 },
+  memberStreak: { fontSize: 12, marginTop: 1 },
+  pointsContainer: { alignItems: "flex-end" },
+  memberPoints: { fontSize: 16 },
+  pointsLabel: { fontSize: 11, marginTop: 1 },
   emptyCard: { borderRadius: 20, padding: 24, alignItems: "center", gap: 8 },
   emptyTitle: { fontSize: 18 },
   emptyText: { fontSize: 14, textAlign: "center", lineHeight: 22 },
