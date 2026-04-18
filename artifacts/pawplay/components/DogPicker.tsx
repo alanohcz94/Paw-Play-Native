@@ -1,5 +1,12 @@
 import React, { memo, useCallback } from "react";
-import { View, Text, ScrollView, TouchableOpacity, Image, StyleSheet } from "react-native";
+import {
+  View,
+  Text,
+  ScrollView,
+  TouchableOpacity,
+  Image,
+  StyleSheet,
+} from "react-native";
 import { Feather } from "@expo/vector-icons";
 import { router } from "expo-router";
 import { useColors } from "@/hooks/useColors";
@@ -11,7 +18,11 @@ interface DogItemProps {
   onPress: (id: string) => void;
 }
 
-const DogItem = memo(function DogItem({ dog: d, isActive, onPress }: DogItemProps) {
+const DogItem = memo(function DogItem({
+  dog: d,
+  isActive,
+  onPress,
+}: DogItemProps) {
   const colors = useColors();
   const handlePress = useCallback(() => onPress(d.id), [d.id, onPress]);
 
@@ -19,7 +30,11 @@ const DogItem = memo(function DogItem({ dog: d, isActive, onPress }: DogItemProp
     <TouchableOpacity
       style={[
         styles.dogCircle,
-        { borderColor: isActive ? colors.peach : colors.border, borderWidth: isActive ? 3 : 1.5 },
+        {
+          borderColor: isActive ? colors.peach : colors.border,
+          borderWidth: isActive ? 3 : 1.5,
+          padding: 8,
+        },
       ]}
       onPress={handlePress}
       activeOpacity={0.8}
@@ -27,14 +42,22 @@ const DogItem = memo(function DogItem({ dog: d, isActive, onPress }: DogItemProp
       {d.avatarUrl ? (
         <Image source={{ uri: d.avatarUrl }} style={styles.avatar} />
       ) : (
-        <View style={[styles.avatarPlaceholder, { backgroundColor: colors.peachLight }]}>
+        <View
+          style={[
+            styles.avatarPlaceholder,
+            { backgroundColor: colors.peachLight },
+          ]}
+        >
           <Text style={styles.avatarEmoji}>🐾</Text>
         </View>
       )}
       <Text
         style={[
           styles.dogName,
-          { color: isActive ? colors.peach : colors.mutedForeground, fontFamily: isActive ? "Nunito_900Black" : "Nunito_700Bold" },
+          {
+            color: isActive ? colors.peach : colors.mutedForeground,
+            fontFamily: isActive ? "Nunito_900Black" : "Nunito_700Bold",
+          },
         ]}
         numberOfLines={1}
       >
@@ -54,7 +77,12 @@ const AddButton = memo(function AddButton() {
       activeOpacity={0.8}
     >
       <Feather name="plus" size={22} color={colors.mutedForeground} />
-      <Text style={[styles.dogName, { color: colors.mutedForeground, fontFamily: "Nunito_700Bold" }]}>
+      <Text
+        style={[
+          styles.dogName,
+          { color: colors.mutedForeground, fontFamily: "Nunito_700Bold" },
+        ]}
+      >
         Add
       </Text>
     </TouchableOpacity>
@@ -68,9 +96,14 @@ function DogPicker() {
 
   return (
     <View style={styles.container}>
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.scroll}>
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={styles.scroll}
+      >
         {dogs.map((d) => {
-          const isActive = d.id === activeDogId || (!activeDogId && d.id === dogs[0]?.id);
+          const isActive =
+            d.id === activeDogId || (!activeDogId && d.id === dogs[0]?.id);
           return (
             <DogItem
               key={d.id}
@@ -89,12 +122,25 @@ function DogPicker() {
 export default memo(DogPicker);
 
 const styles = StyleSheet.create({
-  container: { marginBottom: 12 },
   scroll: { gap: 12, paddingHorizontal: 4 },
   dogCircle: { alignItems: "center", gap: 4, width: 64, borderRadius: 32 },
   avatar: { width: 48, height: 48, borderRadius: 24 },
-  avatarPlaceholder: { width: 48, height: 48, borderRadius: 24, alignItems: "center", justifyContent: "center" },
+  avatarPlaceholder: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    alignItems: "center",
+    justifyContent: "center",
+  },
   avatarEmoji: { fontSize: 22 },
-  dogName: { fontSize: 11, textAlign: "center", marginBottom: 10 },
-  addCircle: { alignItems: "center", justifyContent: "center", gap: 3, width: 64, borderRadius: 32, borderWidth: 1.5, borderStyle: "dashed" },
+  dogName: { fontSize: 11, textAlign: "center" },
+  addCircle: {
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 3,
+    width: 64,
+    borderRadius: 32,
+    borderWidth: 1.5,
+    borderStyle: "dashed",
+  },
 });
