@@ -26,7 +26,8 @@ function LeaderboardRow({
         styles.row,
         {
           marginTop: 4,
-          backgroundColor: rank === 0 ? "#9e8fd0" : colors.cream,
+          borderBottomWidth: 1,
+          borderBottomColor: colors.border,
           borderRadius: 14,
           paddingHorizontal: 12,
           paddingVertical: 10,
@@ -168,8 +169,8 @@ const styles = StyleSheet.create({
   rankText: { fontSize: 14 },
   crownBadge: {
     position: "absolute",
-    bottom: -10,
-    left: "50%",
+    top: -15,
+    left: "45%",
     transform: [{ translateX: -10 }],
   },
   crownText: { fontSize: 18, lineHeight: 22 },
