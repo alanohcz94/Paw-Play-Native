@@ -103,6 +103,52 @@ const BASIC_COMMANDS = [
   "Leave it",
 ];
 
+function getProgress(
+  type: string,
+  streak: number,
+  level3Count: number,
+  hasAnySessions: boolean,
+  maxCommandReps: number,
+  basicCommandsAt100: number,
+): { pct: number; hint: string } {
+  switch (type) {
+    case "first_session":
+      return hasAnySessions
+        ? { pct: 100, hint: "Done!" }
+        : { pct: 0, hint: "0/1 sessions" };
+    case "streak_7":
+      return {
+        pct: Math.min(100, Math.round((streak / 7) * 100)),
+        hint: `${streak}/7 days`,
+      };
+    case "streak_30":
+      return {
+        pct: Math.min(100, Math.round((streak / 30) * 100)),
+        hint: `${streak}/30 days`,
+      };
+    case "reliable_handler":
+      return level3Count >= 1
+        ? { pct: 100, hint: "Done!" }
+        : { pct: 0, hint: "0/1 commands" };
+    case "full_pack":
+      return {
+        pct: Math.min(100, Math.round((level3Count / 7) * 100)),
+        hint: `${level3Count}/7 commands`,
+      };
+    case "amazing_student":
+      return {
+        pct: Math.min(100, Math.round((maxCommandReps / 100) * 100)),
+        hint: `${maxCommandReps}/100 reps`,
+      };
+    case "distinction_student":
+      return {
+        pct: Math.min(100, Math.round((basicCommandsAt100 / 7) * 100)),
+        hint: `${basicCommandsAt100}/7 commands`,
+      };
+    default:
+      return { pct: 0, hint: "Complete a session to progress" };
+  }
+}
 
 export default function AchievementsScreen() {
   const colors = useColors();
@@ -195,6 +241,9 @@ export default function AchievementsScreen() {
 
       {ACHIEVEMENT_TYPES.map((ach) => {
         const unlocked = unlockedSet.has(ach.type);
+        const { pct, hint } = unlocked
+          ? { pct: 100, hint: "Unlocked!" }
+          : getProgress(ach.type, streak, level3Count, hasAnySessions, maxCommandReps, basicCommandsAt100);
 
         return (
           <View
@@ -258,6 +307,24 @@ export default function AchievementsScreen() {
                 {unlocked ? ach.description : ach.unlock}
               </Text>
 
+              <View style={styles.progressRow}>
+                <View style={[styles.progressTrack, { backgroundColor: colors.muted }]}>
+                  <View
+                    style={[
+                      styles.progressFill,
+                      { width: `${pct}%`, backgroundColor: unlocked ? colors.mint : colors.lavender },
+                    ]}
+                  />
+                </View>
+                <Text
+                  style={[
+                    styles.progressHint,
+                    { color: unlocked ? colors.mint : colors.mutedForeground, fontFamily: "Nunito_700Bold" },
+                  ]}
+                >
+                  {hint}
+                </Text>
+              </View>
             </View>
           </View>
         );
@@ -314,4 +381,8 @@ const styles = StyleSheet.create({
   },
   cardLabel: { fontSize: 15 },
   cardDesc: { fontSize: 13, lineHeight: 18 },
+  progressRow: { flexDirection: "row", alignItems: "center", gap: 8, marginTop: 8 },
+  progressTrack: { flex: 1, height: 6, borderRadius: 3, overflow: "hidden" },
+  progressFill: { height: "100%", borderRadius: 3 },
+  progressHint: { fontSize: 11, minWidth: 60, textAlign: "right" },
 });

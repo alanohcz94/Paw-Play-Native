@@ -429,7 +429,7 @@ export default function DashboardScreen() {
         <TouchableOpacity
           style={[
             styles.card,
-            { backgroundColor: colors.skyLight, borderColor: colors.border },
+            { backgroundColor: colors.card, borderColor: colors.border },
           ]}
           onPress={() => router.push("/calendar")}
           activeOpacity={0.85}
@@ -466,7 +466,7 @@ export default function DashboardScreen() {
           <View
             style={[
               styles.card,
-              { backgroundColor: colors.skyLight, borderColor: colors.border },
+              { backgroundColor: colors.card, borderColor: colors.border },
             ]}
           >
             <View style={styles.cardHeader}>
@@ -509,26 +509,51 @@ export default function DashboardScreen() {
                   },
                 ]}
               >
-                <View
-                  style={[
-                    styles.rankBadge,
-                    {
-                      backgroundColor:
-                        i === 0 ? colors.lavender : "transparent",
-                    },
-                  ]}
-                >
-                  <Text
+                <View style={{ position: "relative" }}>
+                  <View
                     style={[
-                      styles.rankText,
+                      styles.rankBadge,
                       {
-                        color: i === 0 ? "#fff" : colors.mutedForeground,
-                        fontFamily: "Nunito_700Bold",
+                        backgroundColor:
+                          i === 0
+                            ? "#FFB800"
+                            : i === 1
+                              ? "#A8A9AD"
+                              : i === 2
+                                ? "#CD7F32"
+                                : "transparent",
                       },
                     ]}
                   >
-                    {i + 1}
-                  </Text>
+                    <Text
+                      style={[
+                        styles.rankText,
+                        {
+                          color: i < 3 ? "#fff" : colors.mutedForeground,
+                          fontFamily: "Nunito_700Bold",
+                        },
+                      ]}
+                    >
+                      {i + 1}
+                    </Text>
+                  </View>
+                  {i < 3 && (
+                    <View
+                      style={[
+                        styles.crownBadge,
+                        {
+                          backgroundColor:
+                            i === 0
+                              ? "#FFB800"
+                              : i === 1
+                                ? "#A8A9AD"
+                                : "#CD7F32",
+                        },
+                      ]}
+                    >
+                      <Text style={styles.crownText}>👑</Text>
+                    </View>
+                  )}
                 </View>
                 <View
                   style={[
@@ -684,6 +709,20 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   rankText: { fontSize: 14 },
+  crownBadge: {
+    position: "absolute",
+    bottom: -6,
+    left: "50%",
+    transform: [{ translateX: -9 }],
+    width: 18,
+    height: 18,
+    borderRadius: 9,
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 1.5,
+    borderColor: "#fff",
+  },
+  crownText: { fontSize: 9, lineHeight: 12 },
   avatarCircle: {
     width: 36,
     height: 36,
