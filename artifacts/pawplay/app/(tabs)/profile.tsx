@@ -252,6 +252,38 @@ export default function ProfileScreen() {
     }
   }, [dog, user, apiBase, releaseCue, markerCue, setDog]);
 
+  const handleRemoveCommand = useCallback(
+    async (commandId: string) => {
+      if (!dog?.id) return;
+      Alert.alert(
+        "Remove Command",
+        "Are you sure you want to remove this command? All progress will be lost.",
+        [
+          { text: "Cancel", style: "cancel" },
+          {
+            text: "Remove",
+            style: "destructive",
+            onPress: async () => {
+              setSelectedCommandId(null);
+              try {
+                const { getItemAsync } = await import("expo-secure-store");
+                const token = await getItemAsync("auth_session_token");
+                await fetch(`${apiBase}/api/dogs/${dog.id}/commands/${commandId}`, {
+                  method: "DELETE",
+                  headers: { Authorization: `Bearer ${token}` },
+                });
+                setCommands(commands.filter((c) => c.id !== commandId));
+              } catch {
+                Alert.alert("Error", "Could not remove command. Please try again.");
+              }
+            },
+          },
+        ],
+      );
+    },
+    [dog, apiBase, setCommands],
+  );
+
   const handleAddCommand = useCallback(
     async (name: string) => {
       if (!dog?.id || addingCommand) return;
@@ -1142,6 +1174,22 @@ export default function ProfileScreen() {
                 </View>
 
                 <TouchableOpacity
+                  style={[styles.tooltipRemoveBtn]}
+                  onPress={() => handleRemoveCommand(selectedCmd.id)}
+                  activeOpacity={0.7}
+                >
+                  <Feather name="trash-2" size={15} color="#fff" />
+                  <Text
+                    style={[
+                      styles.tooltipRemoveBtnText,
+                      { fontFamily: "Nunito_700Bold" },
+                    ]}
+                  >
+                    Remove Command
+                  </Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
                   style={[
                     styles.tooltipCloseBtn,
                     { borderColor: colors.border },
@@ -1404,6 +1452,17 @@ const styles = StyleSheet.create({
     marginTop: 4,
   },
   tooltipCloseBtnText: { fontSize: 15 },
+  tooltipRemoveBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 6,
+    backgroundColor: "#EF4444",
+    borderRadius: 14,
+    paddingVertical: 12,
+    marginTop: 4,
+  },
+  tooltipRemoveBtnText: { color: "#fff", fontSize: 15 },
   dogCountLabel: { fontSize: 13, marginTop: 6 },
   familyCard: { borderRadius: 16, borderWidth: 1, marginBottom: 28 },
   familyRow: {

@@ -120,7 +120,7 @@ export default function SettingsScreen() {
       {/* Notifications */}
       <View style={[styles.section, { backgroundColor: colors.card, borderColor: colors.border }]}>
         <Text style={[styles.sectionTitle, { color: colors.dark, fontFamily: "Nunito_900Black" }]}>Notifications</Text>
-        <View style={styles.settingRow}>
+        <View style={[styles.settingRow, { opacity: 0.4 }]}>
           <View style={styles.settingInfo}>
             <Feather name="bell" size={18} color={colors.mutedForeground} />
             <Text style={[styles.settingLabel, { color: colors.dark, fontFamily: "Nunito_700Bold" }]}>Push Notifications</Text>
@@ -130,10 +130,11 @@ export default function SettingsScreen() {
             onValueChange={setNotifications}
             trackColor={{ false: colors.muted, true: colors.peach }}
             thumbColor="#fff"
+            disabled
           />
         </View>
         <View style={[styles.divider, { backgroundColor: colors.border }]} />
-        <View style={styles.settingRow}>
+        <View style={[styles.settingRow, { opacity: 0.4 }]}>
           <View style={styles.settingInfo}>
             <Feather name="clock" size={18} color={colors.mutedForeground} />
             <Text style={[styles.settingLabel, { color: colors.dark, fontFamily: "Nunito_700Bold" }]}>Daily Reminder</Text>
@@ -143,6 +144,7 @@ export default function SettingsScreen() {
             onValueChange={handleReminderToggle}
             trackColor={{ false: colors.muted, true: colors.peach }}
             thumbColor="#fff"
+            disabled
           />
         </View>
         {remindersOn && (

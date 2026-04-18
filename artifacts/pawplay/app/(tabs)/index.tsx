@@ -604,32 +604,6 @@ export default function DashboardScreen() {
             ))}
           </View>
         )}
-
-        {sessions.length === 0 && (
-          <View
-            style={[styles.emptyCard, { backgroundColor: colors.lavLight }]}
-          >
-            <Text
-              style={[
-                styles.emptyTitle,
-                { color: colors.dark, fontFamily: "Nunito_900Black" },
-              ]}
-            >
-              No sessions yet!
-            </Text>
-            <Text
-              style={[
-                styles.emptyText,
-                {
-                  color: colors.mutedForeground,
-                  fontFamily: "Nunito_400Regular",
-                },
-              ]}
-            >
-              Start your first training session to see your stats here.
-            </Text>
-          </View>
-        )}
       </ScrollView>
 
       <TouchableOpacity

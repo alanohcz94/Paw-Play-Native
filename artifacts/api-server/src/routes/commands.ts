@@ -35,6 +35,20 @@ router.post("/dogs/:dogId/commands", async (req: Request, res: Response) => {
   res.status(201).json(cmd);
 });
 
+router.delete("/dogs/:dogId/commands/:commandId", async (req: Request, res: Response) => {
+  if (!req.isAuthenticated()) {
+    res.status(401).json({ error: "Unauthorized" });
+    return;
+  }
+  const { dogId, commandId } = req.params;
+  const deleted = await db.delete(commandsTable).where(and(eq(commandsTable.dogId, dogId), eq(commandsTable.id, commandId))).returning();
+  if (deleted.length === 0) {
+    res.status(404).json({ error: "Command not found" });
+    return;
+  }
+  res.json({ success: true });
+});
+
 router.patch("/commands/:dogId/:name", async (req: Request, res: Response) => {
   if (!req.isAuthenticated()) {
     res.status(401).json({ error: "Unauthorized" });
