@@ -1,4 +1,10 @@
-import React, { useState, useCallback, useMemo, useRef, useEffect } from "react";
+import React, {
+  useState,
+  useCallback,
+  useMemo,
+  useRef,
+  useEffect,
+} from "react";
 import {
   View,
   Text,
@@ -147,7 +153,10 @@ export default function DashboardScreen() {
   };
 
   const totalMins = useMemo(
-    () => Math.round(sessions.reduce((sum, s) => sum + (s.durationSeconds || 0), 0) / 60),
+    () =>
+      Math.round(
+        sessions.reduce((sum, s) => sum + (s.durationSeconds || 0), 0) / 60,
+      ),
     [sessions],
   );
   const totalPoints = useMemo(
@@ -156,7 +165,9 @@ export default function DashboardScreen() {
   );
   const todaySessions = useMemo(() => {
     const todayStr = new Date().toDateString();
-    return sessions.filter((s) => new Date(s.createdAt).toDateString() === todayStr);
+    return sessions.filter(
+      (s) => new Date(s.createdAt).toDateString() === todayStr,
+    );
   }, [sessions]);
 
   const topPaddingStyle = useMemo(
@@ -467,8 +478,18 @@ export default function DashboardScreen() {
               >
                 Family Leaderboard
               </Text>
-              <View style={[styles.countBadge, { backgroundColor: colors.lemonLight }]}>
-                <Text style={[styles.countBadgeText, { color: colors.dark, fontFamily: "Nunito_900Black" }]}>
+              <View
+                style={[
+                  styles.countBadge,
+                  { backgroundColor: colors.lemonLight },
+                ]}
+              >
+                <Text
+                  style={[
+                    styles.countBadgeText,
+                    { color: colors.dark, fontFamily: "Nunito_900Black" },
+                  ]}
+                >
                   {leaderboard.reduce((sum, e) => sum + e.totalPoints, 0)} pts
                 </Text>
               </View>
@@ -479,7 +500,8 @@ export default function DashboardScreen() {
                 style={[
                   styles.leaderboardRow,
                   {
-                    backgroundColor: i === 0 ? colors.lavMid : colors.cream,
+                    marginTop: 4,
+                    backgroundColor: i === 0 ? "#9e8fd0" : colors.cream,
                     borderRadius: 14,
                     paddingHorizontal: 12,
                     paddingVertical: 10,
@@ -491,7 +513,8 @@ export default function DashboardScreen() {
                   style={[
                     styles.rankBadge,
                     {
-                      backgroundColor: i === 0 ? colors.lavender : "transparent",
+                      backgroundColor:
+                        i === 0 ? colors.lavender : "transparent",
                     },
                   ]}
                 >
@@ -507,24 +530,51 @@ export default function DashboardScreen() {
                     {i + 1}
                   </Text>
                 </View>
-                <View style={[styles.avatarCircle, { backgroundColor: colors.peachMid }]}>
-                  <Text style={[styles.avatarInitial, { color: colors.peach, fontFamily: "Nunito_900Black" }]}>
-                    {entry.displayName.charAt(0).toUpperCase()}
-                  </Text>
-                </View>
+                <View
+                  style={[
+                    styles.avatarCircle,
+                    { backgroundColor: colors.peachMid },
+                  ]}
+                ></View>
                 <View style={styles.memberInfo}>
-                  <Text style={[styles.memberName, { color: colors.dark, fontFamily: "Nunito_700Bold" }]}>
+                  <Text
+                    style={[
+                      styles.memberName,
+                      { color: colors.dark, fontFamily: "Nunito_700Bold" },
+                    ]}
+                  >
                     {entry.displayName}
                   </Text>
-                  <Text style={[styles.memberStreak, { color: colors.mutedForeground, fontFamily: "Nunito_400Regular" }]}>
+                  <Text
+                    style={[
+                      styles.memberStreak,
+                      {
+                        color: colors.mutedForeground,
+                        fontFamily: "Nunito_400Regular",
+                      },
+                    ]}
+                  >
                     {entry.sessionCount} day streak
                   </Text>
                 </View>
                 <View style={styles.pointsContainer}>
-                  <Text style={[styles.memberPoints, { color: colors.dark, fontFamily: "Nunito_900Black" }]}>
+                  <Text
+                    style={[
+                      styles.memberPoints,
+                      { color: colors.dark, fontFamily: "Nunito_900Black" },
+                    ]}
+                  >
                     {entry.totalPoints.toLocaleString()}
                   </Text>
-                  <Text style={[styles.pointsLabel, { color: colors.mutedForeground, fontFamily: "Nunito_400Regular" }]}>
+                  <Text
+                    style={[
+                      styles.pointsLabel,
+                      {
+                        color: colors.mutedForeground,
+                        fontFamily: "Nunito_400Regular",
+                      },
+                    ]}
+                  >
                     points
                   </Text>
                 </View>
