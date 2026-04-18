@@ -255,36 +255,49 @@ export default function ProfileScreen() {
   const handleRemoveCommand = useCallback(
     async (commandId: string) => {
       if (!dog?.id) return;
-      Alert.alert(
-        "Remove Command",
-        "Are you sure you want to remove this command? All progress will be lost.",
-        [
-          { text: "Cancel", style: "cancel" },
-          {
-            text: "Remove",
-            style: "destructive",
-            onPress: async () => {
-              try {
-                const { getItemAsync } = await import("expo-secure-store");
-                const token = await getItemAsync("auth_session_token");
-                const res = await fetch(`${apiBase}/api/dogs/${dog.id}/commands/${commandId}`, {
-                  method: "DELETE",
-                  headers: { Authorization: `Bearer ${token}` },
-                });
-                if (!res.ok) {
-                  const body = await res.json().catch(() => ({}));
-                  Alert.alert("Error", body.error ?? "Could not remove command. Please try again.");
-                  return;
-                }
-                setSelectedCommandId(null);
-                setCommands(commands.filter((c) => c.id !== commandId));
-              } catch {
-                Alert.alert("Error", "Could not remove command. Please try again.");
-              }
-            },
-          },
-        ],
-      );
+
+      const performDelete = async () => {
+        try {
+          const { getItemAsync } = await import("expo-secure-store");
+          const token = await getItemAsync("auth_session_token");
+          const res = await fetch(`${apiBase}/api/dogs/${dog.id}/commands/${commandId}`, {
+            method: "DELETE",
+            headers: { Authorization: `Bearer ${token}` },
+          });
+          if (!res.ok) {
+            const body = await res.json().catch(() => ({}));
+            const msg = body.error ?? "Could not remove command. Please try again.";
+            if (Platform.OS === "web") {
+              window.alert(msg);
+            } else {
+              Alert.alert("Error", msg);
+            }
+            return;
+          }
+          setSelectedCommandId(null);
+          setCommands(commands.filter((c) => c.id !== commandId));
+        } catch {
+          const msg = "Could not remove command. Please try again.";
+          if (Platform.OS === "web") {
+            window.alert(msg);
+          } else {
+            Alert.alert("Error", msg);
+          }
+        }
+      };
+
+      const message = "Are you sure you want to remove this command? All progress will be lost.";
+      if (Platform.OS === "web") {
+        if (window.confirm(message)) {
+          await performDelete();
+        }
+        return;
+      }
+
+      Alert.alert("Remove Command", message, [
+        { text: "Cancel", style: "cancel" },
+        { text: "Remove", style: "destructive", onPress: performDelete },
+      ]);
     },
     [dog, apiBase, commands, setCommands],
   );

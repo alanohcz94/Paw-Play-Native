@@ -668,8 +668,8 @@ const styles = StyleSheet.create({
   rankText: { fontSize: 14 },
   crownBadge: {
     position: "absolute",
-    bottom: -10,
-    left: "50%",
+    top: 0,
+    left: "0%",
     transform: [{ translateX: -10 }],
   },
   crownText: { fontSize: 18, lineHeight: 22 },
