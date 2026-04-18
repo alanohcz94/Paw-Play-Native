@@ -62,7 +62,7 @@ export default function ChallengeActiveScreen() {
   const flashOpacity = useSharedValue(0);
 
   const animStyle = useAnimatedStyle(() => ({
-    width: `${Math.max(0, timerProgress.value * 100)}%` as any,
+    width: `${Math.max(0, timerProgress.value * 100)}%` as `${number}%`,
     backgroundColor: interpolateColor(
       Math.max(0, timerProgress.value),
       [0, 0.3, 1],

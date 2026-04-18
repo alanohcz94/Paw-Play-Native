@@ -22,6 +22,8 @@ import { useColors } from "@/hooks/useColors";
 import { useApp } from "@/context/AppContext";
 import { useAuth } from "@/lib/auth";
 import DogPicker from "@/components/DogPicker";
+import FamilyLeaderboard from "@/components/FamilyLeaderboard";
+import type { Session, LeaderboardEntry, FeatherIconName } from "@/types/api";
 
 function StatCard({
   label,
@@ -62,8 +64,8 @@ export default function DashboardScreen() {
   const insets = useSafeAreaInsets();
   const { dog, dogs, streak, familyId, loadDogsFromApi } = useApp();
   const { user } = useAuth();
-  const [sessions, setSessions] = useState<any[]>([]);
-  const [leaderboard, setLeaderboard] = useState<any[]>([]);
+  const [sessions, setSessions] = useState<Session[]>([]);
+  const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
   const [refreshing, setRefreshing] = useState(false);
   const [sessionsThisWeek, setSessionsThisWeek] = useState(0);
   const [daysThisWeek, setDaysThisWeek] = useState(0);
@@ -170,10 +172,7 @@ export default function DashboardScreen() {
     );
   }, [sessions]);
 
-  const topPaddingStyle = useMemo(
-    () => ({ paddingTop: insets.top + (Platform.OS === "web" ? 67 : 16) }),
-    [insets.top],
-  );
+  const topPaddingStyle = { paddingTop: insets.top + (Platform.OS === "web" ? 67 : 16) };
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
@@ -273,7 +272,7 @@ export default function DashboardScreen() {
               No activity yet today
             </Text>
           ) : (
-            todaySessions.map((s: any, i: number) => {
+            todaySessions.map((s: Session, i: number) => {
               const isQB = s.mode === "quickbites" || s.mode === "challenge";
               const modeLabel = isQB ? "Quick Bites" : "Training";
               const modeIcon = isQB ? "zap" : "book-open";
@@ -297,7 +296,7 @@ export default function DashboardScreen() {
                   ]}
                 >
                   <Feather
-                    name={modeIcon as any}
+                    name={modeIcon as FeatherIconName}
                     size={16}
                     color={isQB ? colors.peach : colors.mint}
                   />
@@ -462,134 +461,7 @@ export default function DashboardScreen() {
           </Text>
         </TouchableOpacity>
 
-        {leaderboard.length > 0 && (
-          <View
-            style={[
-              styles.card,
-              { backgroundColor: colors.card, borderColor: colors.border },
-            ]}
-          >
-            <View style={styles.cardHeader}>
-              <Text
-                style={[
-                  styles.cardTitle,
-                  { color: colors.dark, fontFamily: "Nunito_900Black" },
-                ]}
-              >
-                Family Leaderboard
-              </Text>
-              <View
-                style={[
-                  styles.countBadge,
-                  { backgroundColor: colors.lemonLight },
-                ]}
-              >
-                <Text
-                  style={[
-                    styles.countBadgeText,
-                    { color: colors.dark, fontFamily: "Nunito_900Black" },
-                  ]}
-                >
-                  {leaderboard.reduce((sum, e) => sum + e.totalPoints, 0)} pts
-                </Text>
-              </View>
-            </View>
-            {leaderboard.map((entry, i) => (
-              <View
-                key={entry.userId}
-                style={[
-                  styles.leaderboardRow,
-                  {
-                    marginTop: 4,
-                    borderBottomWidth: 1,
-                    borderBottomColor: colors.border,
-                    borderRadius: 14,
-                    paddingHorizontal: 12,
-                    paddingVertical: 10,
-                    marginBottom: 8,
-                  },
-                ]}
-              >
-                <View style={{ position: "relative" }}>
-                  <View
-                    style={[
-                      styles.rankBadge,
-                      {
-                        backgroundColor:
-                          i === 0
-                            ? "#FFB800"
-                            : i === 1
-                              ? "#A8A9AD"
-                              : i === 2
-                                ? "#CD7F32"
-                                : "transparent",
-                      },
-                    ]}
-                  >
-                    <Text
-                      style={[
-                        styles.rankText,
-                        {
-                          color: i < 3 ? "#fff" : colors.mutedForeground,
-                          fontFamily: "Nunito_700Bold",
-                        },
-                      ]}
-                    >
-                      {i + 1}
-                    </Text>
-                  </View>
-                  {i < 3 && (
-                    <View style={styles.crownBadge}>
-                      <Text style={styles.crownText}>👑</Text>
-                    </View>
-                  )}
-                </View>
-                <View style={[styles.memberInfo, { marginLeft: 10 }]}>
-                  <Text
-                    style={[
-                      styles.memberName,
-                      { color: colors.dark, fontFamily: "Nunito_700Bold" },
-                    ]}
-                  >
-                    {entry.displayName}
-                  </Text>
-                  <Text
-                    style={[
-                      styles.memberStreak,
-                      {
-                        color: colors.mutedForeground,
-                        fontFamily: "Nunito_400Regular",
-                      },
-                    ]}
-                  >
-                    {entry.sessionCount} day streak
-                  </Text>
-                </View>
-                <View style={styles.pointsContainer}>
-                  <Text
-                    style={[
-                      styles.memberPoints,
-                      { color: colors.dark, fontFamily: "Nunito_900Black" },
-                    ]}
-                  >
-                    {entry.totalPoints.toLocaleString()}
-                  </Text>
-                  <Text
-                    style={[
-                      styles.pointsLabel,
-                      {
-                        color: colors.mutedForeground,
-                        fontFamily: "Nunito_400Regular",
-                      },
-                    ]}
-                  >
-                    points
-                  </Text>
-                </View>
-              </View>
-            ))}
-          </View>
-        )}
+        <FamilyLeaderboard leaderboard={leaderboard} />
       </ScrollView>
 
       <TouchableOpacity
@@ -653,40 +525,6 @@ const styles = StyleSheet.create({
   dayCell: { alignItems: "center", gap: 4 },
   dayDot: { width: 10, height: 10, borderRadius: 5 },
   dayLabel: { fontSize: 11 },
-  leaderboardRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 10,
-  },
-  rankBadge: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  rankText: { fontSize: 14 },
-  crownBadge: {
-    position: "absolute",
-    bottom: -10,
-    left: "50%",
-    transform: [{ translateX: -10 }],
-  },
-  crownText: { fontSize: 18, lineHeight: 22 },
-  avatarCircle: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  avatarInitial: { fontSize: 16 },
-  memberInfo: { flex: 1 },
-  memberName: { fontSize: 15 },
-  memberStreak: { fontSize: 12, marginTop: 1 },
-  pointsContainer: { alignItems: "flex-end" },
-  memberPoints: { fontSize: 16 },
-  pointsLabel: { fontSize: 11, marginTop: 1 },
   emptyCard: { borderRadius: 20, padding: 24, alignItems: "center", gap: 8 },
   emptyTitle: { fontSize: 18 },
   emptyText: { fontSize: 14, textAlign: "center", lineHeight: 22 },

@@ -93,6 +93,100 @@ const ACHIEVEMENT_TYPES = [
   { type: "month_pawfect" },
 ];
 
+const PRESET_SUGGESTIONS = [
+  "Shake", "Hi-5", "Hop/Over", "Up", "Home",
+  "Roll Over", "Spin", "Fetch", "Drop It", "Wait",
+];
+const ALL_SUGGESTIONS = [...ALL_COMMANDS, ...PRESET_SUGGESTIONS];
+
+function AddCommandPanel({
+  commands,
+  addingCommand,
+  customCommandInput,
+  setCustomCommandInput,
+  onAddCommand,
+}: {
+  commands: import("@/context/AppContext").Command[];
+  addingCommand: string | null;
+  customCommandInput: string;
+  setCustomCommandInput: (v: string) => void;
+  onAddCommand: (name: string) => void;
+}) {
+  const colors = useColors();
+  const ownedNames = useMemo(() => new Set(commands.map((c) => c.name)), [commands]);
+  const available = useMemo(
+    () => ALL_SUGGESTIONS.filter((cmd) => !ownedNames.has(cmd)),
+    [ownedNames],
+  );
+
+  return (
+    <View style={[styles.addCommandPanel, { backgroundColor: colors.card, borderColor: colors.border }]}>
+      <Text style={[styles.addCommandHint, { color: colors.mutedForeground, fontFamily: "Nunito_400Regular" }]}>
+        Tap a suggestion or type your own
+      </Text>
+      {available.length > 0 && (
+        <View style={styles.commandsGrid}>
+          {available.map((cmd) => (
+            <TouchableOpacity
+              key={cmd}
+              style={[
+                styles.commandChip,
+                {
+                  backgroundColor: colors.peachLight,
+                  borderColor: colors.peach,
+                  borderWidth: 1.5,
+                  opacity: addingCommand === cmd ? 0.5 : 1,
+                },
+              ]}
+              onPress={() => onAddCommand(cmd)}
+              disabled={!!addingCommand}
+              activeOpacity={0.75}
+            >
+              <Text style={[styles.commandChipText, { color: colors.peach, fontFamily: "Nunito_700Bold" }]}>
+                {addingCommand === cmd ? "Adding…" : `+ ${cmd}`}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+      )}
+      <View style={[styles.customInputRow, { borderTopColor: colors.border }]}>
+        <TextInput
+          style={[
+            styles.customInput,
+            {
+              backgroundColor: colors.background,
+              borderColor: colors.border,
+              color: colors.dark,
+              fontFamily: "Nunito_400Regular",
+            },
+          ]}
+          value={customCommandInput}
+          onChangeText={setCustomCommandInput}
+          placeholder="Custom command…"
+          placeholderTextColor={colors.mutedForeground}
+          autoCapitalize="words"
+          returnKeyType="done"
+          onSubmitEditing={() => {
+            const trimmed = customCommandInput.trim();
+            if (trimmed) { onAddCommand(trimmed); setCustomCommandInput(""); }
+          }}
+        />
+        <TouchableOpacity
+          style={[styles.customInputBtn, { backgroundColor: colors.peach, opacity: customCommandInput.trim() ? 1 : 0.4 }]}
+          onPress={() => {
+            const trimmed = customCommandInput.trim();
+            if (trimmed) { onAddCommand(trimmed); setCustomCommandInput(""); }
+          }}
+          disabled={!customCommandInput.trim() || !!addingCommand}
+          activeOpacity={0.8}
+        >
+          <Feather name="plus" size={18} color="#fff" />
+        </TouchableOpacity>
+      </View>
+    </View>
+  );
+}
+
 export default function ProfileScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
@@ -133,7 +227,9 @@ export default function ProfileScreen() {
           const { entries } = await res.json();
           setFamilyMembers(entries);
         }
-      } catch {}
+      } catch (e) {
+        console.warn("Failed to load family members:", e);
+      }
     };
     load();
   }, [familyId]);
@@ -320,22 +416,22 @@ export default function ProfileScreen() {
     [dog, addingCommand, apiBase, setCommands],
   );
 
-  const selectedCmd = selectedCommandId
-    ? (commands.find((c) => c.id === selectedCommandId) ?? null)
-    : null;
-  const ttReps = selectedCmd
-    ? selectedCmd.trainingSessionsCount + selectedCmd.qbSuccessesCount
-    : 0;
-  const ttMastery: MasteryLevel = selectedCmd
-    ? getCommandMastery(selectedCmd)
-    : "added";
-  const ttMc = MASTERY_COLORS[ttMastery];
-  const ttNextTarget = ttMastery === "added" ? 1 : 100;
-  const ttNextLabel = ttMastery === "added" ? "Learning" : "Reliable";
-  const ttPct =
-    ttMastery === "reliable"
-      ? 100
-      : Math.min(100, Math.round((ttReps / ttNextTarget) * 100));
+  const tooltipData = useMemo(() => {
+    const cmd = selectedCommandId
+      ? (commands.find((c) => c.id === selectedCommandId) ?? null)
+      : null;
+    if (!cmd) return null;
+    const reps = cmd.trainingSessionsCount + cmd.qbSuccessesCount;
+    const mastery = getCommandMastery(cmd);
+    const mc = MASTERY_COLORS[mastery];
+    const nextTarget = mastery === "added" ? 1 : 100;
+    const nextLabel = mastery === "added" ? "Learning" : "Reliable";
+    const pct =
+      mastery === "reliable"
+        ? 100
+        : Math.min(100, Math.round((reps / nextTarget) * 100));
+    return { cmd, reps, mastery, mc, nextTarget, nextLabel, pct };
+  }, [selectedCommandId, commands]);
 
   return (
     <>
@@ -664,130 +760,15 @@ export default function ProfileScreen() {
           </TouchableOpacity>
         </View>
 
-        {showAddCommands &&
-          (() => {
-            const PRESET_SUGGESTIONS = [
-              "Shake",
-              "Hi-5",
-              "Hop/Over",
-              "Up",
-              "Home",
-              "Roll Over",
-              "Spin",
-              "Fetch",
-              "Drop It",
-              "Wait",
-            ];
-            const ALL_SUGGESTIONS = [...ALL_COMMANDS, ...PRESET_SUGGESTIONS];
-            const ownedNames = new Set(commands.map((c) => c.name));
-            const available = ALL_SUGGESTIONS.filter(
-              (cmd) => !ownedNames.has(cmd),
-            );
-            return (
-              <View
-                style={[
-                  styles.addCommandPanel,
-                  { backgroundColor: colors.card, borderColor: colors.border },
-                ]}
-              >
-                <Text
-                  style={[
-                    styles.addCommandHint,
-                    {
-                      color: colors.mutedForeground,
-                      fontFamily: "Nunito_400Regular",
-                    },
-                  ]}
-                >
-                  Tap a suggestion or type your own
-                </Text>
-                {available.length > 0 && (
-                  <View style={styles.commandsGrid}>
-                    {available.map((cmd) => (
-                      <TouchableOpacity
-                        key={cmd}
-                        style={[
-                          styles.commandChip,
-                          {
-                            backgroundColor: colors.peachLight,
-                            borderColor: colors.peach,
-                            borderWidth: 1.5,
-                            opacity: addingCommand === cmd ? 0.5 : 1,
-                          },
-                        ]}
-                        onPress={() => handleAddCommand(cmd)}
-                        disabled={!!addingCommand}
-                        activeOpacity={0.75}
-                      >
-                        <Text
-                          style={[
-                            styles.commandChipText,
-                            {
-                              color: colors.peach,
-                              fontFamily: "Nunito_700Bold",
-                            },
-                          ]}
-                        >
-                          {addingCommand === cmd ? "Adding…" : `+ ${cmd}`}
-                        </Text>
-                      </TouchableOpacity>
-                    ))}
-                  </View>
-                )}
-                <View
-                  style={[
-                    styles.customInputRow,
-                    { borderTopColor: colors.border },
-                  ]}
-                >
-                  <TextInput
-                    style={[
-                      styles.customInput,
-                      {
-                        backgroundColor: colors.background,
-                        borderColor: colors.border,
-                        color: colors.dark,
-                        fontFamily: "Nunito_400Regular",
-                      },
-                    ]}
-                    value={customCommandInput}
-                    onChangeText={setCustomCommandInput}
-                    placeholder="Custom command…"
-                    placeholderTextColor={colors.mutedForeground}
-                    autoCapitalize="words"
-                    returnKeyType="done"
-                    onSubmitEditing={() => {
-                      const trimmed = customCommandInput.trim();
-                      if (trimmed) {
-                        handleAddCommand(trimmed);
-                        setCustomCommandInput("");
-                      }
-                    }}
-                  />
-                  <TouchableOpacity
-                    style={[
-                      styles.customInputBtn,
-                      {
-                        backgroundColor: colors.peach,
-                        opacity: customCommandInput.trim() ? 1 : 0.4,
-                      },
-                    ]}
-                    onPress={() => {
-                      const trimmed = customCommandInput.trim();
-                      if (trimmed) {
-                        handleAddCommand(trimmed);
-                        setCustomCommandInput("");
-                      }
-                    }}
-                    disabled={!customCommandInput.trim() || !!addingCommand}
-                    activeOpacity={0.8}
-                  >
-                    <Feather name="plus" size={18} color="#fff" />
-                  </TouchableOpacity>
-                </View>
-              </View>
-            );
-          })()}
+        {showAddCommands && (
+          <AddCommandPanel
+            commands={commands}
+            addingCommand={addingCommand}
+            customCommandInput={customCommandInput}
+            setCustomCommandInput={setCustomCommandInput}
+            onAddCommand={handleAddCommand}
+          />
+        )}
 
         {level3Count > 0 && (
           <View
@@ -1010,37 +991,34 @@ export default function ProfileScreen() {
           <Pressable
             style={[
               styles.tooltipCard,
-              { backgroundColor: colors.card, borderColor: ttMc.border },
+              { backgroundColor: colors.card, borderColor: tooltipData?.mc.border ?? colors.border },
             ]}
             onPress={() => {}}
           >
-            {selectedCmd && (
+            {tooltipData && (
               <>
                 <View style={styles.tooltipHeader}>
                   <Text
                     style={[
                       styles.tooltipTitle,
-                      {
-                        color: colors.dark,
-                        fontFamily: "FredokaOne_400Regular",
-                      },
+                      { color: colors.dark, fontFamily: "FredokaOne_400Regular" },
                     ]}
                   >
-                    {selectedCmd.name}
+                    {tooltipData.cmd.name}
                   </Text>
                   <View
                     style={[
                       styles.tooltipBadge,
-                      { backgroundColor: ttMc.bg, borderColor: ttMc.border },
+                      { backgroundColor: tooltipData.mc.bg, borderColor: tooltipData.mc.border },
                     ]}
                   >
                     <Text
                       style={[
                         styles.tooltipBadgeText,
-                        { color: ttMc.text, fontFamily: "Nunito_700Bold" },
+                        { color: tooltipData.mc.text, fontFamily: "Nunito_700Bold" },
                       ]}
                     >
-                      {MASTERY_LABELS[ttMastery]}
+                      {MASTERY_LABELS[tooltipData.mastery]}
                     </Text>
                   </View>
                 </View>
@@ -1048,10 +1026,7 @@ export default function ProfileScreen() {
                 <Text
                   style={[
                     styles.tooltipReps,
-                    {
-                      color: colors.mutedForeground,
-                      fontFamily: "Nunito_400Regular",
-                    },
+                    { color: colors.mutedForeground, fontFamily: "Nunito_400Regular" },
                   ]}
                 >
                   Total reps
@@ -1062,44 +1037,36 @@ export default function ProfileScreen() {
                     { color: colors.dark, fontFamily: "FredokaOne_400Regular" },
                   ]}
                 >
-                  {ttReps}
+                  {tooltipData.reps}
                 </Text>
 
-                {ttMastery !== "reliable" && (
+                {tooltipData.mastery !== "reliable" && (
                   <>
                     <View style={styles.tooltipProgressRow}>
                       <Text
                         style={[
                           styles.tooltipProgressLabel,
-                          {
-                            color: colors.mutedForeground,
-                            fontFamily: "Nunito_700Bold",
-                          },
+                          { color: colors.mutedForeground, fontFamily: "Nunito_700Bold" },
                         ]}
                       >
-                        {ttReps} / {ttNextTarget} → {ttNextLabel}
+                        {tooltipData.reps} / {tooltipData.nextTarget} → {tooltipData.nextLabel}
                       </Text>
                       <Text
                         style={[
                           styles.tooltipProgressPct,
-                          { color: ttMc.text, fontFamily: "Nunito_900Black" },
+                          { color: tooltipData.mc.text, fontFamily: "Nunito_900Black" },
                         ]}
                       >
-                        {ttPct}%
+                        {tooltipData.pct}%
                       </Text>
                     </View>
-                    <View
-                      style={[
-                        styles.tooltipTrack,
-                        { backgroundColor: colors.muted },
-                      ]}
-                    >
+                    <View style={[styles.tooltipTrack, { backgroundColor: colors.muted }]}>
                       <View
                         style={[
                           styles.tooltipFill,
                           {
-                            width: `${ttPct}%` as any,
-                            backgroundColor: ttMc.border,
+                            width: `${tooltipData.pct}%` as `${number}%`,
+                            backgroundColor: tooltipData.mc.border,
                           },
                         ]}
                       />
@@ -1107,18 +1074,9 @@ export default function ProfileScreen() {
                   </>
                 )}
 
-                {ttMastery === "reliable" && (
-                  <View
-                    style={[
-                      styles.tooltipReliableBanner,
-                      { backgroundColor: colors.mintLight },
-                    ]}
-                  >
-                    <Feather
-                      name="check-circle"
-                      size={16}
-                      color={colors.mint}
-                    />
+                {tooltipData.mastery === "reliable" && (
+                  <View style={[styles.tooltipReliableBanner, { backgroundColor: colors.mintLight }]}>
+                    <Feather name="check-circle" size={16} color={colors.mint} />
                     <Text
                       style={[
                         styles.tooltipReliableText,
@@ -1138,15 +1096,12 @@ export default function ProfileScreen() {
                         { color: colors.peach, fontFamily: "Nunito_900Black" },
                       ]}
                     >
-                      {selectedCmd.trainingSessionsCount}
+                      {tooltipData.cmd.trainingSessionsCount}
                     </Text>
                     <Text
                       style={[
                         styles.tooltipStatLabel,
-                        {
-                          color: colors.mutedForeground,
-                          fontFamily: "Nunito_400Regular",
-                        },
+                        { color: colors.mutedForeground, fontFamily: "Nunito_400Regular" },
                       ]}
                     >
                       Training reps
@@ -1156,21 +1111,15 @@ export default function ProfileScreen() {
                     <Text
                       style={[
                         styles.tooltipStatValue,
-                        {
-                          color: colors.lavender,
-                          fontFamily: "Nunito_900Black",
-                        },
+                        { color: colors.lavender, fontFamily: "Nunito_900Black" },
                       ]}
                     >
-                      {selectedCmd.qbSuccessesCount}
+                      {tooltipData.cmd.qbSuccessesCount}
                     </Text>
                     <Text
                       style={[
                         styles.tooltipStatLabel,
-                        {
-                          color: colors.mutedForeground,
-                          fontFamily: "Nunito_400Regular",
-                        },
+                        { color: colors.mutedForeground, fontFamily: "Nunito_400Regular" },
                       ]}
                     >
                       Quick Bites hits
@@ -1179,26 +1128,18 @@ export default function ProfileScreen() {
                 </View>
 
                 <TouchableOpacity
-                  style={[styles.tooltipRemoveBtn]}
-                  onPress={() => handleRemoveCommand(selectedCmd.id)}
+                  style={styles.tooltipRemoveBtn}
+                  onPress={() => handleRemoveCommand(tooltipData.cmd.id)}
                   activeOpacity={0.7}
                 >
                   <Feather name="trash-2" size={15} color="#fff" />
-                  <Text
-                    style={[
-                      styles.tooltipRemoveBtnText,
-                      { fontFamily: "Nunito_700Bold" },
-                    ]}
-                  >
+                  <Text style={[styles.tooltipRemoveBtnText, { fontFamily: "Nunito_700Bold" }]}>
                     Remove Command
                   </Text>
                 </TouchableOpacity>
 
                 <TouchableOpacity
-                  style={[
-                    styles.tooltipCloseBtn,
-                    { borderColor: colors.border },
-                  ]}
+                  style={[styles.tooltipCloseBtn, { borderColor: colors.border }]}
                   onPress={() => setSelectedCommandId(null)}
                   activeOpacity={0.7}
                 >

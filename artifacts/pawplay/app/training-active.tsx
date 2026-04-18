@@ -68,8 +68,8 @@ export default function TrainingActiveScreen() {
   const reps = parseInt(repsParam ?? "5");
   const variableSchedule = vsParam === "1";
 
-  const markerCue = (dog as any)?.markerCue ?? "Yes";
-  const releaseCue = (dog as any)?.releaseCue ?? "Free";
+  const markerCue = dog?.markerCue ?? "Yes";
+  const releaseCue = dog?.releaseCue ?? "Free";
 
   const [currentRep, setCurrentRep] = useState(1);
   const [phase, setPhase] = useState<TrainingPhase>("countdown");

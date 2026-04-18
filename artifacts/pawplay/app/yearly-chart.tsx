@@ -11,8 +11,9 @@ import { useApp } from "@/context/AppContext";
 const MONTH_SHORT = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
 interface MonthData { month: number; hours: number; sessions: number; }
+type Colors = ReturnType<typeof useColors>;
 
-function Bar({ data, maxHours, currentMonth, colors, index }: { data: MonthData; maxHours: number; currentMonth: number; colors: any; index: number }) {
+function Bar({ data, maxHours, currentMonth, colors, index }: { data: MonthData; maxHours: number; currentMonth: number; colors: Colors; index: number }) {
   const animValue = useRef(new Animated.Value(0)).current;
   const isCurrent = data.month === currentMonth;
   const isPast = data.month < currentMonth;
@@ -81,7 +82,9 @@ export default function YearlyChartScreen() {
           setTotalHours(data.totalHours);
           setBestMonth(data.bestMonth);
         }
-      } catch (e) {}
+      } catch (e) {
+        console.warn("Failed to load yearly chart data:", e);
+      }
     };
     load();
   }, [familyId]);
