@@ -501,7 +501,8 @@ export default function DashboardScreen() {
                   styles.leaderboardRow,
                   {
                     marginTop: 4,
-                    backgroundColor: i === 0 ? "#9e8fd0" : colors.cream,
+                    borderBottomWidth: 1,
+                    borderBottomColor: colors.border,
                     borderRadius: 14,
                     paddingHorizontal: 12,
                     paddingVertical: 10,
@@ -548,6 +549,8 @@ export default function DashboardScreen() {
                               : i === 1
                                 ? "#A8A9AD"
                                 : "#CD7F32",
+                          marginTop: 8,
+                          marginLeft: 12,
                         },
                       ]}
                     >
@@ -555,13 +558,7 @@ export default function DashboardScreen() {
                     </View>
                   )}
                 </View>
-                <View
-                  style={[
-                    styles.avatarCircle,
-                    { backgroundColor: colors.peachMid },
-                  ]}
-                ></View>
-                <View style={styles.memberInfo}>
+                <View style={[styles.memberInfo, { marginLeft: 10 }]}>
                   <Text
                     style={[
                       styles.memberName,

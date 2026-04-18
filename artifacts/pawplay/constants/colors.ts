@@ -32,6 +32,8 @@ const colors = {
     sky: "#3DA0F5",
     skyLight: "#EBF5FF",
     cream: "#FFFAF4",
+    creamDark: "#B6A486",
+    creamMid: "#D1C6B3",
     dark: "#2D2D2D",
   },
   radius: 16,
