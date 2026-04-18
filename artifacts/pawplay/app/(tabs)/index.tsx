@@ -539,21 +539,7 @@ export default function DashboardScreen() {
                     </Text>
                   </View>
                   {i < 3 && (
-                    <View
-                      style={[
-                        styles.crownBadge,
-                        {
-                          backgroundColor:
-                            i === 0
-                              ? "#FFB800"
-                              : i === 1
-                                ? "#A8A9AD"
-                                : "#CD7F32",
-                          marginTop: 8,
-                          marginLeft: 12,
-                        },
-                      ]}
-                    >
+                    <View style={styles.crownBadge}>
                       <Text style={styles.crownText}>👑</Text>
                     </View>
                   )}
@@ -682,18 +668,11 @@ const styles = StyleSheet.create({
   rankText: { fontSize: 14 },
   crownBadge: {
     position: "absolute",
-    bottom: -6,
+    bottom: -10,
     left: "50%",
-    transform: [{ translateX: -9 }],
-    width: 18,
-    height: 18,
-    borderRadius: 9,
-    alignItems: "center",
-    justifyContent: "center",
-    borderWidth: 1.5,
-    borderColor: "#fff",
+    transform: [{ translateX: -10 }],
   },
-  crownText: { fontSize: 9, lineHeight: 12 },
+  crownText: { fontSize: 18, lineHeight: 22 },
   avatarCircle: {
     width: 36,
     height: 36,

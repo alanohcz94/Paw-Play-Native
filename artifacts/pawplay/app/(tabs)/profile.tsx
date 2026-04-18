@@ -96,7 +96,7 @@ const ACHIEVEMENT_TYPES = [
 export default function ProfileScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
-  const { dog, dogs, commands, streak, setDog, setCommands, familyId } =
+  const { dog, commands, streak, setDog, setCommands, familyId } =
     useApp();
   const { user } = useAuth();
   const [familyMembers, setFamilyMembers] = useState<
@@ -264,14 +264,19 @@ export default function ProfileScreen() {
             text: "Remove",
             style: "destructive",
             onPress: async () => {
-              setSelectedCommandId(null);
               try {
                 const { getItemAsync } = await import("expo-secure-store");
                 const token = await getItemAsync("auth_session_token");
-                await fetch(`${apiBase}/api/dogs/${dog.id}/commands/${commandId}`, {
+                const res = await fetch(`${apiBase}/api/dogs/${dog.id}/commands/${commandId}`, {
                   method: "DELETE",
                   headers: { Authorization: `Bearer ${token}` },
                 });
+                if (!res.ok) {
+                  const body = await res.json().catch(() => ({}));
+                  Alert.alert("Error", body.error ?? "Could not remove command. Please try again.");
+                  return;
+                }
+                setSelectedCommandId(null);
                 setCommands(commands.filter((c) => c.id !== commandId));
               } catch {
                 Alert.alert("Error", "Could not remove command. Please try again.");
@@ -281,7 +286,7 @@ export default function ProfileScreen() {
         ],
       );
     },
-    [dog, apiBase, setCommands],
+    [dog, apiBase, commands, setCommands],
   );
 
   const handleAddCommand = useCallback(
