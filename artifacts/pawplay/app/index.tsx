@@ -1,5 +1,11 @@
 import React, { useEffect } from "react";
-import { View, Text, StyleSheet, TouchableOpacity, Platform } from "react-native";
+import {
+  View,
+  Text,
+  StyleSheet,
+  TouchableOpacity,
+  Platform,
+} from "react-native";
 import { router } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Feather } from "@expo/vector-icons";
@@ -9,14 +15,21 @@ import { useColors } from "@/hooks/useColors";
 import { LinearGradient } from "expo-linear-gradient";
 
 const FEATURES = [
-  { icon: "zap" as const,      label: "Gamified training sessions" },
-  { icon: "users" as const,    label: "Train as a family together" },
-  { icon: "award" as const,    label: "Earn achievements & streaks" },
+  { icon: "zap" as const, label: "Gamified training sessions" },
+  { icon: "users" as const, label: "Train as a family together" },
+  { icon: "award" as const, label: "Earn achievements & streaks" },
 ];
 
 export default function WelcomeScreen() {
   const { isAuthenticated, isLoading, login, user } = useAuth();
-  const { onboardingComplete, familyId, loadDogsFromApi, setFamilyId, setOnboardingComplete, setDogs } = useApp();
+  const {
+    onboardingComplete,
+    familyId,
+    loadDogsFromApi,
+    setFamilyId,
+    setOnboardingComplete,
+    setDogs,
+  } = useApp();
   const colors = useColors();
   const insets = useSafeAreaInsets();
 
@@ -29,8 +42,12 @@ export default function WelcomeScreen() {
           return;
         }
         try {
-          const token = await import("expo-secure-store").then((m) => m.getItemAsync("auth_session_token"));
-          const apiBase = process.env.EXPO_PUBLIC_DOMAIN ? `https://${process.env.EXPO_PUBLIC_DOMAIN}` : "";
+          const token = await import("expo-secure-store").then((m) =>
+            m.getItemAsync("auth_session_token"),
+          );
+          const apiBase = process.env.EXPO_PUBLIC_DOMAIN
+            ? `https://${process.env.EXPO_PUBLIC_DOMAIN}`
+            : "";
           const res = await fetch(`${apiBase}/api/users/${user.id}`, {
             headers: { Authorization: `Bearer ${token}` },
           });
@@ -39,9 +56,12 @@ export default function WelcomeScreen() {
             if (pawplayUser?.familyId) {
               setFamilyId(pawplayUser.familyId);
               setOnboardingComplete(true);
-              const dogsRes = await fetch(`${apiBase}/api/family/${pawplayUser.familyId}/dogs`, {
-                headers: { Authorization: `Bearer ${token}` },
-              });
+              const dogsRes = await fetch(
+                `${apiBase}/api/family/${pawplayUser.familyId}/dogs`,
+                {
+                  headers: { Authorization: `Bearer ${token}` },
+                },
+              );
               if (dogsRes.ok) {
                 const { dogs: fetchedDogs } = await dogsRes.json();
                 setDogs(fetchedDogs);
@@ -59,13 +79,25 @@ export default function WelcomeScreen() {
     }
   }, [isAuthenticated, isLoading, user?.id]);
 
-  if (isLoading) {
-    return (
-      <View style={[styles.loadingContainer, { backgroundColor: colors.background }]}>
-        <Text style={[styles.appName, { color: colors.peach, fontFamily: "FredokaOne_400Regular" }]}>QuickMix</Text>
-      </View>
-    );
-  }
+  // if (isLoading) {
+  //   return (
+  //     <View
+  //       style={[
+  //         styles.loadingContainer,
+  //         { backgroundColor: colors.background },
+  //       ]}
+  //     >
+  //       <Text
+  //         style={[
+  //           styles.appName,
+  //           { color: colors.peach, fontFamily: "FredokaOne_400Regular" },
+  //         ]}
+  //       >
+  //         QuickMix
+  //       </Text>
+  //     </View>
+  //   );
+  // }
 
   if (isAuthenticated) return null;
 
@@ -82,31 +114,61 @@ export default function WelcomeScreen() {
     >
       {/* Hero */}
       <View style={styles.heroSection}>
-        <View style={[styles.pawIconContainer, { backgroundColor: colors.peach }]}>
+        <View
+          style={[styles.pawIconContainer, { backgroundColor: colors.peach }]}
+        >
           <Text style={styles.pawEmoji}>🐾</Text>
         </View>
-        <Text style={[styles.appName, { color: colors.dark, fontFamily: "FredokaOne_400Regular" }]}>
+        <Text
+          style={[
+            styles.appName,
+            { color: colors.dark, fontFamily: "FredokaOne_400Regular" },
+          ]}
+        >
           QuickMix
         </Text>
-        <Text style={[styles.tagline, { color: colors.mutedForeground, fontFamily: "Nunito_700Bold" }]}>
+        <Text
+          style={[
+            styles.tagline,
+            { color: colors.mutedForeground, fontFamily: "Nunito_700Bold" },
+          ]}
+        >
           Gamified dog training for the whole family
         </Text>
       </View>
 
       {/* Feature highlights */}
-      <View style={[styles.featuresCard, { backgroundColor: "rgba(255,255,255,0.7)" }]}>
+      <View
+        style={[
+          styles.featuresCard,
+          { backgroundColor: "rgba(255,255,255,0.7)" },
+        ]}
+      >
         {FEATURES.map((f, i) => (
           <View
             key={f.label}
             style={[
               styles.featureRow,
-              i < FEATURES.length - 1 && { borderBottomWidth: 1, borderBottomColor: "rgba(0,0,0,0.06)" },
+              i < FEATURES.length - 1 && {
+                borderBottomWidth: 1,
+                borderBottomColor: "rgba(0,0,0,0.06)",
+              },
             ]}
           >
-            <View style={[styles.featureIcon, { backgroundColor: colors.peachLight }]}>
+            <View
+              style={[
+                styles.featureIcon,
+                { backgroundColor: colors.peachLight },
+              ]}
+            >
               <Feather name={f.icon} size={16} color={colors.peach} />
             </View>
-            <Text style={[styles.featureLabel, { color: colors.dark, fontFamily: "Nunito_700Bold" }]}>
+            <Text
+              style={[
+                styles.featureLabel,
+                { color: colors.dark, fontFamily: "Nunito_700Bold" },
+              ]}
+            >
               {f.label}
             </Text>
           </View>
@@ -121,7 +183,11 @@ export default function WelcomeScreen() {
           activeOpacity={0.85}
         >
           <Feather name="play-circle" size={20} color="#fff" />
-          <Text style={[styles.primaryBtnText, { fontFamily: "Nunito_900Black" }]}>Try a Quick Demo</Text>
+          <Text
+            style={[styles.primaryBtnText, { fontFamily: "Nunito_900Black" }]}
+          >
+            Try a Quick Demo
+          </Text>
         </TouchableOpacity>
 
         <TouchableOpacity
@@ -130,7 +196,12 @@ export default function WelcomeScreen() {
           activeOpacity={0.8}
         >
           <Feather name="log-in" size={18} color={colors.peach} />
-          <Text style={[styles.secondaryBtnText, { color: colors.peach, fontFamily: "Nunito_700Bold" }]}>
+          <Text
+            style={[
+              styles.secondaryBtnText,
+              { color: colors.peach, fontFamily: "Nunito_700Bold" },
+            ]}
+          >
             Already have an account? Sign in
           </Text>
         </TouchableOpacity>
