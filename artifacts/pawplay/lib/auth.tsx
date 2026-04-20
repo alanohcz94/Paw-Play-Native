@@ -1,11 +1,24 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, type ReactNode } from "react";
+import { Platform } from "react-native";
+import * as AuthSession from "expo-auth-session";
 import * as WebBrowser from "expo-web-browser";
 import * as SecureStore from "expo-secure-store";
+import Constants from "expo-constants";
 
 WebBrowser.maybeCompleteAuthSession();
 
 const AUTH_TOKEN_KEY = "auth_session_token";
+const ISSUER_URL = process.env.EXPO_PUBLIC_ISSUER_URL ?? "https://replit.com/oidc";
 const MOBILE_RETURN_SCHEME = "pawplay://auth-callback";
+
+// Use the new server-bridged flow only in standalone native builds
+// (TestFlight / App Store / Google Play). In Expo Go and web preview, fall
+// back to the original on-device PKCE flow that works in those environments.
+function shouldUseServerBridgedFlow(): boolean {
+  if (Platform.OS === "web") return false;
+  const env = Constants.executionEnvironment;
+  return env === "standalone" || env === "bare";
+}
 
 interface User {
   id: string;
@@ -38,6 +51,10 @@ function getApiBaseUrl(): string {
   return "";
 }
 
+function getClientId(): string {
+  return process.env.EXPO_PUBLIC_REPL_ID || "";
+}
+
 function parseTokenFromReturnUrl(url: string): string | null {
   try {
     const queryIndex = url.indexOf("?");
@@ -52,6 +69,21 @@ function parseTokenFromReturnUrl(url: string): string | null {
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+
+  const useServerBridge = shouldUseServerBridgedFlow();
+
+  // Legacy on-device PKCE flow (used in web/Expo Go for backwards compatibility)
+  const discovery = AuthSession.useAutoDiscovery(ISSUER_URL);
+  const redirectUri = AuthSession.makeRedirectUri();
+  const [request, response, promptAsync] = AuthSession.useAuthRequest(
+    {
+      clientId: getClientId(),
+      scopes: ["openid", "email", "profile", "offline_access"],
+      redirectUri,
+      prompt: AuthSession.Prompt.Login,
+    },
+    discovery,
+  );
 
   const fetchUser = useCallback(async () => {
     try {
@@ -85,7 +117,67 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     fetchUser();
   }, [fetchUser]);
 
+  // Legacy flow: handle the OIDC response from expo-auth-session and
+  // exchange the authorization code via the server.
+  useEffect(() => {
+    if (useServerBridge) return;
+    if (response?.type !== "success" || !request?.codeVerifier) return;
+
+    const { code, state } = response.params;
+
+    (async () => {
+      try {
+        const apiBase = getApiBaseUrl();
+        if (!apiBase) {
+          console.error("API base URL is not configured.");
+          return;
+        }
+
+        const exchangeRes = await fetch(`${apiBase}/api/mobile-auth/token-exchange`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            code,
+            code_verifier: request.codeVerifier,
+            redirect_uri: redirectUri,
+            state,
+            nonce: request.nonce,
+          }),
+        });
+
+        if (!exchangeRes.ok) {
+          console.error("Token exchange failed:", exchangeRes.status);
+          setIsLoading(false);
+          return;
+        }
+
+        const data = await exchangeRes.json();
+        if (data.token) {
+          await SecureStore.setItemAsync(AUTH_TOKEN_KEY, data.token);
+          setIsLoading(true);
+          await fetchUser();
+        }
+      } catch (err) {
+        console.error("Token exchange error:", err);
+        setIsLoading(false);
+      }
+    })();
+  }, [useServerBridge, response, request, redirectUri, fetchUser]);
+
   const login = useCallback(async () => {
+    if (!useServerBridge) {
+      // Legacy flow for web / Expo Go
+      try {
+        await promptAsync();
+      } catch (err) {
+        console.error("Login error:", err);
+      }
+      return;
+    }
+
+    // Server-bridged flow for standalone native builds (TestFlight, App Store,
+    // Google Play). Avoids sending custom-scheme redirect_uri to Replit OIDC,
+    // which only allowlists HTTPS URIs tied to the repl's domains.
     try {
       const apiBase = getApiBaseUrl();
       if (!apiBase) {
@@ -116,7 +208,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     } catch (err) {
       console.error("Login error:", err);
     }
-  }, [fetchUser]);
+  }, [useServerBridge, promptAsync, fetchUser]);
 
   const logout = useCallback(async () => {
     try {
