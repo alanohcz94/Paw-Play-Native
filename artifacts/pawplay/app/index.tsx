@@ -21,7 +21,7 @@ const FEATURES = [
 ];
 
 export default function WelcomeScreen() {
-  const { isAuthenticated, isLoading, login, user } = useAuth();
+  const { isAuthenticated, isLoading, login, user, loginError, clearLoginError } = useAuth();
   const {
     onboardingComplete,
     familyId,
@@ -177,6 +177,33 @@ export default function WelcomeScreen() {
 
       {/* CTAs */}
       <View style={styles.ctaSection}>
+        {loginError ? (
+          <View
+            style={[
+              styles.errorBanner,
+              { backgroundColor: "#FDECEC", borderColor: "#E5484D" },
+            ]}
+            accessibilityRole="alert"
+            accessibilityLiveRegion="polite"
+          >
+            <Feather name="alert-circle" size={16} color="#C62A2F" />
+            <Text
+              style={[
+                styles.errorBannerText,
+                { color: "#8A1F23", fontFamily: "Nunito_700Bold" },
+              ]}
+            >
+              {loginError}
+            </Text>
+            <TouchableOpacity
+              onPress={clearLoginError}
+              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+              accessibilityLabel="Dismiss error"
+            >
+              <Feather name="x" size={16} color="#8A1F23" />
+            </TouchableOpacity>
+          </View>
+        ) : null}
         <TouchableOpacity
           style={[styles.primaryBtn, { backgroundColor: colors.peach }]}
           onPress={() => router.push("/demo")}
@@ -266,6 +293,19 @@ const styles = StyleSheet.create({
   ctaSection: {
     width: "100%",
     gap: 12,
+  },
+  errorBanner: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    borderWidth: 1,
+    borderRadius: 12,
+  },
+  errorBannerText: {
+    flex: 1,
+    fontSize: 14,
   },
   primaryBtn: {
     flexDirection: "row",

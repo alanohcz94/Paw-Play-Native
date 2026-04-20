@@ -32,6 +32,8 @@ interface AuthContextValue {
   user: User | null;
   isLoading: boolean;
   isAuthenticated: boolean;
+  loginError: string | null;
+  clearLoginError: () => void;
   login: () => Promise<void>;
   logout: () => Promise<void>;
 }
@@ -40,9 +42,14 @@ const AuthContext = createContext<AuthContextValue>({
   user: null,
   isLoading: true,
   isAuthenticated: false,
+  loginError: null,
+  clearLoginError: () => {},
   login: async () => {},
   logout: async () => {},
 });
+
+const SIGN_IN_CANCELLED = "Sign-in cancelled";
+const SIGN_IN_FAILED = "Sign-in failed. Please try again.";
 
 function getApiBaseUrl(): string {
   if (process.env.EXPO_PUBLIC_DOMAIN) {
@@ -69,6 +76,9 @@ function parseTokenFromReturnUrl(url: string): string | null {
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [loginError, setLoginError] = useState<string | null>(null);
+
+  const clearLoginError = useCallback(() => setLoginError(null), []);
 
   const useServerBridge = shouldUseServerBridgedFlow();
 
@@ -125,7 +135,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // exchange the authorization code via the server.
   useEffect(() => {
     if (useServerBridge) return;
-    if (response?.type !== "success" || !request?.codeVerifier) return;
+    if (!response) return;
+
+    if (response.type !== "success") {
+      if (response.type === "cancel" || response.type === "dismiss") {
+        setLoginError(SIGN_IN_CANCELLED);
+      } else if (response.type === "error") {
+        console.error("Auth response error:", response.error);
+        setLoginError(SIGN_IN_FAILED);
+      }
+      return;
+    }
+    if (!request?.codeVerifier) return;
 
     const { code, state } = response.params;
 
@@ -134,6 +155,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const apiBase = getApiBaseUrl();
         if (!apiBase) {
           console.error("API base URL is not configured.");
+          setLoginError(SIGN_IN_FAILED);
           return;
         }
 
@@ -151,6 +173,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
         if (!exchangeRes.ok) {
           console.error("Token exchange failed:", exchangeRes.status);
+          setLoginError(SIGN_IN_FAILED);
           setIsLoading(false);
           return;
         }
@@ -160,21 +183,29 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           await SecureStore.setItemAsync(AUTH_TOKEN_KEY, data.token);
           setIsLoading(true);
           await fetchUser();
+        } else {
+          console.error("Token exchange returned no token");
+          setLoginError(SIGN_IN_FAILED);
         }
       } catch (err) {
         console.error("Token exchange error:", err);
+        setLoginError(SIGN_IN_FAILED);
         setIsLoading(false);
       }
     })();
   }, [useServerBridge, response, request, redirectUri, fetchUser]);
 
   const login = useCallback(async () => {
+    setLoginError(null);
+
     if (!useServerBridge) {
-      // Legacy flow for web / Expo Go
+      // Legacy flow for web / Expo Go. The actual cancel/error handling
+      // happens in the response useEffect above.
       try {
         await promptAsync();
       } catch (err) {
         console.error("Login error:", err);
+        setLoginError(SIGN_IN_FAILED);
       }
       return;
     }
@@ -186,6 +217,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const apiBase = getApiBaseUrl();
       if (!apiBase) {
         console.error("API base URL is not configured.");
+        setLoginError(SIGN_IN_FAILED);
         return;
       }
 
@@ -197,12 +229,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       );
 
       if (result.type !== "success" || !result.url) {
+        setLoginError(SIGN_IN_CANCELLED);
         return;
       }
 
       const token = parseTokenFromReturnUrl(result.url);
       if (!token) {
         console.error("No token in auth callback URL");
+        setLoginError(SIGN_IN_FAILED);
         return;
       }
 
@@ -211,6 +245,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       await fetchUser();
     } catch (err) {
       console.error("Login error:", err);
+      setLoginError(SIGN_IN_FAILED);
     }
   }, [useServerBridge, promptAsync, fetchUser]);
 
@@ -237,6 +272,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         user,
         isLoading,
         isAuthenticated: !!user,
+        loginError,
+        clearLoginError,
         login,
         logout,
       }}
