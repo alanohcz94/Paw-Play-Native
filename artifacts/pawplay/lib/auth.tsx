@@ -1,12 +1,24 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, type ReactNode } from "react";
+import { Platform } from "react-native";
 import * as AuthSession from "expo-auth-session";
 import * as WebBrowser from "expo-web-browser";
 import * as SecureStore from "expo-secure-store";
+import Constants from "expo-constants";
 
 WebBrowser.maybeCompleteAuthSession();
 
 const AUTH_TOKEN_KEY = "auth_session_token";
 const ISSUER_URL = process.env.EXPO_PUBLIC_ISSUER_URL ?? "https://replit.com/oidc";
+const MOBILE_RETURN_SCHEME = "pawplay://auth-callback";
+
+// Use the new server-bridged flow only in standalone native builds
+// (TestFlight / App Store / Google Play). In Expo Go and web preview, fall
+// back to the original on-device PKCE flow that works in those environments.
+function shouldUseServerBridgedFlow(): boolean {
+  if (Platform.OS === "web") return false;
+  const env = Constants.executionEnvironment;
+  return env === "standalone" || env === "bare";
+}
 
 interface User {
   id: string;
@@ -43,17 +55,35 @@ function getClientId(): string {
   return process.env.EXPO_PUBLIC_REPL_ID || "";
 }
 
+function parseTokenFromReturnUrl(url: string): string | null {
+  try {
+    const queryIndex = url.indexOf("?");
+    if (queryIndex === -1) return null;
+    const params = new URLSearchParams(url.slice(queryIndex + 1));
+    return params.get("token");
+  } catch {
+    return null;
+  }
+}
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
+  const useServerBridge = shouldUseServerBridgedFlow();
+
+  // Legacy on-device PKCE flow (used in web/Expo Go for backwards compatibility)
   const discovery = AuthSession.useAutoDiscovery(ISSUER_URL);
+<<<<<<< HEAD
 
   const redirectUri = AuthSession.makeRedirectUri({
     scheme: "pawplay",
     path: "auth",
   });
 
+=======
+  const redirectUri = AuthSession.makeRedirectUri();
+>>>>>>> ac747144b98f5adac370df3c392931eab5442917
   const [request, response, promptAsync] = AuthSession.useAuthRequest(
     {
       clientId: getClientId(),
@@ -96,7 +126,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     fetchUser();
   }, [fetchUser]);
 
+  // Legacy flow: handle the OIDC response from expo-auth-session and
+  // exchange the authorization code via the server.
   useEffect(() => {
+    if (useServerBridge) return;
     if (response?.type !== "success" || !request?.codeVerifier) return;
 
     const { code, state } = response.params;
@@ -138,15 +171,53 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setIsLoading(false);
       }
     })();
-  }, [response, request, redirectUri, fetchUser]);
+  }, [useServerBridge, response, request, redirectUri, fetchUser]);
 
   const login = useCallback(async () => {
+    if (!useServerBridge) {
+      // Legacy flow for web / Expo Go
+      try {
+        await promptAsync();
+      } catch (err) {
+        console.error("Login error:", err);
+      }
+      return;
+    }
+
+    // Server-bridged flow for standalone native builds (TestFlight, App Store,
+    // Google Play). Avoids sending custom-scheme redirect_uri to Replit OIDC,
+    // which only allowlists HTTPS URIs tied to the repl's domains.
     try {
-      await promptAsync();
+      const apiBase = getApiBaseUrl();
+      if (!apiBase) {
+        console.error("API base URL is not configured.");
+        return;
+      }
+
+      const startUrl = `${apiBase}/api/mobile-auth/start?return_scheme=${encodeURIComponent(MOBILE_RETURN_SCHEME)}`;
+
+      const result = await WebBrowser.openAuthSessionAsync(
+        startUrl,
+        MOBILE_RETURN_SCHEME,
+      );
+
+      if (result.type !== "success" || !result.url) {
+        return;
+      }
+
+      const token = parseTokenFromReturnUrl(result.url);
+      if (!token) {
+        console.error("No token in auth callback URL");
+        return;
+      }
+
+      await SecureStore.setItemAsync(AUTH_TOKEN_KEY, token);
+      setIsLoading(true);
+      await fetchUser();
     } catch (err) {
       console.error("Login error:", err);
     }
-  }, [promptAsync]);
+  }, [useServerBridge, promptAsync, fetchUser]);
 
   const logout = useCallback(async () => {
     try {
