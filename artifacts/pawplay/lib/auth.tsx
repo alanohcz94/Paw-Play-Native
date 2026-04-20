@@ -74,16 +74,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   // Legacy on-device PKCE flow (used in web/Expo Go for backwards compatibility)
   const discovery = AuthSession.useAutoDiscovery(ISSUER_URL);
-<<<<<<< HEAD
-
   const redirectUri = AuthSession.makeRedirectUri({
     scheme: "pawplay",
     path: "auth",
   });
 
-=======
-  const redirectUri = AuthSession.makeRedirectUri();
->>>>>>> ac747144b98f5adac370df3c392931eab5442917
   const [request, response, promptAsync] = AuthSession.useAuthRequest(
     {
       clientId: getClientId(),
