@@ -21,6 +21,10 @@ import {
 
 const OIDC_COOKIE_TTL = 10 * 60 * 1000;
 
+const ALLOWED_MOBILE_RETURN_SCHEMES = new Set<string>([
+  "pawplay://auth-callback",
+]);
+
 const router: IRouter = Router();
 
 function getOrigin(req: Request): string {
@@ -115,6 +119,42 @@ router.get("/login", async (req: Request, res: Response) => {
   setOidcCookie(res, "nonce", nonce);
   setOidcCookie(res, "state", state);
   setOidcCookie(res, "return_to", returnTo);
+  // Clear any stale mobile-channel marker so a previous aborted mobile
+  // attempt cannot hijack this web login.
+  res.clearCookie("mobile_return_scheme", { path: "/" });
+
+  res.redirect(redirectTo.href);
+});
+
+router.get("/mobile-auth/start", async (req: Request, res: Response) => {
+  const returnScheme = String(req.query.return_scheme ?? "");
+  if (!ALLOWED_MOBILE_RETURN_SCHEMES.has(returnScheme)) {
+    res.status(400).json({ error: "Invalid return_scheme" });
+    return;
+  }
+
+  const config = await getOidcConfig();
+  const callbackUrl = `${getOrigin(req)}/api/callback`;
+
+  const state = oidc.randomState();
+  const nonce = oidc.randomNonce();
+  const codeVerifier = oidc.randomPKCECodeVerifier();
+  const codeChallenge = await oidc.calculatePKCECodeChallenge(codeVerifier);
+
+  const redirectTo = oidc.buildAuthorizationUrl(config, {
+    redirect_uri: callbackUrl,
+    scope: "openid email profile offline_access",
+    code_challenge: codeChallenge,
+    code_challenge_method: "S256",
+    prompt: "login consent",
+    state,
+    nonce,
+  });
+
+  setOidcCookie(res, "code_verifier", codeVerifier);
+  setOidcCookie(res, "nonce", nonce);
+  setOidcCookie(res, "state", state);
+  setOidcCookie(res, "mobile_return_scheme", returnScheme);
 
   res.redirect(redirectTo.href);
 });
@@ -128,8 +168,18 @@ router.get("/callback", async (req: Request, res: Response) => {
   const codeVerifier = req.cookies?.code_verifier;
   const nonce = req.cookies?.nonce;
   const expectedState = req.cookies?.state;
+  const mobileReturnScheme = req.cookies?.mobile_return_scheme;
+
+  const clearOidcCookies = () => {
+    res.clearCookie("code_verifier", { path: "/" });
+    res.clearCookie("nonce", { path: "/" });
+    res.clearCookie("state", { path: "/" });
+    res.clearCookie("return_to", { path: "/" });
+    res.clearCookie("mobile_return_scheme", { path: "/" });
+  };
 
   if (!codeVerifier || !expectedState) {
+    clearOidcCookies();
     res.redirect("/api/login");
     return;
   }
@@ -147,16 +197,14 @@ router.get("/callback", async (req: Request, res: Response) => {
       idTokenExpected: true,
     });
   } catch {
+    clearOidcCookies();
     res.redirect("/api/login");
     return;
   }
 
   const returnTo = getSafeReturnTo(req.cookies?.return_to);
 
-  res.clearCookie("code_verifier", { path: "/" });
-  res.clearCookie("nonce", { path: "/" });
-  res.clearCookie("state", { path: "/" });
-  res.clearCookie("return_to", { path: "/" });
+  clearOidcCookies();
 
   const claims = tokens.claims();
   if (!claims) {
@@ -183,6 +231,16 @@ router.get("/callback", async (req: Request, res: Response) => {
   };
 
   const sid = await createSession(sessionData);
+
+  if (
+    typeof mobileReturnScheme === "string" &&
+    ALLOWED_MOBILE_RETURN_SCHEMES.has(mobileReturnScheme)
+  ) {
+    const sep = mobileReturnScheme.includes("?") ? "&" : "?";
+    res.redirect(`${mobileReturnScheme}${sep}token=${encodeURIComponent(sid)}`);
+    return;
+  }
+
   setSessionCookie(res, sid);
   res.redirect(returnTo);
 });

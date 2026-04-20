@@ -1,12 +1,11 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, type ReactNode } from "react";
-import * as AuthSession from "expo-auth-session";
 import * as WebBrowser from "expo-web-browser";
 import * as SecureStore from "expo-secure-store";
 
 WebBrowser.maybeCompleteAuthSession();
 
 const AUTH_TOKEN_KEY = "auth_session_token";
-const ISSUER_URL = process.env.EXPO_PUBLIC_ISSUER_URL ?? "https://replit.com/oidc";
+const MOBILE_RETURN_SCHEME = "pawplay://auth-callback";
 
 interface User {
   id: string;
@@ -39,27 +38,20 @@ function getApiBaseUrl(): string {
   return "";
 }
 
-function getClientId(): string {
-  return process.env.EXPO_PUBLIC_REPL_ID || "";
+function parseTokenFromReturnUrl(url: string): string | null {
+  try {
+    const queryIndex = url.indexOf("?");
+    if (queryIndex === -1) return null;
+    const params = new URLSearchParams(url.slice(queryIndex + 1));
+    return params.get("token");
+  } catch {
+    return null;
+  }
 }
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-
-  const discovery = AuthSession.useAutoDiscovery(ISSUER_URL);
-
-  const redirectUri = AuthSession.makeRedirectUri();
-
-  const [request, response, promptAsync] = AuthSession.useAuthRequest(
-    {
-      clientId: getClientId(),
-      scopes: ["openid", "email", "profile", "offline_access"],
-      redirectUri,
-      prompt: AuthSession.Prompt.Login,
-    },
-    discovery,
-  );
 
   const fetchUser = useCallback(async () => {
     try {
@@ -93,57 +85,38 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     fetchUser();
   }, [fetchUser]);
 
-  useEffect(() => {
-    if (response?.type !== "success" || !request?.codeVerifier) return;
-
-    const { code, state } = response.params;
-
-    (async () => {
-      try {
-        const apiBase = getApiBaseUrl();
-        if (!apiBase) {
-          console.error("API base URL is not configured.");
-          return;
-        }
-
-        const exchangeRes = await fetch(`${apiBase}/api/mobile-auth/token-exchange`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            code,
-            code_verifier: request.codeVerifier,
-            redirect_uri: redirectUri,
-            state,
-            nonce: request.nonce,
-          }),
-        });
-
-        if (!exchangeRes.ok) {
-          console.error("Token exchange failed:", exchangeRes.status);
-          setIsLoading(false);
-          return;
-        }
-
-        const data = await exchangeRes.json();
-        if (data.token) {
-          await SecureStore.setItemAsync(AUTH_TOKEN_KEY, data.token);
-          setIsLoading(true);
-          await fetchUser();
-        }
-      } catch (err) {
-        console.error("Token exchange error:", err);
-        setIsLoading(false);
-      }
-    })();
-  }, [response, request, redirectUri, fetchUser]);
-
   const login = useCallback(async () => {
     try {
-      await promptAsync();
+      const apiBase = getApiBaseUrl();
+      if (!apiBase) {
+        console.error("API base URL is not configured.");
+        return;
+      }
+
+      const startUrl = `${apiBase}/api/mobile-auth/start?return_scheme=${encodeURIComponent(MOBILE_RETURN_SCHEME)}`;
+
+      const result = await WebBrowser.openAuthSessionAsync(
+        startUrl,
+        MOBILE_RETURN_SCHEME,
+      );
+
+      if (result.type !== "success" || !result.url) {
+        return;
+      }
+
+      const token = parseTokenFromReturnUrl(result.url);
+      if (!token) {
+        console.error("No token in auth callback URL");
+        return;
+      }
+
+      await SecureStore.setItemAsync(AUTH_TOKEN_KEY, token);
+      setIsLoading(true);
+      await fetchUser();
     } catch (err) {
       console.error("Login error:", err);
     }
-  }, [promptAsync]);
+  }, [fetchUser]);
 
   const logout = useCallback(async () => {
     try {
