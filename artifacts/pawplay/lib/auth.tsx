@@ -49,7 +49,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const discovery = AuthSession.useAutoDiscovery(ISSUER_URL);
 
-  const redirectUri = AuthSession.makeRedirectUri();
+  const redirectUri = AuthSession.makeRedirectUri({
+    scheme: "pawplay",
+    path: "auth",
+  });
 
   const [request, response, promptAsync] = AuthSession.useAuthRequest(
     {
