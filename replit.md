@@ -73,7 +73,8 @@ PawPlay is a gamified dog training mobile app for families. Built as a pnpm work
 ## Key Commands
 
 - `pnpm run typecheck` — full typecheck across all packages
-- `pnpm run build` — typecheck + build all packages
+- `pnpm run test` — run every package's `test` script (uses `pnpm -r --if-present`)
+- `pnpm run build` — typecheck + tests + build all packages (test failures block the build, and therefore deploys)
 - `pnpm --filter @workspace/api-spec run codegen` — regenerate API hooks and Zod schemas from OpenAPI spec
 - `pnpm --filter @workspace/db run push` — push DB schema changes (dev only)
 - `pnpm --filter @workspace/api-server run dev` — run API server locally
