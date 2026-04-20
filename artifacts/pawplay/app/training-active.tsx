@@ -214,11 +214,10 @@ export default function TrainingActiveScreen() {
   const saveSession = useCallback(async (completed: number) => {
     if (!dog?.id || !user?.id) return;
     try {
-      const { getItemAsync } = await import("expo-secure-store");
-      const token = await getItemAsync("auth_session_token");
-      await fetch(`${apiBase}/api/sessions`, {
+      const { authedFetch } = await import("@/lib/authedFetch");
+      await authedFetch(`/api/sessions`, {
         method: "POST",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           dogId: dog.id,
           mode: "training",
@@ -232,9 +231,7 @@ export default function TrainingActiveScreen() {
         }),
       });
       // Refresh command counts so Command Library updates immediately
-      const cmdsRes = await fetch(`${apiBase}/api/dogs/${dog.id}/commands`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      const cmdsRes = await authedFetch(`/api/dogs/${dog.id}/commands`);
       if (cmdsRes.ok) {
         const { commands } = await cmdsRes.json();
         setCommands(commands);

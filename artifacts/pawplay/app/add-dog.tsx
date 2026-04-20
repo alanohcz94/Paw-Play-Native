@@ -32,11 +32,10 @@ export default function AddDogScreen() {
     if (!user?.id || !familyId) return;
     setIsLoading(true);
     try {
-      const { getItemAsync } = await import("expo-secure-store");
-      const token = await getItemAsync("auth_session_token");
-      const headers = { "Content-Type": "application/json", Authorization: `Bearer ${token}` };
+      const { authedFetch } = await import("@/lib/authedFetch");
+      const headers = { "Content-Type": "application/json" };
 
-      const dogRes = await fetch(`${apiBase}/api/dogs`, {
+      const dogRes = await authedFetch(`/api/dogs`, {
         method: "POST",
         headers,
         body: JSON.stringify({ name: dogName, familyId }),
@@ -51,7 +50,7 @@ export default function AddDogScreen() {
       if (selectedCommands.length > 0) {
         await Promise.all(
           selectedCommands.map((name) =>
-            fetch(`${apiBase}/api/dogs/${newDog.id}/commands`, {
+            authedFetch(`/api/dogs/${newDog.id}/commands`, {
               method: "POST",
               headers,
               body: JSON.stringify({ name }),
@@ -60,9 +59,7 @@ export default function AddDogScreen() {
         );
       }
 
-      const cmdsRes = await fetch(`${apiBase}/api/dogs/${newDog.id}/commands`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      const cmdsRes = await authedFetch(`/api/dogs/${newDog.id}/commands`);
       if (cmdsRes.ok) {
         const { commands } = await cmdsRes.json();
         setCommands(commands);

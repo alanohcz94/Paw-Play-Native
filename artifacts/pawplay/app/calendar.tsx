@@ -49,11 +49,8 @@ export default function CalendarScreen() {
   const loadCalendar = async () => {
     if (!familyId) return;
     try {
-      const { getItemAsync } = await import("expo-secure-store");
-      const token = await getItemAsync("auth_session_token");
-      const res = await fetch(`${apiBase}/api/family/${familyId}/calendar?month=${month}&year=${year}`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      const { authedFetch } = await import("@/lib/authedFetch");
+      const res = await authedFetch(`/api/family/${familyId}/calendar?month=${month}&year=${year}`);
       if (res.ok) {
         const data = await res.json();
         setCalendarData(data.days);
@@ -71,11 +68,8 @@ export default function CalendarScreen() {
     setLoadingDay(true);
     setDaySessions([]);
     try {
-      const { getItemAsync } = await import("expo-secure-store");
-      const token = await getItemAsync("auth_session_token");
-      const res = await fetch(`${apiBase}/api/sessions?dogId=${dog.id}&date=${dateStr}`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      const { authedFetch } = await import("@/lib/authedFetch");
+      const res = await authedFetch(`/api/sessions?dogId=${dog.id}&date=${dateStr}`);
       if (res.ok) {
         const data = await res.json();
         setDaySessions(data.sessions ?? []);

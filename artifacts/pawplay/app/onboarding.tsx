@@ -45,10 +45,9 @@ export default function OnboardingScreen() {
     setJoinError("");
     setJoinLoading(true);
     try {
-      const token = await import("expo-secure-store").then((m) => m.getItemAsync("auth_session_token"));
-      const res = await fetch(`${apiBase}/api/family/join/${code}`, {
+      const { authedFetch } = await import("@/lib/authedFetch");
+      const res = await authedFetch(`/api/family/join/${code}`, {
         method: "POST",
-        headers: { Authorization: `Bearer ${token}` },
       });
       if (!res.ok) {
         setJoinError("Invalid invite code. Please check and try again.");
@@ -59,9 +58,9 @@ export default function OnboardingScreen() {
       setFamilyId(family.id);
       setInviteCode(family.inviteCode);
 
-      await fetch(`${apiBase}/api/users/${user?.id}`, {
+      await authedFetch(`/api/users/${user?.id}`, {
         method: "PATCH",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ displayName: user?.firstName || "Family Member", familyId: family.id }),
       });
 
@@ -76,10 +75,11 @@ export default function OnboardingScreen() {
 
   const handleCreateFamily = useCallback(async (userId: string) => {
     try {
-      const token = await import("expo-secure-store").then((m) => m.getItemAsync("auth_session_token"));
-      const res = await fetch(`${apiBase}/api/family`, {
+      const { authedFetch } = await import("@/lib/authedFetch");
+      const jsonHeaders = { "Content-Type": "application/json" };
+      const res = await authedFetch(`/api/family`, {
         method: "POST",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        headers: jsonHeaders,
         body: JSON.stringify({}),
       });
       if (res.ok) {
@@ -87,15 +87,15 @@ export default function OnboardingScreen() {
         setFamilyId(family.id);
         setInviteCode(family.inviteCode);
 
-        await fetch(`${apiBase}/api/users/${userId}`, {
+        await authedFetch(`/api/users/${userId}`, {
           method: "PATCH",
-          headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+          headers: jsonHeaders,
           body: JSON.stringify({ displayName: user?.firstName || "Family Member", familyId: family.id }),
         });
 
-        const dogRes = await fetch(`${apiBase}/api/dogs`, {
+        const dogRes = await authedFetch(`/api/dogs`, {
           method: "POST",
-          headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+          headers: jsonHeaders,
           body: JSON.stringify({ name: dogName, familyId: family.id }),
         });
         if (dogRes.ok) {
@@ -103,17 +103,15 @@ export default function OnboardingScreen() {
           setDog(dog);
 
           const cmdPromises = selectedCommands.map((name) =>
-            fetch(`${apiBase}/api/dogs/${dog.id}/commands`, {
+            authedFetch(`/api/dogs/${dog.id}/commands`, {
               method: "POST",
-              headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+              headers: jsonHeaders,
               body: JSON.stringify({ name }),
             })
           );
           await Promise.all(cmdPromises);
 
-          const cmdsRes = await fetch(`${apiBase}/api/dogs/${dog.id}/commands`, {
-            headers: { Authorization: `Bearer ${token}` },
-          });
+          const cmdsRes = await authedFetch(`/api/dogs/${dog.id}/commands`);
           if (cmdsRes.ok) {
             const { commands } = await cmdsRes.json();
             setCommands(commands);

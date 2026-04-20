@@ -94,13 +94,10 @@ export default function DashboardScreen() {
   const loadData = async () => {
     if (!dog?.id || !user?.id) return;
     try {
-      const { getItemAsync } = await import("expo-secure-store");
-      const token = await getItemAsync("auth_session_token");
-      const headers = { Authorization: `Bearer ${token}` };
+      const { authedFetch } = await import("@/lib/authedFetch");
 
-      const res = await fetch(
-        `${apiBase}/api/sessions?dogId=${dog.id}&limit=50`,
-        { headers },
+      const res = await authedFetch(
+        `/api/sessions?dogId=${dog.id}&limit=50`,
       );
       if (res.ok) {
         const { sessions: s } = await res.json();
@@ -127,9 +124,8 @@ export default function DashboardScreen() {
       }
 
       if (familyId) {
-        const lbRes = await fetch(
-          `${apiBase}/api/family/${familyId}/leaderboard`,
-          { headers },
+        const lbRes = await authedFetch(
+          `/api/family/${familyId}/leaderboard`,
         );
         if (lbRes.ok) {
           const { entries } = await lbRes.json();

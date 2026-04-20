@@ -4,6 +4,8 @@ import * as AuthSession from "expo-auth-session";
 import * as WebBrowser from "expo-web-browser";
 import * as SecureStore from "expo-secure-store";
 import Constants from "expo-constants";
+import { router } from "expo-router";
+import { authedFetch, setSessionExpiredHandler } from "./authedFetch";
 
 WebBrowser.maybeCompleteAuthSession();
 
@@ -36,6 +38,7 @@ interface AuthContextValue {
   clearLoginError: () => void;
   login: () => Promise<void>;
   logout: () => Promise<void>;
+  handleSessionExpired: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextValue>({
@@ -46,10 +49,12 @@ const AuthContext = createContext<AuthContextValue>({
   clearLoginError: () => {},
   login: async () => {},
   logout: async () => {},
+  handleSessionExpired: async () => {},
 });
 
 const SIGN_IN_CANCELLED = "Sign-in cancelled";
 const SIGN_IN_FAILED = "Sign-in failed. Please try again.";
+const SESSION_EXPIRED = "Your session expired — please sign in again.";
 
 function getApiBaseUrl(): string {
   if (process.env.EXPO_PUBLIC_DOMAIN) {
@@ -99,6 +104,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     discovery,
   );
 
+  const handleSessionExpired = useCallback(async () => {
+    try {
+      await SecureStore.deleteItemAsync(AUTH_TOKEN_KEY);
+    } catch {
+    }
+    setUser(null);
+    setLoginError(SESSION_EXPIRED);
+    try {
+      router.replace("/");
+    } catch {
+    }
+  }, []);
+
   const fetchUser = useCallback(async () => {
     try {
       const token = await SecureStore.getItemAsync(AUTH_TOKEN_KEY);
@@ -108,10 +126,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         return;
       }
 
-      const apiBase = getApiBaseUrl();
-      const res = await fetch(`${apiBase}/api/auth/user`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      const res = await authedFetch(`/api/auth/user`);
+
+      if (res.status === 401) {
+        // authedFetch already invoked the session-expired handler.
+        return;
+      }
+
       const data = await res.json();
 
       if (data.user) {
@@ -126,6 +147,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setIsLoading(false);
     }
   }, []);
+
+  useEffect(() => {
+    setSessionExpiredHandler(handleSessionExpired);
+    return () => setSessionExpiredHandler(null);
+  }, [handleSessionExpired]);
 
   useEffect(() => {
     fetchUser();
@@ -276,6 +302,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         clearLoginError,
         login,
         logout,
+        handleSessionExpired,
       }}
     >
       {children}

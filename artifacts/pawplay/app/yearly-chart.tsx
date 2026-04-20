@@ -71,11 +71,8 @@ export default function YearlyChartScreen() {
     if (!familyId) return;
     const load = async () => {
       try {
-        const { getItemAsync } = await import("expo-secure-store");
-        const token = await getItemAsync("auth_session_token");
-        const res = await fetch(`${apiBase}/api/family/${familyId}/yearly-chart?year=${year}`, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
+        const { authedFetch } = await import("@/lib/authedFetch");
+        const res = await authedFetch(`/api/family/${familyId}/yearly-chart?year=${year}`);
         if (res.ok) {
           const data = await res.json();
           setMonthsData(data.months);

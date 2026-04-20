@@ -215,13 +215,9 @@ export default function ProfileScreen() {
     if (!familyId) return;
     const load = async () => {
       try {
-        const { getItemAsync } = await import("expo-secure-store");
-        const token = await getItemAsync("auth_session_token");
-        const res = await fetch(
-          `${apiBase}/api/family/${familyId}/leaderboard`,
-          {
-            headers: { Authorization: `Bearer ${token}` },
-          },
+        const { authedFetch } = await import("@/lib/authedFetch");
+        const res = await authedFetch(
+          `/api/family/${familyId}/leaderboard`,
         );
         if (res.ok) {
           const { entries } = await res.json();
@@ -302,14 +298,10 @@ export default function ProfileScreen() {
 
       if (dog?.id && user?.id) {
         try {
-          const { getItemAsync } = await import("expo-secure-store");
-          const token = await getItemAsync("auth_session_token");
-          await fetch(`${apiBase}/api/dogs/${dog.id}`, {
+          const { authedFetch } = await import("@/lib/authedFetch");
+          await authedFetch(`/api/dogs/${dog.id}`, {
             method: "PATCH",
-            headers: {
-              "Content-Type": "application/json",
-              Authorization: `Bearer ${token}`,
-            },
+            headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ avatarUrl: dataUrl }),
           });
         } catch (e) {
@@ -331,14 +323,10 @@ export default function ProfileScreen() {
   const saveCueWords = useCallback(async () => {
     if (!dog?.id || !user?.id) return;
     try {
-      const { getItemAsync } = await import("expo-secure-store");
-      const token = await getItemAsync("auth_session_token");
-      await fetch(`${apiBase}/api/dogs/${dog.id}`, {
+      const { authedFetch } = await import("@/lib/authedFetch");
+      await authedFetch(`/api/dogs/${dog.id}`, {
         method: "PATCH",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ releaseCue, markerCue }),
       });
       setDog({ ...dog, releaseCue, markerCue });
@@ -354,11 +342,9 @@ export default function ProfileScreen() {
 
       const performDelete = async () => {
         try {
-          const { getItemAsync } = await import("expo-secure-store");
-          const token = await getItemAsync("auth_session_token");
-          const res = await fetch(`${apiBase}/api/dogs/${dog.id}/commands/${commandId}`, {
+          const { authedFetch } = await import("@/lib/authedFetch");
+          const res = await authedFetch(`/api/dogs/${dog.id}/commands/${commandId}`, {
             method: "DELETE",
-            headers: { Authorization: `Bearer ${token}` },
           });
           if (!res.ok) {
             const body = await res.json().catch(() => ({}));
@@ -403,19 +389,13 @@ export default function ProfileScreen() {
       if (!dog?.id || addingCommand) return;
       setAddingCommand(name);
       try {
-        const { getItemAsync } = await import("expo-secure-store");
-        const token = await getItemAsync("auth_session_token");
-        await fetch(`${apiBase}/api/dogs/${dog.id}/commands`, {
+        const { authedFetch } = await import("@/lib/authedFetch");
+        await authedFetch(`/api/dogs/${dog.id}/commands`, {
           method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
+          headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ name }),
         });
-        const cmdsRes = await fetch(`${apiBase}/api/dogs/${dog.id}/commands`, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
+        const cmdsRes = await authedFetch(`/api/dogs/${dog.id}/commands`);
         if (cmdsRes.ok) {
           const { commands: updated } = await cmdsRes.json();
           setCommands(updated);

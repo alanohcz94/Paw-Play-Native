@@ -69,15 +69,8 @@ export default function SettingsScreen() {
     if (!familyId || inviteCode) return;
     const loadCode = async () => {
       try {
-        const token = await import("expo-secure-store").then((m) =>
-          m.getItemAsync("auth_session_token"),
-        );
-        const apiBase = process.env.EXPO_PUBLIC_DOMAIN
-          ? `https://${process.env.EXPO_PUBLIC_DOMAIN}`
-          : "";
-        const res = await fetch(`${apiBase}/api/family/${familyId}`, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
+        const { authedFetch } = await import("@/lib/authedFetch");
+        const res = await authedFetch(`/api/family/${familyId}`);
         if (res.ok) {
           const fam = await res.json();
           setFetchedCode(fam.inviteCode);

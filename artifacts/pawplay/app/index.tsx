@@ -42,26 +42,18 @@ export default function WelcomeScreen() {
           return;
         }
         try {
-          const token = await import("expo-secure-store").then((m) =>
-            m.getItemAsync("auth_session_token"),
-          );
-          const apiBase = process.env.EXPO_PUBLIC_DOMAIN
-            ? `https://${process.env.EXPO_PUBLIC_DOMAIN}`
-            : "";
-          const res = await fetch(`${apiBase}/api/users/${user.id}`, {
-            headers: { Authorization: `Bearer ${token}` },
-          });
+          const { authedFetch } = await import("@/lib/authedFetch");
+          const res = await authedFetch(`/api/users/${user.id}`);
+          if (res.status === 401) return;
           if (res.ok) {
             const pawplayUser = await res.json();
             if (pawplayUser?.familyId) {
               setFamilyId(pawplayUser.familyId);
               setOnboardingComplete(true);
-              const dogsRes = await fetch(
-                `${apiBase}/api/family/${pawplayUser.familyId}/dogs`,
-                {
-                  headers: { Authorization: `Bearer ${token}` },
-                },
+              const dogsRes = await authedFetch(
+                `/api/family/${pawplayUser.familyId}/dogs`,
               );
+              if (dogsRes.status === 401) return;
               if (dogsRes.ok) {
                 const { dogs: fetchedDogs } = await dogsRes.json();
                 setDogs(fetchedDogs);

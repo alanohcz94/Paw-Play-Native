@@ -170,13 +170,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   const loadCommandsForDog = useCallback(async (dogId: string) => {
     try {
-      const { getItemAsync } = await import("expo-secure-store");
-      const token = await getItemAsync("auth_session_token");
-      if (!token) return;
-      const apiBase = process.env.EXPO_PUBLIC_DOMAIN ? `https://${process.env.EXPO_PUBLIC_DOMAIN}` : "";
-      const res = await fetch(`${apiBase}/api/dogs/${dogId}/commands`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      const { authedFetch } = await import("@/lib/authedFetch");
+      const res = await authedFetch(`/api/dogs/${dogId}/commands`);
       if (res.ok) {
         const { commands: cmds } = await res.json();
         setCommandsState(cmds);
@@ -238,13 +233,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const loadDogsFromApi = useCallback(async () => {
     if (!familyId) return;
     try {
-      const { getItemAsync } = await import("expo-secure-store");
-      const token = await getItemAsync("auth_session_token");
-      if (!token) return;
-      const apiBase = process.env.EXPO_PUBLIC_DOMAIN ? `https://${process.env.EXPO_PUBLIC_DOMAIN}` : "";
-      const res = await fetch(`${apiBase}/api/family/${familyId}/dogs`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      const { authedFetch } = await import("@/lib/authedFetch");
+      const res = await authedFetch(`/api/family/${familyId}/dogs`);
       if (res.ok) {
         const { dogs: fetchedDogs } = await res.json();
         if (fetchedDogs && fetchedDogs.length > 0) {
