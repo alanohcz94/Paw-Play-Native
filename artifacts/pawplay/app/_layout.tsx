@@ -10,7 +10,7 @@ import {
   useFonts as useNunitoFonts,
 } from "@expo-google-fonts/nunito";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { Stack } from "expo-router";
+import { Stack, router, useSegments } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
 import React, { useEffect } from "react";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
@@ -18,8 +18,23 @@ import { SafeAreaProvider } from "react-native-safe-area-context";
 import { setBaseUrl, setAuthTokenGetter } from "@workspace/api-client-react";
 import * as SecureStore from "expo-secure-store";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
-import { AuthProvider } from "@/lib/auth";
+import { AuthProvider, useAuth } from "@/lib/auth";
 import { AppProvider } from "@/context/AppContext";
+
+function AuthGuard() {
+  const { isAuthenticated, isLoading } = useAuth();
+  const segments = useSegments();
+
+  useEffect(() => {
+    if (isLoading) return;
+    const inTabs = segments[0] === "(tabs)";
+    if (!isAuthenticated && inTabs) {
+      router.replace("/");
+    }
+  }, [isAuthenticated, isLoading, segments]);
+
+  return null;
+}
 
 const domain = process.env.EXPO_PUBLIC_DOMAIN;
 if (domain) setBaseUrl(`https://${domain}`);
@@ -56,6 +71,7 @@ export default function RootLayout() {
           <GestureHandlerRootView style={{ flex: 1 }}>
             <AuthProvider>
               <AppProvider>
+                <AuthGuard />
                 <Stack screenOptions={{ headerShown: false }}>
                   <Stack.Screen name="index" />
                   <Stack.Screen name="demo" />
