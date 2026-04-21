@@ -1,12 +1,20 @@
-import { Tabs } from "expo-router";
+import { Tabs, router } from "expo-router";
 import { Feather, MaterialCommunityIcons } from "@expo/vector-icons";
-import React from "react";
+import React, { useEffect } from "react";
 import { Platform, View, StyleSheet } from "react-native";
 import { useColors } from "@/hooks/useColors";
 import { BlurView } from "expo-blur";
+import { useAuth } from "@/lib/auth";
 
 export default function TabLayout() {
   const colors = useColors();
+  const { isAuthenticated, isLoading } = useAuth();
+
+  useEffect(() => {
+    if (!isLoading && !isAuthenticated) {
+      router.replace("/");
+    }
+  }, [isAuthenticated, isLoading]);
 
   return (
     <Tabs
