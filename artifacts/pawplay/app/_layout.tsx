@@ -29,7 +29,7 @@ function AuthGuard() {
     if (isLoading) return;
     const inTabs = segments[0] === "(tabs)";
     if (!isAuthenticated && inTabs) {
-      router.replace("/");
+      router.replace("/home");
     }
   }, [isAuthenticated, isLoading, segments]);
 
@@ -74,6 +74,7 @@ export default function RootLayout() {
                 <AuthGuard />
                 <Stack screenOptions={{ headerShown: false }}>
                   <Stack.Screen name="index" />
+                  <Stack.Screen name="home" />
                   <Stack.Screen name="demo" />
                   <Stack.Screen name="onboarding" />
                   <Stack.Screen name="(tabs)" />

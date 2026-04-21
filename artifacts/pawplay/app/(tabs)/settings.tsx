@@ -57,7 +57,7 @@ export default function SettingsScreen() {
   const handleLogout = useCallback(async () => {
     resetState();
     await logout();
-    router.replace("/demo");
+    router.replace("/home");
   }, [resetState, logout]);
 
   const [fetchedCode, setFetchedCode] = useState<string | null>(null);

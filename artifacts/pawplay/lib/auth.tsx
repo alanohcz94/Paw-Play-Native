@@ -112,7 +112,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(null);
     setLoginError(SESSION_EXPIRED);
     try {
-      router.replace("/");
+      router.replace("/home");
     } catch {
     }
   }, []);
