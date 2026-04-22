@@ -59,7 +59,7 @@ export default function TrainingActiveScreen() {
   const { command, rewardType, variableSchedule: vsParam, reps: repsParam } = useLocalSearchParams<{
     command: string; rewardType: string; variableSchedule: string; reps: string;
   }>();
-  const { dog, setCommands, markAchievementSeen } = useApp();
+  const { dog, setCommands, markAchievementSeen, updateUserStreak } = useApp();
   const { user } = useAuth();
   const { getNewlyUnlocked } = useAchievements();
   const { play } = useSound();
@@ -230,6 +230,7 @@ export default function TrainingActiveScreen() {
           completed: true,
         }),
       });
+      updateUserStreak();
       // Refresh command counts so Command Library updates immediately
       const cmdsRes = await authedFetch(`/api/dogs/${dog.id}/commands`);
       if (cmdsRes.ok) {

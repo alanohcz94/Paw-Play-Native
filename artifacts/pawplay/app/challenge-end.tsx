@@ -17,7 +17,7 @@ export default function ChallengeEndScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const { result: resultParam, difficulty } = useLocalSearchParams<{ result: string; difficulty: string }>();
-  const { dog, setLastTrainedDate, setStreak, streak, setCommands, markAchievementSeen } = useApp();
+  const { dog, updateUserStreak, streak, setCommands, markAchievementSeen } = useApp();
   const { user } = useAuth();
   const { getNewlyUnlocked } = useAchievements();
   const { play } = useSound();
@@ -39,12 +39,11 @@ export default function ChallengeEndScreen() {
     Animated.spring(bonusAnim, { toValue: 1, useNativeDriver: true, tension: 40, friction: 10, delay: 400 }).start();
 
     play("success");
+    updateUserStreak();
 
     if (result && dog?.id && user?.id) {
       saveSession();
     }
-
-    setLastTrainedDate(new Date().toISOString());
   }, []);
 
   const saveSession = async () => {

@@ -59,6 +59,7 @@ interface AppContextValue extends AppState {
   setInviteCode: (code: string | null) => void;
   setStreak: (streak: number) => void;
   setLastTrainedDate: (date: string | null) => void;
+  updateUserStreak: () => void;
   setIsNewUser: (v: boolean) => void;
   setOnboardingComplete: (v: boolean) => void;
   refreshStreak: () => void;
@@ -76,7 +77,7 @@ const AppContext = createContext<AppContextValue>({
   onboardingComplete: false, seenAchievements: [], reminderTime: null, soundEnabled: true,
   setDog: () => {}, setDogs: () => {}, setActiveDogId: () => {}, setCommands: () => {},
   setFamilyId: () => {}, setInviteCode: () => {}, setStreak: () => {},
-  setLastTrainedDate: () => {}, setIsNewUser: () => {}, setOnboardingComplete: () => {},
+  setLastTrainedDate: () => {}, updateUserStreak: () => {}, setIsNewUser: () => {}, setOnboardingComplete: () => {},
   refreshStreak: () => {}, markAchievementSeen: () => {}, setReminderTime: () => {},
   setSoundEnabled: () => {}, addDog: () => {}, loadDogsFromApi: async () => {}, resetState: () => {},
 });
@@ -95,6 +96,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [onboardingComplete, setOnboardingCompleteState] = useState(false);
   const [reminderTime, setReminderTimeState] = useState<string | null>(null);
   const [soundEnabled, setSoundEnabledState] = useState(true);
+  const [userStreakState, setUserStreakState] = useState(0);
+  const [userLastTrainedDateState, setUserLastTrainedDateState] = useState<string | null>(null);
 
   // Snapshot ref — avoids async read-before-write on every save call
   const persistedRef = useRef<Record<string, unknown>>({});
@@ -111,14 +114,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
   );
   const activeDogKey = dog?.id ?? "__none__";
 
-  const streak = useMemo(
-    () => dogStreaks[activeDogKey]?.streak ?? 0,
-    [dogStreaks, activeDogKey],
-  );
-  const lastTrainedDate = useMemo(
-    () => dogStreaks[activeDogKey]?.lastTrainedDate ?? null,
-    [dogStreaks, activeDogKey],
-  );
+  // User-level streak (any dog, any mode, consecutive calendar days)
+  const streak = userStreakState;
+  const lastTrainedDate = userLastTrainedDateState;
   const seenAchievements = useMemo(
     () => dogSeenAchievements[activeDogKey] ?? [],
     [dogSeenAchievements, activeDogKey],
@@ -162,6 +160,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
         if (saved.onboardingComplete !== undefined) setOnboardingCompleteState(saved.onboardingComplete);
         if (saved.reminderTime !== undefined) setReminderTimeState(saved.reminderTime);
         if (saved.soundEnabled !== undefined) setSoundEnabledState(saved.soundEnabled);
+        if (saved._userStreak !== undefined) setUserStreakState(saved._userStreak);
+        if (saved._userLastTrainedDate !== undefined) setUserLastTrainedDateState(saved._userLastTrainedDate);
       } catch (e) {
         console.warn("Failed to restore persisted app state:", e);
       }
@@ -337,6 +337,23 @@ export function AppProvider({ children }: { children: ReactNode }) {
     });
   }, [save, activeDogKey, lastTrainedDate]);
 
+  // Call this once per completed session (any dog, any mode).
+  // Increments the user-level streak if this is the first session today.
+  const updateUserStreak = useCallback(() => {
+    const today = new Date().toDateString();
+    const yesterday = new Date(Date.now() - 86400000).toDateString();
+    setUserStreakState((prev) => {
+      const lastDate = userLastTrainedDateState
+        ? new Date(userLastTrainedDateState).toDateString()
+        : null;
+      if (lastDate === today) return prev; // already trained today
+      const newStreak = lastDate === yesterday ? prev + 1 : 1;
+      setUserLastTrainedDateState(today);
+      save({ _userStreak: newStreak, _userLastTrainedDate: today });
+      return newStreak;
+    });
+  }, [save, userLastTrainedDateState]);
+
   const resetState = useCallback(() => {
     setDogsState([]);
     setActiveDogIdState(null);
@@ -347,6 +364,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setDogSeenAchievementsState({});
     setIsNewUserState(true);
     setOnboardingCompleteState(false);
+    setUserStreakState(0);
+    setUserLastTrainedDateState(null);
     persistedRef.current = {};
     AsyncStorage.removeItem(STORAGE_KEY);
   }, []);
@@ -356,13 +375,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
     dogs, activeDogId, dog, commands, familyId, inviteCode, streak, lastTrainedDate,
     isNewUser, onboardingComplete, seenAchievements, reminderTime, soundEnabled,
     setDog, setDogs, setActiveDogId, addDog, setCommands, setFamilyId, setInviteCode,
-    setStreak, setLastTrainedDate, setIsNewUser, setOnboardingComplete, refreshStreak,
+    setStreak, setLastTrainedDate, updateUserStreak, setIsNewUser, setOnboardingComplete, refreshStreak,
     markAchievementSeen, setReminderTime, setSoundEnabled, loadDogsFromApi, resetState,
   }), [
     dogs, activeDogId, dog, commands, familyId, inviteCode, streak, lastTrainedDate,
     isNewUser, onboardingComplete, seenAchievements, reminderTime, soundEnabled,
     setDog, setDogs, setActiveDogId, addDog, setCommands, setFamilyId, setInviteCode,
-    setStreak, setLastTrainedDate, setIsNewUser, setOnboardingComplete, refreshStreak,
+    setStreak, setLastTrainedDate, updateUserStreak, setIsNewUser, setOnboardingComplete, refreshStreak,
     markAchievementSeen, setReminderTime, setSoundEnabled, loadDogsFromApi, resetState,
   ]);
 

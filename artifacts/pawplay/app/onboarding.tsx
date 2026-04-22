@@ -10,15 +10,16 @@ import { useApp } from "@/context/AppContext";
 import { useAuth } from "@/lib/auth";
 import { ALL_COMMANDS } from "@/utils/scoring";
 
-const STEPS = ["dog", "commands", "family", "done"] as const;
-type Step = typeof STEPS[number];
+const STEPS_JOIN   = ["family", "done"] as const;
+const STEPS_CREATE = ["family", "dog", "commands", "done"] as const;
+type Step = "family" | "dog" | "commands" | "done";
 
 export default function OnboardingScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const { setDog, setCommands, setOnboardingComplete, setFamilyId, setInviteCode } = useApp();
   const { user } = useAuth();
-  const [step, setStep] = useState<Step>("dog");
+  const [step, setStep] = useState<Step>("family");
   const [dogName, setDogName] = useState("");
   const [selectedCommands, setSelectedCommands] = useState<string[]>([]);
 
@@ -135,72 +136,15 @@ export default function OnboardingScreen() {
     router.replace("/(tabs)");
   }, [user?.id, isJoining, handleCreateFamily, setOnboardingComplete]);
 
-  const progress = (STEPS.indexOf(step) + 1) / STEPS.length;
+  const activeSteps = isJoining ? STEPS_JOIN : STEPS_CREATE;
+  const progressIdx = activeSteps.indexOf(step as typeof activeSteps[number]);
+  const progress = (Math.max(0, progressIdx) + 1) / activeSteps.length;
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background, paddingTop: insets.top + (Platform.OS === "web" ? 67 : 0), paddingBottom: insets.bottom + (Platform.OS === "web" ? 34 : 0) }]}>
       <View style={styles.progressBar}>
         <View style={[styles.progressFill, { width: `${progress * 100}%`, backgroundColor: colors.lavender }]} />
       </View>
-
-      {step === "dog" && (
-        <ScrollView style={styles.stepContent} showsVerticalScrollIndicator={false}>
-          <Text style={[styles.stepTitle, { color: colors.dark, fontFamily: "FredokaOne_400Regular" }]}>Tell us about your pup!</Text>
-          <Text style={[styles.stepSubtitle, { color: colors.mutedForeground, fontFamily: "Nunito_400Regular" }]}>We'll personalise training just for them</Text>
-
-          <Text style={[styles.label, { color: colors.dark, fontFamily: "Nunito_700Bold" }]}>Dog's name *</Text>
-          <TextInput
-            style={[styles.input, { backgroundColor: colors.card, borderColor: colors.border, color: colors.dark, fontFamily: "Nunito_400Regular" }]}
-            value={dogName}
-            onChangeText={setDogName}
-            placeholder="e.g. Max"
-            placeholderTextColor={colors.mutedForeground}
-          />
-
-          <TouchableOpacity
-            style={[styles.nextButton, { backgroundColor: dogName ? colors.peach : colors.muted }]}
-            onPress={() => setStep("commands")}
-            disabled={!dogName}
-            activeOpacity={0.85}
-          >
-            <Text style={[styles.nextButtonText, { color: dogName ? "#fff" : colors.mutedForeground, fontFamily: "Nunito_900Black" }]}>Next</Text>
-          </TouchableOpacity>
-        </ScrollView>
-      )}
-
-      {step === "commands" && (
-        <ScrollView style={styles.stepContent} showsVerticalScrollIndicator={false}>
-          <Text style={[styles.stepTitle, { color: colors.dark, fontFamily: "FredokaOne_400Regular" }]}>What does {dogName} know?</Text>
-          <Text style={[styles.stepSubtitle, { color: colors.mutedForeground, fontFamily: "Nunito_400Regular" }]}>Select commands they already know</Text>
-
-          <View style={[styles.infoPanel, { backgroundColor: colors.lavLight, borderLeftColor: colors.lavender }]}>
-            <Feather name="info" size={15} color={colors.lavender} />
-            <Text style={[styles.infoPanelText, { color: colors.dark, fontFamily: "Nunito_400Regular" }]}>
-              You can always add or edit commands later from your dog's Profile page.
-            </Text>
-          </View>
-
-          <View style={styles.commandsGrid}>
-            {ALL_COMMANDS.map((cmd) => {
-              const selected = selectedCommands.includes(cmd);
-              return (
-                <TouchableOpacity
-                  key={cmd}
-                  style={[styles.commandChip, { backgroundColor: selected ? colors.mintLight : colors.card, borderColor: selected ? colors.mint : colors.border, borderWidth: 2 }]}
-                  onPress={() => toggleCommand(cmd)}
-                  activeOpacity={0.8}
-                >
-                  <Text style={[styles.commandChipText, { color: selected ? colors.mint : colors.mutedForeground, fontFamily: "Nunito_700Bold" }]}>{cmd}</Text>
-                </TouchableOpacity>
-              );
-            })}
-          </View>
-
-          <TouchableOpacity style={[styles.nextButton, { backgroundColor: colors.peach }]} onPress={() => setStep("family")} activeOpacity={0.85}>
-            <Text style={[styles.nextButtonText, { color: "#fff", fontFamily: "Nunito_900Black" }]}>{selectedCommands.length > 0 ? "Next" : "Skip"}</Text>
-          </TouchableOpacity>
-        </ScrollView>
-      )}
 
       {step === "family" && (
         <ScrollView style={styles.stepContent} showsVerticalScrollIndicator={false}>
@@ -260,12 +204,71 @@ export default function OnboardingScreen() {
           {familyTab === "skip" && (
             <TouchableOpacity
               style={[styles.nextButton, { backgroundColor: colors.peach, marginTop: 24 }]}
-              onPress={() => setStep("done")}
+              onPress={() => setStep("dog")}
               activeOpacity={0.85}
             >
               <Text style={[styles.nextButtonText, { color: "#fff", fontFamily: "Nunito_900Black" }]}>Continue</Text>
             </TouchableOpacity>
           )}
+        </ScrollView>
+      )}
+
+      {step === "dog" && (
+        <ScrollView style={styles.stepContent} showsVerticalScrollIndicator={false}>
+          <Text style={[styles.stepTitle, { color: colors.dark, fontFamily: "FredokaOne_400Regular" }]}>Tell us about your pup!</Text>
+          <Text style={[styles.stepSubtitle, { color: colors.mutedForeground, fontFamily: "Nunito_400Regular" }]}>We'll personalise training just for them</Text>
+
+          <Text style={[styles.label, { color: colors.dark, fontFamily: "Nunito_700Bold" }]}>Dog's name *</Text>
+          <TextInput
+            style={[styles.input, { backgroundColor: colors.card, borderColor: colors.border, color: colors.dark, fontFamily: "Nunito_400Regular" }]}
+            value={dogName}
+            onChangeText={setDogName}
+            placeholder="e.g. Max"
+            placeholderTextColor={colors.mutedForeground}
+          />
+
+          <TouchableOpacity
+            style={[styles.nextButton, { backgroundColor: dogName ? colors.peach : colors.muted }]}
+            onPress={() => setStep("commands")}
+            disabled={!dogName}
+            activeOpacity={0.85}
+          >
+            <Text style={[styles.nextButtonText, { color: dogName ? "#fff" : colors.mutedForeground, fontFamily: "Nunito_900Black" }]}>Next</Text>
+          </TouchableOpacity>
+        </ScrollView>
+      )}
+
+      {step === "commands" && (
+        <ScrollView style={styles.stepContent} showsVerticalScrollIndicator={false}>
+          <Text style={[styles.stepTitle, { color: colors.dark, fontFamily: "FredokaOne_400Regular" }]}>What does {dogName} know?</Text>
+          <Text style={[styles.stepSubtitle, { color: colors.mutedForeground, fontFamily: "Nunito_400Regular" }]}>Select commands they already know</Text>
+
+          <View style={[styles.infoPanel, { backgroundColor: colors.lavLight, borderLeftColor: colors.lavender }]}>
+            <Feather name="info" size={15} color={colors.lavender} />
+            <Text style={[styles.infoPanelText, { color: colors.dark, fontFamily: "Nunito_400Regular" }]}>
+              You can always add or edit commands later from your dog's Profile page.
+            </Text>
+          </View>
+
+          <View style={styles.commandsGrid}>
+            {ALL_COMMANDS.map((cmd) => {
+              const selected = selectedCommands.includes(cmd);
+              return (
+                <TouchableOpacity
+                  key={cmd}
+                  style={[styles.commandChip, { backgroundColor: selected ? colors.mintLight : colors.card, borderColor: selected ? colors.mint : colors.border, borderWidth: 2 }]}
+                  onPress={() => toggleCommand(cmd)}
+                  activeOpacity={0.8}
+                >
+                  <Text style={[styles.commandChipText, { color: selected ? colors.mint : colors.mutedForeground, fontFamily: "Nunito_700Bold" }]}>{cmd}</Text>
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+
+          <TouchableOpacity style={[styles.nextButton, { backgroundColor: colors.peach }]} onPress={() => setStep("done")} activeOpacity={0.85}>
+            <Text style={[styles.nextButtonText, { color: "#fff", fontFamily: "Nunito_900Black" }]}>{selectedCommands.length > 0 ? "Next" : "Skip"}</Text>
+          </TouchableOpacity>
         </ScrollView>
       )}
 
