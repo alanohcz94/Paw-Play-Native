@@ -8,7 +8,8 @@ import {
   sessionsRecordTable,
   achievementsTable,
 } from "@workspace/db";
-import { eq } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
+import { sessionsTable } from "@workspace/db";
 import { deleteSession, getSessionId } from "../lib/auth";
 
 const router = Router();
@@ -72,27 +73,45 @@ router.delete("/users/:userId", async (req: Request, res: Response) => {
     return;
   }
 
-  const [pawUser] = await db.select().from(pawplayUsersTable).where(eq(pawplayUsersTable.id, userId));
+  try {
+    await db.transaction(async (tx) => {
+      const [pawUser] = await tx
+        .select()
+        .from(pawplayUsersTable)
+        .where(eq(pawplayUsersTable.id, userId));
 
-  if (pawUser?.familyId) {
-    const [family] = await db.select().from(familiesTable).where(eq(familiesTable.id, pawUser.familyId));
-    if (family) {
-      const updatedMembers = (family.memberIds as string[]).filter((id) => id !== userId);
-      await db.update(familiesTable)
-        .set({ memberIds: updatedMembers as unknown as Record<string, unknown> })
-        .where(eq(familiesTable.id, family.id));
-    }
+      if (pawUser?.familyId) {
+        await tx
+          .update(familiesTable)
+          .set({
+            memberIds: sql`COALESCE(${familiesTable.memberIds}, '[]'::jsonb) - ${userId}`,
+          })
+          .where(eq(familiesTable.id, pawUser.familyId));
+      }
+
+      await tx.delete(sessionsRecordTable).where(eq(sessionsRecordTable.userId, userId));
+      await tx.delete(achievementsTable).where(eq(achievementsTable.userId, userId));
+      await tx.delete(pushTokensTable).where(eq(pushTokensTable.userId, userId));
+      await tx.delete(pawplayUsersTable).where(eq(pawplayUsersTable.id, userId));
+      await tx.delete(usersTable).where(eq(usersTable.id, userId));
+
+      await tx
+        .delete(sessionsTable)
+        .where(sql`(${sessionsTable.sess} -> 'user' ->> 'id') = ${userId}`);
+    });
+  } catch (err) {
+    req.log?.error({ err, userId }, "Failed to delete account");
+    res.status(500).json({ error: "Failed to delete account" });
+    return;
   }
-
-  await db.delete(sessionsRecordTable).where(eq(sessionsRecordTable.userId, userId));
-  await db.delete(achievementsTable).where(eq(achievementsTable.userId, userId));
-  await db.delete(pushTokensTable).where(eq(pushTokensTable.userId, userId));
-  await db.delete(pawplayUsersTable).where(eq(pawplayUsersTable.id, userId));
-  await db.delete(usersTable).where(eq(usersTable.id, userId));
 
   const sid = getSessionId(req);
   if (sid) {
-    await deleteSession(sid);
+    try {
+      await deleteSession(sid);
+    } catch (err) {
+      req.log?.warn({ err, sid }, "Failed to delete current session after account deletion");
+    }
   }
 
   res.json({ success: true });

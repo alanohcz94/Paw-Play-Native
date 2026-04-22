@@ -62,24 +62,39 @@ export default function SettingsScreen() {
 
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
 
   const handleDeleteAccount = useCallback(async () => {
     if (!user) return;
     setIsDeleting(true);
+    setDeleteError(null);
     try {
       const { authedFetch } = await import("@/lib/authedFetch");
       const res = await authedFetch(`/api/users/${user.id}`, { method: "DELETE" });
-      if (res.ok) {
-        setShowDeleteModal(false);
-        resetState();
-        await logout();
-        router.replace("/home");
+      if (!res.ok) {
+        console.warn("Delete account failed:", res.status, await res.text().catch(() => ""));
+        setDeleteError("Couldn't delete your account. Please try again.");
+        return;
       }
-    } catch {
+      setShowDeleteModal(false);
+      resetState();
+      try {
+        await logout();
+      } catch (err) {
+        console.warn("Logout after delete failed:", err);
+      }
+      router.replace("/home");
+    } catch (err) {
+      console.error("Delete account error:", err);
+      setDeleteError("Couldn't delete your account. Please try again.");
     } finally {
       setIsDeleting(false);
     }
   }, [user, resetState, logout]);
+
+  useEffect(() => {
+    if (!showDeleteModal) setDeleteError(null);
+  }, [showDeleteModal]);
 
   const [fetchedCode, setFetchedCode] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
@@ -739,8 +754,33 @@ export default function SettingsScreen() {
                 },
               ]}
             >
-              This will permanently delete your account and all training data. This action cannot be undone.
+              This will permanently delete your account, your scores, achievements, and notification settings. Your dog and family will be kept so other family members can keep training, and so you can rejoin with the same sign-in later.
             </Text>
+            {deleteError ? (
+              <View
+                accessibilityRole="alert"
+                style={{
+                  width: "100%",
+                  backgroundColor: colors.destructive + "1A",
+                  borderColor: colors.destructive,
+                  borderWidth: 1,
+                  borderRadius: 12,
+                  padding: 12,
+                  marginBottom: 12,
+                }}
+              >
+                <Text
+                  style={{
+                    color: colors.destructive,
+                    fontFamily: "Nunito_700Bold",
+                    fontSize: 14,
+                    textAlign: "center",
+                  }}
+                >
+                  {deleteError}
+                </Text>
+              </View>
+            ) : null}
             <TouchableOpacity
               style={[
                 styles.deleteConfirmBtn,
