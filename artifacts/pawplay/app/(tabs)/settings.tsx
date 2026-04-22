@@ -60,6 +60,27 @@ export default function SettingsScreen() {
     router.replace("/home");
   }, [resetState, logout]);
 
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+
+  const handleDeleteAccount = useCallback(async () => {
+    if (!user) return;
+    setIsDeleting(true);
+    try {
+      const { authedFetch } = await import("@/lib/authedFetch");
+      const res = await authedFetch(`/api/users/${user.id}`, { method: "DELETE" });
+      if (res.ok) {
+        setShowDeleteModal(false);
+        resetState();
+        await logout();
+        router.replace("/home");
+      }
+    } catch {
+    } finally {
+      setIsDeleting(false);
+    }
+  }, [user, resetState, logout]);
+
   const [fetchedCode, setFetchedCode] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
 
@@ -485,6 +506,22 @@ export default function SettingsScreen() {
               Sign Out
             </Text>
           </TouchableOpacity>
+          <View style={[styles.divider, { backgroundColor: colors.border }]} />
+          <TouchableOpacity
+            style={styles.signOutRow}
+            onPress={() => setShowDeleteModal(true)}
+            activeOpacity={0.7}
+          >
+            <Feather name="trash-2" size={18} color={colors.destructive} />
+            <Text
+              style={[
+                styles.signOutText,
+                { color: colors.destructive, fontFamily: "Nunito_700Bold" },
+              ]}
+            >
+              Delete Account
+            </Text>
+          </TouchableOpacity>
         </View>
 
         <Text
@@ -667,6 +704,79 @@ export default function SettingsScreen() {
           </Pressable>
         </Pressable>
       </Modal>
+      {/* Delete account confirmation modal */}
+      <Modal
+        transparent
+        animationType="fade"
+        visible={showDeleteModal}
+        onRequestClose={() => setShowDeleteModal(false)}
+      >
+        <Pressable
+          style={styles.pickerBackdrop}
+          onPress={() => !isDeleting && setShowDeleteModal(false)}
+        >
+          <Pressable
+            style={[styles.deleteSheet, { backgroundColor: colors.card }]}
+            onPress={() => {}}
+          >
+            <View style={styles.deleteIconWrap}>
+              <Feather name="trash-2" size={32} color={colors.destructive} />
+            </View>
+            <Text
+              style={[
+                styles.deleteTitle,
+                { color: colors.dark, fontFamily: "FredokaOne_400Regular" },
+              ]}
+            >
+              Delete Account?
+            </Text>
+            <Text
+              style={[
+                styles.deleteBody,
+                {
+                  color: colors.mutedForeground,
+                  fontFamily: "Nunito_400Regular",
+                },
+              ]}
+            >
+              This will permanently delete your account and all training data. This action cannot be undone.
+            </Text>
+            <TouchableOpacity
+              style={[
+                styles.deleteConfirmBtn,
+                { backgroundColor: colors.destructive, opacity: isDeleting ? 0.6 : 1 },
+              ]}
+              onPress={handleDeleteAccount}
+              activeOpacity={0.85}
+              disabled={isDeleting}
+            >
+              <Text
+                style={[
+                  styles.confirmBtnText,
+                  { fontFamily: "Nunito_900Black" },
+                ]}
+              >
+                {isDeleting ? "Deleting…" : "Yes, Delete My Account"}
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.deleteCancelBtn}
+              onPress={() => setShowDeleteModal(false)}
+              activeOpacity={0.7}
+              disabled={isDeleting}
+            >
+              <Text
+                style={[
+                  styles.deleteCancelText,
+                  { color: colors.mutedForeground, fontFamily: "Nunito_700Bold" },
+                ]}
+              >
+                Cancel
+              </Text>
+            </TouchableOpacity>
+          </Pressable>
+        </Pressable>
+      </Modal>
     </>
   );
 }
@@ -738,4 +848,23 @@ const styles = StyleSheet.create({
     marginTop: 4,
   },
   confirmBtnText: { color: "#fff", fontSize: 17 },
+  deleteSheet: {
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    padding: 24,
+    gap: 4,
+    alignItems: "center",
+  },
+  deleteIconWrap: { marginBottom: 8 },
+  deleteTitle: { fontSize: 26, marginBottom: 8, textAlign: "center" },
+  deleteBody: { fontSize: 14, textAlign: "center", lineHeight: 20, marginBottom: 16 },
+  deleteConfirmBtn: {
+    borderRadius: 16,
+    paddingVertical: 16,
+    alignItems: "center",
+    width: "100%",
+    marginTop: 4,
+  },
+  deleteCancelBtn: { paddingVertical: 14, alignItems: "center", width: "100%" },
+  deleteCancelText: { fontSize: 16 },
 });
