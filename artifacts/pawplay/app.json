@@ -2,7 +2,7 @@
   "expo": {
     "name": "Quick-mix",
     "slug": "pawplay",
-    "version": "1.0.0",
+    "version": "1.0.12",
     "orientation": "portrait",
     "icon": "./assets/images/mainIcon.png",
     "scheme": "pawplay",
