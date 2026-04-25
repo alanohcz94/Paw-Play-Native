@@ -78,9 +78,9 @@ export default function RootLayout() {
                   <Stack.Screen name="demo" />
                   <Stack.Screen name="onboarding" />
                   <Stack.Screen name="(tabs)" />
-                  <Stack.Screen name="challenge-setup" />
-                  <Stack.Screen name="challenge-active" />
-                  <Stack.Screen name="challenge-end" />
+                  <Stack.Screen name="blitz-setup" />
+                  <Stack.Screen name="blitz-active" />
+                  <Stack.Screen name="blitz-end" />
                   <Stack.Screen name="training-config" />
                   <Stack.Screen name="training-active" />
                   <Stack.Screen name="calendar" />

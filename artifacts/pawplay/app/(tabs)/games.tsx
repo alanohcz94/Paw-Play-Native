@@ -135,7 +135,7 @@ export default function GamesScreen() {
           </View>
         </TouchableOpacity>
 
-        <View
+        <TouchableOpacity
           style={[
             styles.modeCard,
             {
@@ -144,6 +144,12 @@ export default function GamesScreen() {
               opacity: obedienceUnlocked ? 1 : 0.85,
             },
           ]}
+          onPress={() => {
+            if (!obedienceUnlocked) return;
+            router.push("/blitz-setup");
+          }}
+          activeOpacity={obedienceUnlocked ? 0.85 : 1}
+          disabled={!obedienceUnlocked}
         >
           <View style={styles.modeRow}>
             <View
@@ -170,7 +176,7 @@ export default function GamesScreen() {
                     { color: colors.dark, fontFamily: "Nunito_900Black" },
                   ]}
                 >
-                  Obedience Challenge
+                  Blitz
                 </Text>
                 {!obedienceUnlocked && (
                   <View
@@ -255,7 +261,7 @@ export default function GamesScreen() {
               <Feather name="lock" size={20} color={colors.mutedForeground} />
             )}
           </View>
-        </View>
+        </TouchableOpacity>
       </ScrollView>
     </View>
   );

@@ -5,7 +5,7 @@ export type FeatherIconName = ComponentProps<typeof Feather>["name"];
 
 export interface Session {
   id: string;
-  mode: "quickbites" | "challenge" | "training";
+  mode: "quickbites" | "blitz" | "training";
   difficulty?: string | null;
   rawScore: number;
   participationPoints: number;

@@ -6,11 +6,8 @@ export const ACHIEVEMENT_DEFS = [
   { type: "streak_30",       label: "30-Day Streak",     icon: "award"    },
   { type: "amazing_student", label: "Amazing Student",   icon: "book"     },
   { type: "distinction_student", label: "Distinction Student", icon: "book-open" },
-  { type: "perfect_round",   label: "Perfect Round",     icon: "target"   },
-  { type: "speed_demon",     label: "Speed Demon",       icon: "wind"     },
   { type: "family_champion", label: "Family Champ",      icon: "trophy"   },
   { type: "reliable_handler",label: "Reliable Handler",  icon: "shield"   },
-  { type: "full_pack",       label: "Full Pack",         icon: "package"  },
   { type: "month_pawfect",   label: "Month Pawfect",     icon: "calendar" },
 ];
 
@@ -34,7 +31,6 @@ export function useAchievements() {
   if (streak >= 7)     unlocked.add("streak_7");
   if (streak >= 30)    unlocked.add("streak_30");
   if (level3Count >= 1) unlocked.add("reliable_handler");
-  if (level3Count >= 7) unlocked.add("full_pack");
   if (maxReps >= 100)  unlocked.add("amazing_student");
   if (basicAt100 >= 7) unlocked.add("distinction_student");
 

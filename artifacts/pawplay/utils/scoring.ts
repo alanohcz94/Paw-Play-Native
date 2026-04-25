@@ -83,14 +83,7 @@ export function calculateScore(inputs: RawCommandInput[], difficulty: Difficulty
   const allWithinWindow = commandResults.every((r) => !r.skipped && r.timeSeconds <= r.windowSeconds);
   const noSkips = commandResults.every((r) => !r.skipped);
 
-  if (allWithinWindow && commandResults.length >= 5) {
-    bonuses.push({ name: "perfect_round", label: "Perfect Round", points: 20 });
-  }
-
-  const allUnderHalf = commandResults.every((r) => !r.skipped && r.timeSeconds <= r.windowSeconds / 2);
-  if (allUnderHalf) {
-    bonuses.push({ name: "speed_demon", label: "Speed Demon", points: 5 * commandResults.length });
-  }
+  // Note: "Perfect Round" / "Speed Demon" were removed along with Obedience Challenge achievements.
 
   let maxConsecutive = 0;
   let currentStreak = 0;

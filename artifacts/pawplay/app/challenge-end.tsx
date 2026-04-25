@@ -55,7 +55,7 @@ export default function ChallengeEndScreen() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           dogId: dog.id,
-          mode: "quickbites",
+          mode: "blitz",
           difficulty,
           rawScore: result.rawScore,
           participationPoints: result.participationPoints,
@@ -200,7 +200,7 @@ export default function ChallengeEndScreen() {
         </View>
       )}
 
-      <TouchableOpacity style={[styles.playAgainBtn, { backgroundColor: colors.peach }]} onPress={() => router.replace("/challenge-setup")} activeOpacity={0.85}>
+      <TouchableOpacity style={[styles.playAgainBtn, { backgroundColor: colors.peach }]} onPress={() => router.replace("/blitz-setup")} activeOpacity={0.85}>
         <Text style={[styles.playAgainText, { fontFamily: "Nunito_900Black" }]}>Play Again</Text>
       </TouchableOpacity>
 

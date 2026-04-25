@@ -20,7 +20,7 @@ function getCommandCount(diff: Difficulty): number {
   return 5;
 }
 
-export default function ChallengeSetupScreen() {
+export default function BlitzSetupScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const { commands } = useApp();
@@ -64,12 +64,12 @@ export default function ChallengeSetupScreen() {
           <Feather name="arrow-left" size={22} color={colors.dark} />
         </TouchableOpacity>
 
-        <Text style={[styles.header, { color: colors.dark, fontFamily: "FredokaOne_400Regular" }]}>Quick Bites</Text>
-        <Text style={[styles.subheader, { color: colors.mutedForeground, fontFamily: "Nunito_700Bold" }]}>Randomised command sequence</Text>
+        <Text style={[styles.header, { color: colors.dark, fontFamily: "FredokaOne_400Regular" }]}>Blitz</Text>
+        <Text style={[styles.subheader, { color: colors.mutedForeground, fontFamily: "Nunito_700Bold" }]}>Setup</Text>
 
         <View style={[styles.infoBox, { backgroundColor: colors.mintLight, borderLeftColor: colors.mint }]}>
           <Text style={[styles.infoText, { color: colors.dark, fontFamily: "Nunito_400Regular" }]}>
-            HOLD means your dog holds the position AND keeps focus on you — body still, eyes on handler! Hold the HOLD button while they comply and release when done. Beat the timer for full points — skipping costs points!
+            This screen will be redesigned in Step 3. For now it exists to complete the route rename sweep (Step 1).
           </Text>
         </View>
 
@@ -123,7 +123,7 @@ export default function ChallengeSetupScreen() {
             onPress={() => router.push({ pathname: "/blitz-active", params: { sequence: JSON.stringify(sequence), difficulty } })}
             activeOpacity={0.85}
           >
-            <Text style={[styles.goText, { fontFamily: "Nunito_900Black" }]}>Let's Go!</Text>
+            <Text style={[styles.goText, { fontFamily: "Nunito_900Black" }]}>Let&apos;s Go!</Text>
           </TouchableOpacity>
         </View>
       </ScrollView>
@@ -157,3 +157,4 @@ const styles = StyleSheet.create({
   goBtn: { flex: 2, alignItems: "center", borderRadius: 16, paddingVertical: 16, shadowColor: "#FF8B6A", shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 10, elevation: 6 },
   goText: { color: "#fff", fontSize: 18 },
 });
+

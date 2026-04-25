@@ -22,7 +22,7 @@ import { useColors } from "@/hooks/useColors";
 import { DIFFICULTY_WINDOW, calculateScore } from "@/utils/scoring";
 import type { Difficulty, RawCommandInput } from "@/utils/scoring";
 
-export default function ChallengeActiveScreen() {
+export default function BlitzActiveScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const { sequence: seqParam, difficulty: diffParam } = useLocalSearchParams<{
@@ -110,7 +110,6 @@ export default function ChallengeActiveScreen() {
     skippedRef.current = false;
 
     if (commandIndex === 0) {
-      // Show Ready → Set → Go! before the first command
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
       const t1 = setTimeout(() => {
         setCountdownStep("Set");
@@ -195,75 +194,7 @@ export default function ChallengeActiveScreen() {
     } else {
       setTimeout(() => setCommandIndex((i) => i + 1), 800);
     }
-  }, [difficulty, isExpert, commandIndex, sequence.length, showPointsFlash, checkBonusBubble]);
-
-  const handleHoldStart = useCallback(() => {
-    if (holdPhase === "holding") return;
-    setHoldPhase("holding");
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-
-    clearInterval(intervalRef.current!);
-    capturedElapsed.current = elapsedRef.current;
-
-    const holdDuration = Math.floor(Math.random() * 8) + 1;
-    setHoldCountdown(holdDuration);
-
-    let remaining = holdDuration;
-    holdTimerRef.current = setInterval(() => {
-      remaining--;
-      runOnJS(setHoldCountdown)(remaining);
-      if (remaining <= 0) {
-        clearInterval(holdTimerRef.current!);
-        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
-        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
-
-        const elapsed = capturedElapsed.current;
-        const secondsOver = Math.max(0, elapsed - windowSec);
-        let pts =
-          elapsed <= windowSec
-            ? maxPoints
-            : maxPoints - Math.floor(secondsOver);
-        if (!isExpert) {
-          pts = Math.max(0, pts);
-        }
-
-        const newInput: RawCommandInput = {
-          name: sequence[commandIndex],
-          skipped: false,
-          timeSeconds: elapsed,
-          windowSeconds: windowSec,
-          resetCount,
-          maxPoints,
-        };
-        runOnJS(advanceOrEnd)([...inputs.current, newInput], pts);
-      }
-    }, 1000);
-  }, [holdPhase, windowSec, maxPoints, isExpert, sequence, commandIndex, resetCount, advanceOrEnd]);
-
-  const handleReset = useCallback(() => {
-    clearInterval(holdTimerRef.current!);
-    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
-    const deduction = Math.floor(maxPoints * 0.25);
-    const newMax = Math.max(1, maxPoints - deduction);
-    setMaxPoints(newMax);
-    setResetCount((c) => c + 1);
-    shakeX.value = withSequence(
-      withTiming(-10, { duration: 50 }),
-      withTiming(10, { duration: 50 }),
-      withTiming(-10, { duration: 50 }),
-      withTiming(0, { duration: 50 }),
-    );
-    startTimer();
-  }, [maxPoints, shakeX, startTimer]);
-
-  const handleHoldRelease = useCallback(() => {
-    if (holdPhase !== "holding") return;
-    if (holdCountdown > 0) {
-      clearInterval(holdTimerRef.current!);
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
-      handleReset();
-    }
-  }, [holdPhase, holdCountdown, handleReset]);
+  }, [difficulty, isExpert, commandIndex, sequence.length]);
 
   const handleSkip = useCallback(() => {
     if (skippedRef.current) return;
@@ -285,10 +216,7 @@ export default function ChallengeActiveScreen() {
   }, [sequence, commandIndex, windowSec, resetCount, isExpert, advanceOrEnd]);
 
   const currentCommand = sequence[commandIndex] ?? "";
-  const scoreColor = isExpert && score < 0 ? "#ef4444" : colors.dark;
-  const scorePrefix = isExpert && score < 0 ? "" : "";
 
-  // Dedicated full-screen countdown before the game starts
   if (countdownStep) {
     const isGo = countdownStep === "Go!";
     return (
@@ -327,60 +255,20 @@ export default function ChallengeActiveScreen() {
           {countdownStep}
         </Text>
 
-        {/* Buttons appear (disabled) on Go! so user knows what to press */}
         {isGo && (
-          <View
-            style={{
-              alignItems: "center",
-              gap: 14,
-              width: "100%",
-              opacity: 0.4,
-            }}
-          >
-            <View
-              style={[
-                styles.holdButton,
-                { borderColor: colors.peachMid, backgroundColor: colors.peach },
-              ]}
-            >
+          <View style={{ alignItems: "center", gap: 14, width: "100%", opacity: 0.4 }}>
+            <View style={[styles.holdButton, { borderColor: colors.peachMid, backgroundColor: colors.peach }]}>
               <View style={styles.holdInner}>
-                <Text
-                  style={[styles.holdText, { fontFamily: "Nunito_900Black" }]}
-                >
-                  HOLD
-                </Text>
-                <Text
-                  style={[
-                    styles.holdSubtext,
-                    { fontFamily: "Nunito_400Regular" },
-                  ]}
-                >
-                  waiting...
-                </Text>
+                <Text style={[styles.holdText, { fontFamily: "Nunito_900Black" }]}>HOLD</Text>
+                <Text style={[styles.holdSubtext, { fontFamily: "Nunito_400Regular" }]}>waiting...</Text>
               </View>
             </View>
             <View style={[styles.resetBtn, { borderColor: colors.border }]}>
-              <Text
-                style={[
-                  styles.resetText,
-                  {
-                    color: colors.mutedForeground,
-                    fontFamily: "Nunito_700Bold",
-                  },
-                ]}
-              >
+              <Text style={[styles.resetText, { color: colors.mutedForeground, fontFamily: "Nunito_700Bold" }]}>
                 Reset
               </Text>
             </View>
-            <Text
-              style={[
-                styles.skipText,
-                {
-                  color: colors.mutedForeground,
-                  fontFamily: "Nunito_400Regular",
-                },
-              ]}
-            >
+            <Text style={[styles.skipText, { color: colors.mutedForeground, fontFamily: "Nunito_400Regular" }]}>
               skip command
             </Text>
           </View>
@@ -400,83 +288,21 @@ export default function ChallengeActiveScreen() {
       ]}
     >
       <View style={styles.topBar}>
-        <Text
-          style={[
-            styles.counter,
-            { color: colors.mutedForeground, fontFamily: "Nunito_700Bold" },
-          ]}
-        >
+        <Text style={[styles.counter, { color: colors.mutedForeground, fontFamily: "Nunito_700Bold" }]}>
           {commandIndex + 1} of {sequence.length}
         </Text>
-        <View
-          style={[
-            styles.scorePill,
-            {
-              backgroundColor: isExpert && score < 0 ? "#fef2f2" : colors.lemon,
-            },
-          ]}
-        >
-          <Text
-            style={[
-              styles.scoreText,
-              { color: scoreColor, fontFamily: "Nunito_900Black" },
-            ]}
-          >
-            {scorePrefix}
+        <View style={[styles.scorePill, { backgroundColor: colors.lemon }]}>
+          <Text style={[styles.scoreText, { color: colors.dark, fontFamily: "Nunito_900Black" }]}>
             {score} pts
           </Text>
         </View>
       </View>
 
-      <View style={styles.pipsRow}>
-        {sequence.map((_, i) => (
-          <View
-            key={i}
-            style={[
-              styles.pip,
-              {
-                backgroundColor:
-                  i < commandIndex
-                    ? colors.peach
-                    : i === commandIndex
-                      ? colors.peachMid
-                      : colors.muted,
-              },
-            ]}
-          />
-        ))}
-      </View>
-
-      <Text
-        style={[
-          styles.diffLabel,
-          { color: colors.lavender, fontFamily: "Nunito_700Bold" },
-        ]}
-      >
-        {difficulty.toUpperCase()}
-      </Text>
-
       <Animated.View style={commandShakeStyle}>
-        <Text
-          style={[
-            styles.commandWord,
-            { color: colors.dark, fontFamily: "FredokaOne_400Regular" },
-          ]}
-        >
+        <Text style={[styles.commandWord, { color: colors.dark, fontFamily: "FredokaOne_400Regular" }]}>
           {currentCommand}
         </Text>
       </Animated.View>
-
-      {resetCount > 0 && (
-        <Text
-          style={[
-            styles.maxPtsLabel,
-            { color: colors.mutedForeground, fontFamily: "Nunito_700Bold" },
-          ]}
-        >
-          Max: {maxPoints} pts
-        </Text>
-      )}
 
       <View style={styles.timerContainer}>
         <Animated.View style={[styles.timerBar, animStyle]} />
@@ -497,30 +323,12 @@ export default function ChallengeActiveScreen() {
             : `${displayTime.toFixed(1)}s remaining`}
       </Text>
 
-      {bonusBubble && (
-        <View
-          style={[styles.bonusBubble, { backgroundColor: colors.lavLight }]}
-        >
-          <Text
-            style={[
-              styles.bonusBubbleText,
-              { color: colors.lavender, fontFamily: "Nunito_900Black" },
-            ]}
-          >
-            {bonusBubble}
-          </Text>
-        </View>
-      )}
-
       {pointsFlash !== null && (
         <Animated.View style={[styles.flashContainer, flashStyle]}>
           <Text
             style={[
               styles.flashText,
-              {
-                color: pointsFlash >= 0 ? colors.mint : "#ef4444",
-                fontFamily: "FredokaOne_400Regular",
-              },
+              { color: pointsFlash >= 0 ? colors.mint : "#ef4444", fontFamily: "FredokaOne_400Regular" },
             ]}
           >
             {pointsFlash >= 0 ? "+" : ""}
@@ -529,80 +337,21 @@ export default function ChallengeActiveScreen() {
         </Animated.View>
       )}
 
-      <TouchableOpacity
-        style={[
-          styles.holdButton,
-          {
-            borderColor:
-              holdPhase === "holding" ? colors.mint : colors.peachMid,
-            backgroundColor:
-              holdPhase === "holding"
-                ? colors.mint
-                : holdPhase === "idle"
-                  ? colors.peach
-                  : colors.peachMid,
-            opacity: holdPhase === "idle" ? 0.7 : 1,
-          },
-        ]}
-        onPressIn={handleHoldStart}
-        onPressOut={handleHoldRelease}
-        activeOpacity={1}
-      >
-        {holdPhase === "holding" ? (
-          <View style={styles.holdInner}>
-            <Text style={[styles.holdText, { fontFamily: "Nunito_900Black" }]}>
-              HOLD
-            </Text>
-            <Text
-              style={[
-                styles.holdCountdownText,
-                { fontFamily: "Nunito_700Bold" },
-              ]}
-            >
-              Hold... {holdCountdown}s
-            </Text>
-          </View>
-        ) : (
-          <View style={styles.holdInner}>
-            <Text style={[styles.holdText, { fontFamily: "Nunito_900Black" }]}>
-              HOLD
-            </Text>
-            {holdPhase === "idle" && (
-              <Text
-                style={[
-                  styles.holdSubtext,
-                  { fontFamily: "Nunito_400Regular" },
-                ]}
-              >
-                waiting...
-              </Text>
-            )}
-          </View>
-        )}
+      <TouchableOpacity style={[styles.holdButton, { borderColor: colors.peachMid, backgroundColor: colors.peach }]} activeOpacity={1}>
+        <View style={styles.holdInner}>
+          <Text style={[styles.holdText, { fontFamily: "Nunito_900Black" }]}>HOLD</Text>
+          <Text style={[styles.holdSubtext, { fontFamily: "Nunito_400Regular" }]}>waiting...</Text>
+        </View>
       </TouchableOpacity>
 
-      <TouchableOpacity
-        style={[styles.resetBtn, { borderColor: colors.border }]}
-        onPress={handleReset}
-        activeOpacity={0.8}
-      >
-        <Text
-          style={[
-            styles.resetText,
-            { color: colors.mutedForeground, fontFamily: "Nunito_700Bold" },
-          ]}
-        >
+      <TouchableOpacity style={[styles.resetBtn, { borderColor: colors.border }]} activeOpacity={0.8}>
+        <Text style={[styles.resetText, { color: colors.mutedForeground, fontFamily: "Nunito_700Bold" }]}>
           Reset
         </Text>
       </TouchableOpacity>
 
       <TouchableOpacity onPress={handleSkip} activeOpacity={0.7}>
-        <Text
-          style={[
-            styles.skipText,
-            { color: colors.mutedForeground, fontFamily: "Nunito_400Regular" },
-          ]}
-        >
+        <Text style={[styles.skipText, { color: colors.mutedForeground, fontFamily: "Nunito_400Regular" }]}>
           skip command
         </Text>
       </TouchableOpacity>
@@ -623,17 +372,8 @@ const styles = StyleSheet.create({
   counter: { fontSize: 16 },
   scorePill: { paddingHorizontal: 14, paddingVertical: 6, borderRadius: 20 },
   scoreText: { fontSize: 15 },
-  pipsRow: { flexDirection: "row", gap: 8, width: "100%", marginBottom: 24 },
-  pip: { height: 8, flex: 1, borderRadius: 4 },
-  diffLabel: { fontSize: 13, letterSpacing: 2, marginBottom: 8 },
   commandWord: { fontSize: 52, textAlign: "center", marginBottom: 16 },
-  countdownBox: {
-    alignItems: "center",
-    justifyContent: "center",
-    marginBottom: 16,
-  },
   countdownText: { fontSize: 72, textAlign: "center" },
-  maxPtsLabel: { fontSize: 13, marginBottom: 8 },
   timerContainer: {
     width: "100%",
     height: 10,
@@ -644,13 +384,6 @@ const styles = StyleSheet.create({
   },
   timerBar: { height: "100%", borderRadius: 5 },
   timerText: { fontSize: 14, marginBottom: 16 },
-  bonusBubble: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 20,
-    marginBottom: 8,
-  },
-  bonusBubbleText: { fontSize: 14 },
   flashContainer: { marginBottom: 8 },
   flashText: { fontSize: 32 },
   holdButton: {
@@ -670,7 +403,6 @@ const styles = StyleSheet.create({
   holdInner: { alignItems: "center", gap: 4 },
   holdText: { color: "#FFFFFF", fontSize: 24, letterSpacing: 3 },
   holdSubtext: { color: "rgba(255,255,255,0.7)", fontSize: 12 },
-  holdCountdownText: { color: "#FFFFFF", fontSize: 14 },
   resetBtn: {
     paddingHorizontal: 32,
     paddingVertical: 12,
@@ -681,3 +413,4 @@ const styles = StyleSheet.create({
   resetText: { fontSize: 15 },
   skipText: { fontSize: 14, textDecorationLine: "underline" },
 });
+

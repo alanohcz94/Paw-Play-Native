@@ -63,10 +63,10 @@ router.post("/sessions", async (req: Request, res: Response) => {
       const newTrainingCount = mode === "training"
         ? existing.trainingSessionsCount + repCount
         : existing.trainingSessionsCount;
-      const newQbSuccesses = (mode === "quickbites" || mode === "challenge") && agg.anySuccess
+      const newQbSuccesses = (mode === "quickbites" || mode === "blitz") && agg.anySuccess
         ? existing.qbSuccessesCount + repCount
         : existing.qbSuccessesCount;
-      const newQbSessionsWithSuccess = (mode === "quickbites" || mode === "challenge") && hasSuccess
+      const newQbSessionsWithSuccess = (mode === "quickbites" || mode === "blitz") && hasSuccess
         ? existing.qbSessionsWithSuccess + 1
         : existing.qbSessionsWithSuccess;
       const newLevel = evaluateCommandLevel({

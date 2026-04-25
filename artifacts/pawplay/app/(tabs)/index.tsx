@@ -271,15 +271,16 @@ export default function DashboardScreen() {
             </Text>
           ) : (
             todaySessions.map((s: Session, i: number) => {
-              const isQB = s.mode === "quickbites" || s.mode === "challenge";
-              const modeLabel = isQB ? "Quick Bites" : "Training";
-              const modeIcon = isQB ? "zap" : "book-open";
+              const isQB = s.mode === "quickbites";
+              const isBlitz = s.mode === "blitz";
+              const modeLabel = isQB ? "Quick Bites" : isBlitz ? "Blitz" : "Training";
+              const modeIcon = isQB ? "zap" : isBlitz ? "zap" : "book-open";
               const cmdName =
-                !isQB && s.commandsUsed?.[0]?.name
+                !isQB && !isBlitz && s.commandsUsed?.[0]?.name
                   ? s.commandsUsed[0].name
                   : null;
               const reps =
-                !isQB && s.durationSeconds
+                !isQB && !isBlitz && s.durationSeconds
                   ? Math.round(s.durationSeconds / 30)
                   : null;
               return (
@@ -464,7 +465,7 @@ export default function DashboardScreen() {
 
       <TouchableOpacity
         style={[styles.fab, { backgroundColor: colors.peach }]}
-        onPress={() => router.push("/challenge-setup")}
+        onPress={() => router.push("/blitz-setup")}
         activeOpacity={0.85}
       >
         <Feather name="play" size={26} color="#fff" />

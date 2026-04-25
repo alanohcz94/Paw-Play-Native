@@ -86,9 +86,6 @@ const ACHIEVEMENT_TYPES = [
   { type: "streak_7" },
   { type: "streak_30" },
   { type: "reliable_handler" },
-  { type: "full_pack" },
-  { type: "perfect_round" },
-  { type: "speed_demon" },
   { type: "family_champion" },
   { type: "month_pawfect" },
 ];
@@ -796,7 +793,7 @@ export default function ProfileScreen() {
                   { color: "#3B82F6", fontFamily: "Nunito_700Bold" },
                 ]}
               >
-                Obedience Challenge unlocked!
+                Blitz unlocked!
               </Text>
             )}
           </View>

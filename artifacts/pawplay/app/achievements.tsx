@@ -51,20 +51,6 @@ const ACHIEVEMENT_TYPES = [
     unlock: "Reach 100 combined reps on all 7 basic commands",
   },
   {
-    type: "perfect_round",
-    label: "Perfect Round",
-    icon: "target",
-    description: "Flawless session — every command on time",
-    unlock: "Complete all commands within the comply window with zero skips",
-  },
-  {
-    type: "speed_demon",
-    label: "Speed Demon",
-    icon: "wind",
-    description: "Lightning fast responses from your dog",
-    unlock: "Complete every command in under half the comply window",
-  },
-  {
     type: "family_champion",
     label: "Family Champ",
     icon: "trophy",
@@ -77,13 +63,6 @@ const ACHIEVEMENT_TYPES = [
     icon: "shield",
     description: "Your first command reached Reliable level",
     unlock: "Get any command to Level 3 — Reliable",
-  },
-  {
-    type: "full_pack",
-    label: "Full Pack",
-    icon: "package",
-    description: "All basic commands mastered — Obedience Challenge unlocked!",
-    unlock: "Get all 7 basic commands to Level 3 — Reliable",
   },
   {
     type: "month_pawfect",
@@ -131,11 +110,6 @@ function getProgress(
       return level3Count >= 1
         ? { pct: 100, hint: "Done!" }
         : { pct: 0, hint: "0/1 commands" };
-    case "full_pack":
-      return {
-        pct: Math.min(100, Math.round((level3Count / 7) * 100)),
-        hint: `${level3Count}/7 commands`,
-      };
     case "amazing_student":
       return {
         pct: Math.min(100, Math.round((maxCommandReps / 100) * 100)),
@@ -177,7 +151,6 @@ export default function AchievementsScreen() {
       if (streak >= 7) unlockedSet.add("streak_7");
       if (streak >= 30) unlockedSet.add("streak_30");
       if (level3Count >= 1) unlockedSet.add("reliable_handler");
-      if (level3Count >= 7) unlockedSet.add("full_pack");
       if (maxCommandReps >= 100) unlockedSet.add("amazing_student");
       if (basicCommandsAt100 >= 7) unlockedSet.add("distinction_student");
       return { level3Count, hasAnySessions, maxCommandReps, basicCommandsAt100, unlockedSet, unlockedCount: unlockedSet.size };

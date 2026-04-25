@@ -1,0 +1,191 @@
+import React, { useEffect, useRef, useState } from "react";
+import {
+  View, Text, StyleSheet, TouchableOpacity, ScrollView, Platform, Animated,
+} from "react-native";
+import { router, useLocalSearchParams } from "expo-router";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { Feather } from "@expo/vector-icons";
+import { useColors } from "@/hooks/useColors";
+import { useApp } from "@/context/AppContext";
+import { useAuth } from "@/lib/auth";
+import type { ScoreResult } from "@/utils/scoring";
+import AchievementBanner from "@/components/AchievementBanner";
+import { useAchievements } from "@/hooks/useAchievements";
+import { useSound } from "@/hooks/useSound";
+
+export default function BlitzEndScreen() {
+  const colors = useColors();
+  const insets = useSafeAreaInsets();
+  const { result: resultParam, difficulty } = useLocalSearchParams<{ result: string; difficulty: string }>();
+  const { dog, updateUserStreak, streak, setCommands, markAchievementSeen } = useApp();
+  const { user } = useAuth();
+  const { getNewlyUnlocked } = useAchievements();
+  const { play } = useSound();
+  const [pendingAchievements, setPendingAchievements] = useState<{ type: string; label: string; icon: string }[]>([]);
+  const [shownAchievement, setShownAchievement] = useState<{ type: string; label: string; icon: string } | null>(null);
+  const scoreAnim = useRef(new Animated.Value(0)).current;
+  const bonusAnim = useRef(new Animated.Value(0)).current;
+
+  const result: ScoreResult | null = resultParam ? JSON.parse(resultParam) : null;
+  const isExpert = difficulty === "expert";
+  const rawScore = result?.participationPoints ?? 0;
+  const score = isExpert ? rawScore : Math.max(0, rawScore);
+  const totalBonus = result?.bonuses.reduce((s, b) => s + b.points, 0) ?? 0;
+
+  useEffect(() => {
+    Animated.spring(scoreAnim, { toValue: 1, useNativeDriver: true, tension: 60, friction: 8 }).start();
+    Animated.spring(bonusAnim, { toValue: 1, useNativeDriver: true, tension: 40, friction: 10, delay: 400 }).start();
+
+    play("success");
+    updateUserStreak();
+
+    if (result && dog?.id && user?.id) {
+      saveSession();
+    }
+  }, []);
+
+  const saveSession = async () => {
+    if (!result || !dog?.id || !user?.id) return;
+    try {
+      const { authedFetch } = await import("@/lib/authedFetch");
+      await authedFetch(`/api/sessions`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          dogId: dog.id,
+          mode: "blitz",
+          difficulty,
+          rawScore: result.rawScore,
+          participationPoints: result.participationPoints,
+          bonuses: result.bonuses,
+          commandsUsed: result.commandResults.map((r) => ({
+            name: r.name,
+            success: r.success,
+            skipped: r.skipped,
+            resetCount: r.resetCount,
+            count: 1,
+          })),
+          durationSeconds: 120,
+          completed: true,
+        }),
+      });
+      const cmdsRes = await authedFetch(`/api/dogs/${dog.id}/commands`);
+      if (cmdsRes.ok) {
+        const { commands } = await cmdsRes.json();
+        setCommands(commands);
+        setTimeout(() => {
+          const newOnes = getNewlyUnlocked();
+          if (newOnes.length > 0) {
+            setPendingAchievements(newOnes);
+            setShownAchievement(newOnes[0]);
+          }
+        }, 800);
+      }
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  const dismissAchievement = () => {
+    if (!shownAchievement) return;
+    markAchievementSeen(shownAchievement.type);
+    play("achievement");
+    const remaining = pendingAchievements.filter((a) => a.type !== shownAchievement.type);
+    setPendingAchievements(remaining);
+    setShownAchievement(remaining[0] ?? null);
+  };
+
+  const scoreStyle = { transform: [{ scale: scoreAnim }], opacity: scoreAnim };
+  const bonusStyle = { transform: [{ scale: bonusAnim }], opacity: bonusAnim };
+
+  return (
+    <View style={styles.root}>
+      {shownAchievement && (
+        <AchievementBanner
+          key={shownAchievement.type}
+          label={shownAchievement.label}
+          icon={shownAchievement.icon}
+          onDismiss={dismissAchievement}
+        />
+      )}
+      <ScrollView
+        style={[styles.container, { backgroundColor: colors.background }]}
+        contentContainerStyle={[styles.content, { paddingTop: insets.top + (Platform.OS === "web" ? 67 : 24), paddingBottom: 40 + (Platform.OS === "web" ? 34 : insets.bottom) }]}
+        showsVerticalScrollIndicator={false}
+      >
+        <Text style={[styles.title, { color: colors.dark, fontFamily: "FredokaOne_400Regular" }]}>
+          {dog?.name ? `${dog.name}'s Blitz!` : "Blitz Complete!"}
+        </Text>
+
+        <Animated.View style={[styles.scoreContainer, scoreStyle]}>
+          <Text style={[styles.scoreValue, { color: colors.mint, fontFamily: "FredokaOne_400Regular" }]}>{score}</Text>
+          <Text style={[styles.scoreLabel, { color: colors.mutedForeground, fontFamily: "Nunito_400Regular" }]}>Blitz Points</Text>
+        </Animated.View>
+
+        {totalBonus > 0 ? (
+          <Animated.View style={[styles.bonusSection, bonusStyle]}>
+            <Text style={[styles.bonusTitle, { color: colors.dark, fontFamily: "Nunito_900Black" }]}>
+              Bonuses +{Math.min(totalBonus, 50)}
+            </Text>
+            <View style={styles.bonusChips}>
+              {result!.bonuses.map((b) => (
+                <View key={b.name} style={[styles.bonusChip, { backgroundColor: colors.lavLight }]}>
+                  <Text style={[styles.bonusChipText, { color: colors.lavender, fontFamily: "Nunito_700Bold" }]}>
+                    {b.label} +{b.points}
+                  </Text>
+                </View>
+              ))}
+            </View>
+          </Animated.View>
+        ) : (
+          <View style={[styles.noBonusBox, { backgroundColor: colors.card }]}>
+            <Text style={[styles.noBonusText, { color: colors.mutedForeground, fontFamily: "Nunito_400Regular" }]}>
+              Keep training — bonuses unlock as you improve!
+            </Text>
+          </View>
+        )}
+
+        {streak > 0 && (
+          <View style={[styles.streakBox, { backgroundColor: colors.peachLight }]}>
+            <Feather name="zap" size={20} color={colors.peach} />
+            <Text style={[styles.streakText, { color: colors.peach, fontFamily: "Nunito_900Black" }]}>
+              {streak} day streak!
+            </Text>
+          </View>
+        )}
+
+        <TouchableOpacity style={[styles.playAgainBtn, { backgroundColor: colors.mint }]} onPress={() => router.replace("/blitz-setup")} activeOpacity={0.85}>
+          <Text style={[styles.playAgainText, { fontFamily: "Nunito_900Black" }]}>Go Again</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity style={[styles.homeBtn, { borderColor: colors.border }]} onPress={() => router.replace("/(tabs)")} activeOpacity={0.8}>
+          <Text style={[styles.homeText, { color: colors.dark, fontFamily: "Nunito_700Bold" }]}>Home</Text>
+        </TouchableOpacity>
+      </ScrollView>
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  root: { flex: 1 },
+  container: { flex: 1 },
+  content: { paddingHorizontal: 24, alignItems: "center" },
+  title: { fontSize: 30, textAlign: "center", marginBottom: 8 },
+  scoreContainer: { alignItems: "center", marginBottom: 24 },
+  scoreValue: { fontSize: 80, lineHeight: 88 },
+  scoreLabel: { fontSize: 14 },
+  bonusSection: { width: "100%", marginBottom: 20 },
+  bonusTitle: { fontSize: 15, marginBottom: 10 },
+  bonusChips: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
+  bonusChip: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 20 },
+  bonusChipText: { fontSize: 13 },
+  noBonusBox: { borderRadius: 16, padding: 16, width: "100%", marginBottom: 20 },
+  noBonusText: { fontSize: 14, textAlign: "center" },
+  streakBox: { flexDirection: "row", alignItems: "center", gap: 8, paddingHorizontal: 20, paddingVertical: 12, borderRadius: 20, marginBottom: 24 },
+  streakText: { fontSize: 16 },
+  playAgainBtn: { width: "100%", paddingVertical: 18, borderRadius: 16, alignItems: "center", marginBottom: 12 },
+  playAgainText: { color: "#fff", fontSize: 18 },
+  homeBtn: { width: "100%", paddingVertical: 16, borderRadius: 16, alignItems: "center", borderWidth: 1.5 },
+  homeText: { fontSize: 17 },
+});
+
