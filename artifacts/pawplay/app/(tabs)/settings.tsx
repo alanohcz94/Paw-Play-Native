@@ -11,8 +11,6 @@ import {
   Pressable,
   Share,
   Clipboard,
-  TextInput,
-  ActivityIndicator,
 } from "react-native";
 import { router } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -67,11 +65,6 @@ export default function SettingsScreen() {
   const [isDeleting, setIsDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
 
-  const [showJoinModal, setShowJoinModal] = useState(false);
-  const [joinCode, setJoinCode] = useState("");
-  const [joinError, setJoinError] = useState("");
-  const [joinLoading, setJoinLoading] = useState(false);
-
   const [showLeaveModal, setShowLeaveModal] = useState(false);
   const [leaveLoading, setLeaveLoading] = useState(false);
   const [leaveError, setLeaveError] = useState<string | null>(null);
@@ -115,38 +108,35 @@ export default function SettingsScreen() {
   }, [showDeleteModal]);
 
   useEffect(() => {
-    if (!showJoinModal) {
-      setJoinCode("");
-      setJoinError("");
-    }
-  }, [showJoinModal]);
-
-  useEffect(() => {
     if (!showLeaveModal) setLeaveError(null);
   }, [showLeaveModal]);
 
   const [fetchedCode, setFetchedCode] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
+  const [memberCount, setMemberCount] = useState(0);
 
   const displayCode = inviteCode ?? fetchedCode;
 
   useEffect(() => {
-    if (!familyId || inviteCode) return;
-    const loadCode = async () => {
+    if (!familyId) return;
+    const loadFamily = async () => {
       try {
         const { authedFetch } = await import("@/lib/authedFetch");
         const res = await authedFetch(`/api/family/${familyId}`);
         if (res.ok) {
           const fam = await res.json();
-          setFetchedCode(fam.inviteCode);
-          setInviteCode(fam.inviteCode);
+          setMemberCount((fam.memberIds as string[]).length);
+          if (!inviteCode) {
+            setFetchedCode(fam.inviteCode);
+            setInviteCode(fam.inviteCode);
+          }
         }
       } catch (e) {
-        console.warn("Failed to load invite code:", e);
+        console.warn("Failed to load family:", e);
       }
     };
-    loadCode();
-  }, [familyId, inviteCode]);
+    loadFamily();
+  }, [familyId]);
 
   const handleCopyCode = useCallback(() => {
     if (!displayCode) return;
@@ -162,41 +152,6 @@ export default function SettingsScreen() {
       title: "QuickMix Family Invite",
     });
   }, [displayCode]);
-
-  const handleJoinFamily = useCallback(async () => {
-    const code = joinCode.trim().toUpperCase();
-    if (!code) {
-      setJoinError("Please enter an invite code.");
-      return;
-    }
-    setJoinError("");
-    setJoinLoading(true);
-    try {
-      const { authedFetch } = await import("@/lib/authedFetch");
-      const res = await authedFetch(`/api/family/join/${code}`, { method: "POST" });
-      if (!res.ok) {
-        setJoinError("Invalid invite code. Please check and try again.");
-        return;
-      }
-      const family = await res.json();
-      setFamilyId(family.id);
-      setInviteCode(family.inviteCode);
-      setFetchedCode(null);
-      await authedFetch(`/api/users/${user?.id}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          displayName: user?.firstName || "Family Member",
-          familyId: family.id,
-        }),
-      });
-      setShowJoinModal(false);
-    } catch {
-      setJoinError("Something went wrong. Please try again.");
-    } finally {
-      setJoinLoading(false);
-    }
-  }, [joinCode, setFamilyId, setInviteCode, user?.id, user?.firstName]);
 
   const handleLeaveFamily = useCallback(async () => {
     setLeaveLoading(true);
@@ -527,41 +482,44 @@ export default function SettingsScreen() {
 
                   <View style={[styles.divider, { backgroundColor: colors.border }]} />
 
-                  {/* Leave Family */}
-                  <TouchableOpacity
-                    style={styles.settingRow}
-                    onPress={() => setShowLeaveModal(true)}
-                    activeOpacity={0.7}
-                  >
-                    <View style={styles.settingInfo}>
-                      <Feather name="log-out" size={18} color={colors.destructive} />
-                      <Text
-                        style={[
-                          styles.settingLabel,
-                          { color: colors.destructive, fontFamily: "Nunito_700Bold" },
-                        ]}
+                  {/* Leave Family — only when there are other members */}
+                  {memberCount > 1 && (
+                    <>
+                      <TouchableOpacity
+                        style={styles.settingRow}
+                        onPress={() => setShowLeaveModal(true)}
+                        activeOpacity={0.7}
                       >
-                        Leave Family
-                      </Text>
-                    </View>
-                    <Feather name="chevron-right" size={16} color={colors.destructive} />
-                  </TouchableOpacity>
-
-                  <View style={[styles.divider, { backgroundColor: colors.border }]} />
+                        <View style={styles.settingInfo}>
+                          <Feather name="log-out" size={18} color={colors.destructive} />
+                          <Text
+                            style={[
+                              styles.settingLabel,
+                              { color: colors.destructive, fontFamily: "Nunito_700Bold" },
+                            ]}
+                          >
+                            Leave Family
+                          </Text>
+                        </View>
+                        <Feather name="chevron-right" size={16} color={colors.destructive} />
+                      </TouchableOpacity>
+                      <View style={[styles.divider, { backgroundColor: colors.border }]} />
+                    </>
+                  )}
                 </>
               )}
             </>
           )}
 
-          {/* Join Group — always visible */}
-          <TouchableOpacity
-            style={styles.settingRow}
-            onPress={() => setShowJoinModal(true)}
-            activeOpacity={0.7}
-          >
-            <View style={styles.settingInfo}>
-              <Feather name="user-plus" size={18} color={colors.lavender} />
-              <View>
+          {/* Join Group — only when solo (1 member or no family) */}
+          {memberCount <= 1 && (
+            <TouchableOpacity
+              style={styles.settingRow}
+              onPress={() => router.push("/join-family")}
+              activeOpacity={0.7}
+            >
+              <View style={styles.settingInfo}>
+                <Feather name="user-plus" size={18} color={colors.lavender} />
                 <Text
                   style={[
                     styles.settingLabel,
@@ -570,20 +528,10 @@ export default function SettingsScreen() {
                 >
                   Join Group
                 </Text>
-                {familyId && (
-                  <Text
-                    style={[
-                      styles.settingSubLabel,
-                      { color: colors.mutedForeground, fontFamily: "Nunito_400Regular" },
-                    ]}
-                  >
-                    Switch to another family
-                  </Text>
-                )}
               </View>
-            </View>
-            <Feather name="chevron-right" size={16} color={colors.mutedForeground} />
-          </TouchableOpacity>
+              <Feather name="chevron-right" size={16} color={colors.mutedForeground} />
+            </TouchableOpacity>
+          )}
         </View>
 
         {/* Account */}
@@ -947,122 +895,6 @@ export default function SettingsScreen() {
         </Pressable>
       </Modal>
 
-      {/* Join Group modal */}
-      <Modal
-        transparent
-        animationType="fade"
-        visible={showJoinModal}
-        onRequestClose={() => !joinLoading && setShowJoinModal(false)}
-      >
-        <Pressable
-          style={styles.pickerBackdrop}
-          onPress={() => !joinLoading && setShowJoinModal(false)}
-        >
-          <Pressable
-            style={[styles.deleteSheet, { backgroundColor: colors.card }]}
-            onPress={() => {}}
-          >
-            <View style={styles.deleteIconWrap}>
-              <Feather name="users" size={32} color={colors.lavender} />
-            </View>
-            <Text
-              style={[
-                styles.deleteTitle,
-                { color: colors.dark, fontFamily: "FredokaOne_400Regular" },
-              ]}
-            >
-              Join a Family
-            </Text>
-            <Text
-              style={[
-                styles.deleteBody,
-                { color: colors.mutedForeground, fontFamily: "Nunito_400Regular" },
-              ]}
-            >
-              Enter the 6-character invite code shared by your family member.
-            </Text>
-            <TextInput
-              style={[
-                styles.codeInput,
-                {
-                  backgroundColor: colors.muted,
-                  borderColor: joinError ? colors.destructive : colors.border,
-                  color: colors.dark,
-                  fontFamily: "Nunito_900Black",
-                },
-              ]}
-              value={joinCode}
-              onChangeText={(t) => { setJoinCode(t.toUpperCase()); setJoinError(""); }}
-              placeholder="A3F2BC"
-              placeholderTextColor={colors.mutedForeground}
-              autoCapitalize="characters"
-              maxLength={6}
-              autoFocus
-              editable={!joinLoading}
-            />
-            {joinError ? (
-              <View
-                accessibilityRole="alert"
-                style={[
-                  styles.errorBanner,
-                  {
-                    backgroundColor: colors.destructive + "1A",
-                    borderColor: colors.destructive,
-                  },
-                ]}
-              >
-                <Text
-                  style={[
-                    styles.errorBannerText,
-                    { color: colors.destructive, fontFamily: "Nunito_700Bold" },
-                  ]}
-                >
-                  {joinError}
-                </Text>
-              </View>
-            ) : null}
-            <TouchableOpacity
-              style={[
-                styles.deleteConfirmBtn,
-                {
-                  backgroundColor:
-                    joinCode.trim().length === 6 ? colors.lavender : colors.muted,
-                  opacity: joinLoading ? 0.6 : 1,
-                },
-              ]}
-              onPress={handleJoinFamily}
-              activeOpacity={0.85}
-              disabled={joinLoading || joinCode.trim().length < 6}
-            >
-              {joinLoading ? (
-                <ActivityIndicator color="#fff" />
-              ) : (
-                <Text
-                  style={[styles.confirmBtnText, { fontFamily: "Nunito_900Black" }]}
-                >
-                  Join Family
-                </Text>
-              )}
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={styles.deleteCancelBtn}
-              onPress={() => setShowJoinModal(false)}
-              activeOpacity={0.7}
-              disabled={joinLoading}
-            >
-              <Text
-                style={[
-                  styles.deleteCancelText,
-                  { color: colors.mutedForeground, fontFamily: "Nunito_700Bold" },
-                ]}
-              >
-                Cancel
-              </Text>
-            </TouchableOpacity>
-          </Pressable>
-        </Pressable>
-      </Modal>
-
       {/* Leave Family confirmation modal */}
       <Modal
         transparent
@@ -1250,17 +1082,6 @@ const styles = StyleSheet.create({
   },
   deleteCancelBtn: { paddingVertical: 14, alignItems: "center", width: "100%" },
   deleteCancelText: { fontSize: 16 },
-  codeInput: {
-    borderWidth: 1.5,
-    borderRadius: 14,
-    paddingVertical: 16,
-    paddingHorizontal: 20,
-    fontSize: 28,
-    letterSpacing: 8,
-    textAlign: "center",
-    width: "100%",
-    marginBottom: 12,
-  },
   errorBanner: {
     width: "100%",
     borderWidth: 1,
