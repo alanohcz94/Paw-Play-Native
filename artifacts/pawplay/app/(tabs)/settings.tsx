@@ -70,9 +70,15 @@ export default function SettingsScreen() {
     setDeleteError(null);
     try {
       const { authedFetch } = await import("@/lib/authedFetch");
-      const res = await authedFetch(`/api/users/${user.id}`, { method: "DELETE" });
+      const res = await authedFetch(`/api/users/${user.id}`, {
+        method: "DELETE",
+      });
       if (!res.ok) {
-        console.warn("Delete account failed:", res.status, await res.text().catch(() => ""));
+        console.warn(
+          "Delete account failed:",
+          res.status,
+          await res.text().catch(() => ""),
+        );
         setDeleteError("Couldn't delete your account. Please try again.");
         return;
       }
@@ -341,8 +347,8 @@ export default function SettingsScreen() {
           </View>
         </View>
 
-        {/* General */}
-        {familyId ? (
+        {/* Family */}
+        {familyId && (
           <View
             style={[
               styles.section,
@@ -355,57 +361,116 @@ export default function SettingsScreen() {
                 { color: colors.dark, fontFamily: "Nunito_900Black" },
               ]}
             >
-              General
+              Family
             </Text>
 
-            {/* Invite Code */}
+            {/* Invite code display */}
             <View style={styles.settingRow}>
               <View style={styles.settingInfo}>
-                <Feather name="hash" size={18} color={colors.mutedForeground} />
-                <Text style={[styles.settingLabel, { color: colors.dark, fontFamily: "Nunito_700Bold" }]}>
+                <Feather
+                  name="users"
+                  size={18}
+                  color={colors.mutedForeground}
+                />
+                <Text
+                  style={[
+                    styles.settingLabel,
+                    { color: colors.dark, fontFamily: "Nunito_700Bold" },
+                  ]}
+                >
                   Invite Code
                 </Text>
               </View>
-              <View style={styles.codeActions}>
-                <Text style={[styles.inviteCode, { color: colors.lavender, fontFamily: "Nunito_900Black" }]}>
-                  {displayCode ?? "..."}
-                </Text>
-                <TouchableOpacity onPress={handleCopyCode} activeOpacity={0.7} style={styles.codeIconBtn}>
-                  <Feather name="copy" size={17} color={copied ? colors.mint : colors.mutedForeground} />
-                </TouchableOpacity>
-                <TouchableOpacity onPress={handleShareInvite} activeOpacity={0.7} style={styles.codeIconBtn}>
-                  <Feather name="share-2" size={17} color={colors.mutedForeground} />
-                </TouchableOpacity>
-              </View>
+              <Text
+                style={[
+                  styles.inviteCode,
+                  { color: colors.lavender, fontFamily: "Nunito_900Black" },
+                ]}
+              >
+                {displayCode ?? "..."}
+              </Text>
             </View>
 
-            <View style={[styles.divider, { backgroundColor: colors.border }]} />
+            {displayCode && (
+              <>
+                <View
+                  style={[styles.divider, { backgroundColor: colors.border }]}
+                />
 
-            {/* Invite User */}
-            <TouchableOpacity style={styles.settingRow} onPress={handleShareInvite} activeOpacity={0.7}>
-              <View style={styles.settingInfo}>
-                <Feather name="user-plus" size={18} color={colors.mutedForeground} />
-                <Text style={[styles.settingLabel, { color: colors.dark, fontFamily: "Nunito_700Bold" }]}>
-                  Invite User
-                </Text>
-              </View>
-              <Feather name="chevron-right" size={16} color={colors.mutedForeground} />
-            </TouchableOpacity>
+                {/* Copy code */}
+                <TouchableOpacity
+                  style={styles.settingRow}
+                  onPress={handleCopyCode}
+                  activeOpacity={0.7}
+                >
+                  <View style={styles.settingInfo}>
+                    <Feather
+                      name="copy"
+                      size={18}
+                      color={colors.mutedForeground}
+                    />
+                    <Text
+                      style={[
+                        styles.settingLabel,
+                        { color: colors.dark, fontFamily: "Nunito_700Bold" },
+                      ]}
+                    >
+                      Copy Code
+                    </Text>
+                  </View>
+                  {copied ? (
+                    <Text
+                      style={[
+                        styles.settingValue,
+                        { color: colors.mint, fontFamily: "Nunito_700Bold" },
+                      ]}
+                    >
+                      Copied!
+                    </Text>
+                  ) : (
+                    <Feather
+                      name="chevron-right"
+                      size={16}
+                      color={colors.mutedForeground}
+                    />
+                  )}
+                </TouchableOpacity>
 
-            <View style={[styles.divider, { backgroundColor: colors.border }]} />
+                <View
+                  style={[styles.divider, { backgroundColor: colors.border }]}
+                />
 
-            {/* Group */}
-            <TouchableOpacity style={styles.settingRow} onPress={() => router.push("/group" as any)} activeOpacity={0.7}>
-              <View style={styles.settingInfo}>
-                <Feather name="users" size={18} color={colors.mutedForeground} />
-                <Text style={[styles.settingLabel, { color: colors.dark, fontFamily: "Nunito_700Bold" }]}>
-                  Group
-                </Text>
-              </View>
-              <Feather name="chevron-right" size={16} color={colors.mutedForeground} />
-            </TouchableOpacity>
+                {/* Share invite */}
+                <TouchableOpacity
+                  style={styles.settingRow}
+                  onPress={handleShareInvite}
+                  activeOpacity={0.7}
+                >
+                  <View style={styles.settingInfo}>
+                    <Feather
+                      name="share-2"
+                      size={18}
+                      color={colors.mutedForeground}
+                    />
+                    <Text
+                      style={[
+                        styles.settingLabel,
+                        { color: colors.dark, fontFamily: "Nunito_700Bold" },
+                      ]}
+                    >
+                      Share Invite
+                    </Text>
+                  </View>
+                  <Feather
+                    name="chevron-right"
+                    size={16}
+                    color={colors.mutedForeground}
+                  />
+                </TouchableOpacity>
+              </>
+            )}
           </View>
-        ) : null}
+        )}
 
         {/* Account */}
         <View
@@ -695,7 +760,10 @@ export default function SettingsScreen() {
                 },
               ]}
             >
-              This will permanently delete your account, your scores, achievements, and notification settings. Your dog and family will be kept so other family members can keep training, and so you can rejoin with the same sign-in later.
+              This will permanently delete your account, your scores,
+              achievements, and notification settings. Your dog and family will
+              be kept so other family members can keep training, and so you can
+              rejoin with the same sign-in later.
             </Text>
             {deleteError ? (
               <View
@@ -725,7 +793,10 @@ export default function SettingsScreen() {
             <TouchableOpacity
               style={[
                 styles.deleteConfirmBtn,
-                { backgroundColor: colors.destructive, opacity: isDeleting ? 0.6 : 1 },
+                {
+                  backgroundColor: colors.destructive,
+                  opacity: isDeleting ? 0.6 : 1,
+                },
               ]}
               onPress={handleDeleteAccount}
               activeOpacity={0.85}
@@ -749,7 +820,10 @@ export default function SettingsScreen() {
               <Text
                 style={[
                   styles.deleteCancelText,
-                  { color: colors.mutedForeground, fontFamily: "Nunito_700Bold" },
+                  {
+                    color: colors.mutedForeground,
+                    fontFamily: "Nunito_700Bold",
+                  },
                 ]}
               >
                 Cancel
@@ -838,7 +912,12 @@ const styles = StyleSheet.create({
   },
   deleteIconWrap: { marginBottom: 8 },
   deleteTitle: { fontSize: 26, marginBottom: 8, textAlign: "center" },
-  deleteBody: { fontSize: 14, textAlign: "center", lineHeight: 20, marginBottom: 16 },
+  deleteBody: {
+    fontSize: 14,
+    textAlign: "center",
+    lineHeight: 20,
+    marginBottom: 16,
+  },
   deleteConfirmBtn: {
     borderRadius: 16,
     paddingVertical: 16,
@@ -848,6 +927,4 @@ const styles = StyleSheet.create({
   },
   deleteCancelBtn: { paddingVertical: 14, alignItems: "center", width: "100%" },
   deleteCancelText: { fontSize: 16 },
-  codeActions: { flexDirection: "row", alignItems: "center", gap: 10 },
-  codeIconBtn: { padding: 4 },
 });
