@@ -62,6 +62,41 @@ router.post("/family/join/:code", async (req: Request, res: Response) => {
   res.json({ ...family, memberIds });
 });
 
+router.post("/family/leave", async (req: Request, res: Response) => {
+  if (!req.isAuthenticated()) {
+    res.status(401).json({ error: "Unauthorized" });
+    return;
+  }
+  const userId = req.user.id;
+
+  const [pawUser] = await db.select().from(pawplayUsersTable).where(eq(pawplayUsersTable.id, userId));
+
+  if (pawUser?.familyId) {
+    await db
+      .update(familiesTable)
+      .set({
+        memberIds: sql`COALESCE(${familiesTable.memberIds}, '[]'::jsonb) - ${userId}`,
+      })
+      .where(eq(familiesTable.id, pawUser.familyId));
+  }
+
+  const [newFamily] = await db
+    .insert(familiesTable)
+    .values({
+      createdBy: userId,
+      inviteCode: generateInviteCode(),
+      memberIds: [userId] as unknown as Record<string, unknown>,
+    })
+    .returning();
+
+  await db
+    .insert(pawplayUsersTable)
+    .values({ id: userId, familyId: newFamily.id, role: "adult" })
+    .onConflictDoUpdate({ target: pawplayUsersTable.id, set: { familyId: newFamily.id } });
+
+  res.status(201).json({ ...newFamily, memberIds: newFamily.memberIds as string[] });
+});
+
 router.get("/family/:familyId", async (req: Request, res: Response) => {
   if (!req.isAuthenticated()) {
     res.status(401).json({ error: "Unauthorized" });
