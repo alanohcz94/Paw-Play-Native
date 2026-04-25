@@ -18,7 +18,10 @@ export default function GamesScreen() {
   const insets = useSafeAreaInsets();
   const { commands } = useApp();
 
-  const level3Count = useMemo(() => commands.filter((c) => c.level >= 3).length, [commands]);
+  const level3Count = useMemo(
+    () => commands.filter((c) => c.level >= 3).length,
+    [commands],
+  );
   const obedienceUnlocked = level3Count >= 7;
 
   return (
@@ -140,25 +143,18 @@ export default function GamesScreen() {
             styles.modeCard,
             {
               backgroundColor: colors.lemonLight,
-              borderColor: obedienceUnlocked ? colors.lemon : colors.border,
-              opacity: obedienceUnlocked ? 1 : 0.85,
+              borderColor: colors.lemon,
             },
           ]}
-          onPress={() => {
-            if (!obedienceUnlocked) return;
-            router.push("/blitz-setup");
-          }}
-          activeOpacity={obedienceUnlocked ? 0.85 : 1}
-          disabled={!obedienceUnlocked}
+          onPress={() => router.push("/blitz-setup")}
+          activeOpacity={0.85}
         >
           <View style={styles.modeRow}>
             <View
               style={[
                 styles.modeIcon,
                 {
-                  backgroundColor: obedienceUnlocked
-                    ? colors.lemon
-                    : colors.muted,
+                  backgroundColor: colors.lemon,
                 },
               ]}
             >
@@ -178,88 +174,26 @@ export default function GamesScreen() {
                 >
                   Blitz
                 </Text>
-                {!obedienceUnlocked && (
-                  <View
-                    style={[styles.newBadge, { backgroundColor: colors.lemon }]}
-                  >
-                    <Text
-                      style={[
-                        styles.newBadgeText,
-                        { fontFamily: "Nunito_900Black" },
-                      ]}
-                    >
-                      LOCKED
-                    </Text>
-                  </View>
-                )}
-                {obedienceUnlocked && (
-                  <View
-                    style={[styles.newBadge, { backgroundColor: colors.mint }]}
-                  >
-                    <Text
-                      style={[
-                        styles.newBadgeText,
-                        { fontFamily: "Nunito_900Black", color: "#fff" },
-                      ]}
-                    >
-                      NEW
-                    </Text>
-                  </View>
-                )}
               </View>
-              {obedienceUnlocked ? (
+              <View style={styles.progressSection}>
                 <Text
                   style={[
-                    styles.modeDesc,
+                    styles.progressLabel,
                     {
                       color: colors.mutedForeground,
-                      fontFamily: "Nunito_400Regular",
+                      fontFamily: "Nunito_700Bold",
                     },
                   ]}
                 >
-                  All reliable commands tested
+                  Random sequence 1-2 min
                 </Text>
-              ) : (
-                <View style={styles.progressSection}>
-                  <Text
-                    style={[
-                      styles.progressLabel,
-                      {
-                        color: colors.mutedForeground,
-                        fontFamily: "Nunito_700Bold",
-                      },
-                    ]}
-                  >
-                    {level3Count} of 7 commands Reliable
-                  </Text>
-                  <View
-                    style={[
-                      styles.progressBar,
-                      { backgroundColor: colors.muted },
-                    ]}
-                  >
-                    <View
-                      style={[
-                        styles.progressFill,
-                        {
-                          width: `${(level3Count / 7) * 100}%`,
-                          backgroundColor: colors.lemon,
-                        },
-                      ]}
-                    />
-                  </View>
-                </View>
-              )}
+              </View>
             </View>
-            {obedienceUnlocked ? (
-              <Feather
-                name="chevron-right"
-                size={22}
-                color={colors.mutedForeground}
-              />
-            ) : (
-              <Feather name="lock" size={20} color={colors.mutedForeground} />
-            )}
+            <Feather
+              name="chevron-right"
+              size={22}
+              color={colors.mutedForeground}
+            />
           </View>
         </TouchableOpacity>
       </ScrollView>
