@@ -11,8 +11,6 @@ import {
   Pressable,
   Share,
   Clipboard,
-  TextInput,
-  KeyboardAvoidingView,
 } from "react-native";
 import { router } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -46,7 +44,6 @@ export default function SettingsScreen() {
   const insets = useSafeAreaInsets();
   const {
     familyId,
-    setFamilyId,
     inviteCode,
     setInviteCode,
     reminderTime,
@@ -98,40 +95,6 @@ export default function SettingsScreen() {
   useEffect(() => {
     if (!showDeleteModal) setDeleteError(null);
   }, [showDeleteModal]);
-
-  const [showJoinModal, setShowJoinModal] = useState(false);
-  const [joinCode, setJoinCode] = useState("");
-  const [joinError, setJoinError] = useState<string | null>(null);
-  const [joinLoading, setJoinLoading] = useState(false);
-
-  const handleJoinFamily = useCallback(async () => {
-    const code = joinCode.trim().toUpperCase();
-    if (!code) { setJoinError("Please enter an invite code."); return; }
-    setJoinError(null);
-    setJoinLoading(true);
-    try {
-      const { authedFetch } = await import("@/lib/authedFetch");
-      const res = await authedFetch(`/api/family/join/${code}`, { method: "POST" });
-      if (!res.ok) {
-        setJoinError("Invalid invite code. Please check and try again.");
-        return;
-      }
-      const family = await res.json();
-      setFamilyId(family.id);
-      setInviteCode(family.inviteCode);
-      await authedFetch(`/api/users/${user?.id}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ displayName: user?.firstName || "Family Member", familyId: family.id }),
-      });
-      setJoinCode("");
-      setShowJoinModal(false);
-    } catch {
-      setJoinError("Something went wrong. Please try again.");
-    } finally {
-      setJoinLoading(false);
-    }
-  }, [joinCode, setFamilyId, setInviteCode, user?.id, user?.firstName]);
 
   const [fetchedCode, setFetchedCode] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
@@ -378,91 +341,71 @@ export default function SettingsScreen() {
           </View>
         </View>
 
-        {/* Family */}
-        <View
-          style={[
-            styles.section,
-            { backgroundColor: colors.card, borderColor: colors.border },
-          ]}
-        >
-          <Text
+        {/* General */}
+        {familyId ? (
+          <View
             style={[
-              styles.sectionTitle,
-              { color: colors.dark, fontFamily: "Nunito_900Black" },
+              styles.section,
+              { backgroundColor: colors.card, borderColor: colors.border },
             ]}
           >
-            Family
-          </Text>
+            <Text
+              style={[
+                styles.sectionTitle,
+                { color: colors.dark, fontFamily: "Nunito_900Black" },
+              ]}
+            >
+              General
+            </Text>
 
-          {familyId ? (
-            <>
-              {/* Invite code display */}
-              <View style={styles.settingRow}>
-                <View style={styles.settingInfo}>
-                  <Feather name="users" size={18} color={colors.mutedForeground} />
-                  <Text style={[styles.settingLabel, { color: colors.dark, fontFamily: "Nunito_700Bold" }]}>
-                    Invite Code
-                  </Text>
-                </View>
+            {/* Invite Code */}
+            <View style={styles.settingRow}>
+              <View style={styles.settingInfo}>
+                <Feather name="hash" size={18} color={colors.mutedForeground} />
+                <Text style={[styles.settingLabel, { color: colors.dark, fontFamily: "Nunito_700Bold" }]}>
+                  Invite Code
+                </Text>
+              </View>
+              <View style={styles.codeActions}>
                 <Text style={[styles.inviteCode, { color: colors.lavender, fontFamily: "Nunito_900Black" }]}>
                   {displayCode ?? "..."}
                 </Text>
+                <TouchableOpacity onPress={handleCopyCode} activeOpacity={0.7} style={styles.codeIconBtn}>
+                  <Feather name="copy" size={17} color={copied ? colors.mint : colors.mutedForeground} />
+                </TouchableOpacity>
+                <TouchableOpacity onPress={handleShareInvite} activeOpacity={0.7} style={styles.codeIconBtn}>
+                  <Feather name="share-2" size={17} color={colors.mutedForeground} />
+                </TouchableOpacity>
               </View>
+            </View>
 
-              {displayCode && (
-                <>
-                  <View style={[styles.divider, { backgroundColor: colors.border }]} />
+            <View style={[styles.divider, { backgroundColor: colors.border }]} />
 
-                  {/* Copy code */}
-                  <TouchableOpacity style={styles.settingRow} onPress={handleCopyCode} activeOpacity={0.7}>
-                    <View style={styles.settingInfo}>
-                      <Feather name="copy" size={18} color={colors.mutedForeground} />
-                      <Text style={[styles.settingLabel, { color: colors.dark, fontFamily: "Nunito_700Bold" }]}>
-                        Copy Code
-                      </Text>
-                    </View>
-                    {copied ? (
-                      <Text style={[styles.settingValue, { color: colors.mint, fontFamily: "Nunito_700Bold" }]}>
-                        Copied!
-                      </Text>
-                    ) : (
-                      <Feather name="chevron-right" size={16} color={colors.mutedForeground} />
-                    )}
-                  </TouchableOpacity>
-
-                  <View style={[styles.divider, { backgroundColor: colors.border }]} />
-
-                  {/* Share invite */}
-                  <TouchableOpacity style={styles.settingRow} onPress={handleShareInvite} activeOpacity={0.7}>
-                    <View style={styles.settingInfo}>
-                      <Feather name="share-2" size={18} color={colors.mutedForeground} />
-                      <Text style={[styles.settingLabel, { color: colors.dark, fontFamily: "Nunito_700Bold" }]}>
-                        Share Invite
-                      </Text>
-                    </View>
-                    <Feather name="chevron-right" size={16} color={colors.mutedForeground} />
-                  </TouchableOpacity>
-                </>
-              )}
-            </>
-          ) : (
-            /* No family yet — offer to join one */
-            <TouchableOpacity style={styles.settingRow} onPress={() => setShowJoinModal(true)} activeOpacity={0.7}>
+            {/* Invite User */}
+            <TouchableOpacity style={styles.settingRow} onPress={handleShareInvite} activeOpacity={0.7}>
               <View style={styles.settingInfo}>
                 <Feather name="user-plus" size={18} color={colors.mutedForeground} />
-                <View>
-                  <Text style={[styles.settingLabel, { color: colors.dark, fontFamily: "Nunito_700Bold" }]}>
-                    Join a Family
-                  </Text>
-                  <Text style={[styles.settingSubLabel, { color: colors.mutedForeground, fontFamily: "Nunito_400Regular" }]}>
-                    Enter an invite code
-                  </Text>
-                </View>
+                <Text style={[styles.settingLabel, { color: colors.dark, fontFamily: "Nunito_700Bold" }]}>
+                  Invite User
+                </Text>
               </View>
               <Feather name="chevron-right" size={16} color={colors.mutedForeground} />
             </TouchableOpacity>
-          )}
-        </View>
+
+            <View style={[styles.divider, { backgroundColor: colors.border }]} />
+
+            {/* Group */}
+            <TouchableOpacity style={styles.settingRow} onPress={() => router.push("/group" as any)} activeOpacity={0.7}>
+              <View style={styles.settingInfo}>
+                <Feather name="users" size={18} color={colors.mutedForeground} />
+                <Text style={[styles.settingLabel, { color: colors.dark, fontFamily: "Nunito_700Bold" }]}>
+                  Group
+                </Text>
+              </View>
+              <Feather name="chevron-right" size={16} color={colors.mutedForeground} />
+            </TouchableOpacity>
+          </View>
+        ) : null}
 
         {/* Account */}
         <View
@@ -717,82 +660,6 @@ export default function SettingsScreen() {
           </Pressable>
         </Pressable>
       </Modal>
-      {/* Join family modal */}
-      <Modal
-        transparent
-        animationType="slide"
-        visible={showJoinModal}
-        onRequestClose={() => { setShowJoinModal(false); setJoinCode(""); setJoinError(null); }}
-      >
-        <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"} style={{ flex: 1 }}>
-          <Pressable
-            style={styles.pickerBackdrop}
-            onPress={() => { setShowJoinModal(false); setJoinCode(""); setJoinError(null); }}
-          >
-            <Pressable style={[styles.pickerSheet, { backgroundColor: colors.card }]} onPress={() => {}}>
-              <Text style={[styles.pickerTitle, { color: colors.dark, fontFamily: "FredokaOne_400Regular" }]}>
-                Join a Family
-              </Text>
-              <Text style={[styles.joinSubtitle, { color: colors.mutedForeground, fontFamily: "Nunito_400Regular" }]}>
-                Ask a family member to share their invite code from Settings.
-              </Text>
-
-              <Text style={[styles.pickerSectionLabel, { color: colors.mutedForeground, fontFamily: "Nunito_700Bold" }]}>
-                Invite Code
-              </Text>
-              <TextInput
-                style={[
-                  styles.joinInput,
-                  {
-                    backgroundColor: colors.muted,
-                    color: colors.dark,
-                    borderColor: joinError ? colors.destructive : colors.border,
-                    fontFamily: "Nunito_900Black",
-                  },
-                ]}
-                value={joinCode}
-                onChangeText={(t) => { setJoinCode(t.toUpperCase()); setJoinError(null); }}
-                placeholder="e.g. A1B2C3"
-                placeholderTextColor={colors.mutedForeground}
-                autoCapitalize="characters"
-                maxLength={6}
-                autoCorrect={false}
-              />
-              {joinError && (
-                <Text style={[styles.joinError, { color: colors.destructive, fontFamily: "Nunito_700Bold" }]}>
-                  {joinError}
-                </Text>
-              )}
-
-              <TouchableOpacity
-                style={[
-                  styles.confirmBtn,
-                  { backgroundColor: colors.peach, opacity: joinLoading || joinCode.trim().length < 4 ? 0.5 : 1, marginTop: 16 },
-                ]}
-                onPress={handleJoinFamily}
-                activeOpacity={0.85}
-                disabled={joinLoading || joinCode.trim().length < 4}
-              >
-                <Text style={[styles.confirmBtnText, { fontFamily: "Nunito_900Black" }]}>
-                  {joinLoading ? "Joining…" : "Join Family"}
-                </Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={styles.deleteCancelBtn}
-                onPress={() => { setShowJoinModal(false); setJoinCode(""); setJoinError(null); }}
-                activeOpacity={0.7}
-                disabled={joinLoading}
-              >
-                <Text style={[styles.deleteCancelText, { color: colors.mutedForeground, fontFamily: "Nunito_700Bold" }]}>
-                  Cancel
-                </Text>
-              </TouchableOpacity>
-            </Pressable>
-          </Pressable>
-        </KeyboardAvoidingView>
-      </Modal>
-
       {/* Delete account confirmation modal */}
       <Modal
         transparent
@@ -981,16 +848,6 @@ const styles = StyleSheet.create({
   },
   deleteCancelBtn: { paddingVertical: 14, alignItems: "center", width: "100%" },
   deleteCancelText: { fontSize: 16 },
-  joinSubtitle: { fontSize: 14, lineHeight: 20, marginBottom: 8 },
-  joinInput: {
-    borderWidth: 1,
-    borderRadius: 14,
-    paddingHorizontal: 16,
-    paddingVertical: 14,
-    fontSize: 22,
-    letterSpacing: 4,
-    textAlign: "center",
-    marginTop: 4,
-  },
-  joinError: { fontSize: 13, marginTop: 6, textAlign: "center" },
+  codeActions: { flexDirection: "row", alignItems: "center", gap: 10 },
+  codeIconBtn: { padding: 4 },
 });
