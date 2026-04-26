@@ -1,281 +1,330 @@
-import React, { useState, useRef, useEffect, useCallback } from "react";
+import React, { useState, useCallback, useRef, useEffect } from "react";
 import {
   View,
   Text,
   StyleSheet,
   TouchableOpacity,
   Platform,
+  Dimensions,
 } from "react-native";
 import { router, useLocalSearchParams } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
+  useAnimatedReaction,
   withTiming,
+  withRepeat,
   withSequence,
+  withDelay,
+  cancelAnimation,
   Easing,
   interpolateColor,
   runOnJS,
 } from "react-native-reanimated";
 import * as Haptics from "expo-haptics";
 import { useColors } from "@/hooks/useColors";
-import { DIFFICULTY_WINDOW, calculateScore } from "@/utils/scoring";
-import type { Difficulty, RawCommandInput } from "@/utils/scoring";
+import { useApp } from "@/context/AppContext";
+
+const SCREEN_WIDTH = Dimensions.get("window").width;
+const PEACH = "#FF8B6A";
+const LAVENDER = "#8B68FF";
+const MINT = "#3DB884";
+
+function shuffle<T>(arr: T[]): T[] {
+  const a = [...arr];
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+
+type BtnState = "active" | "countdown" | "complete";
 
 export default function BlitzActiveScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
-  const { sequence: seqParam, difficulty: diffParam } = useLocalSearchParams<{
-    sequence: string;
-    difficulty: string;
-  }>();
-  const sequence: string[] = seqParam ? JSON.parse(seqParam) : [];
-  const difficulty = (diffParam || "easy") as Difficulty;
-  const windowSec = DIFFICULTY_WINDOW[difficulty];
-  const isExpert = difficulty === "expert";
+  const { duration: durationParam } = useLocalSearchParams<{ duration: string }>();
+  const duration = parseInt(durationParam ?? "90", 10);
+  const { dog, commands: allCommands } = useApp();
 
-  const [commandIndex, setCommandIndex] = useState(0);
-  const [countdownStep, setCountdownStep] = useState<
-    "Ready" | "Set" | "Go!" | null
-  >("Ready");
-  const [score, setScore] = useState(0);
-  const [holdPhase, setHoldPhase] = useState<"waiting" | "holding" | "idle">(
-    "idle",
+  const markerCue = dog?.markerCue || "Yes";
+
+  const [commands] = useState(() =>
+    shuffle(allCommands.filter((c) => c.level >= 1))
   );
-  const [holdCountdown, setHoldCountdown] = useState(0);
-  const [resetCount, setResetCount] = useState(0);
-  const [maxPoints, setMaxPoints] = useState(20);
-  const [pointsFlash, setPointsFlash] = useState<number | null>(null);
-  const [bonusBubble, setBonusBubble] = useState<string | null>(null);
-  const inputs = useRef<RawCommandInput[]>([]);
-  const startTime = useRef<number>(Date.now());
-  const elapsedRef = useRef(0);
-  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const holdTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const capturedElapsed = useRef(0);
-  const skippedRef = useRef(false);
-  const [displayTime, setDisplayTime] = useState(windowSec);
-  const [windowExceeded, setWindowExceeded] = useState(false);
 
-  const timerProgress = useSharedValue(1);
-  const shakeX = useSharedValue(0);
+  // ── Display state (drives render) ──────────────────────────────────────
+  const [cmdIndex, setCmdIndex] = useState(0);
+  const [btnState, setBtnState] = useState<BtnState>("active");
+  const [reps, setReps] = useState(0);
+  const [score, setScore] = useState(0);
+  const [holdDisplay, setHoldDisplay] = useState(0);
+  const [timerDisplay, setTimerDisplay] = useState(duration);
+  const [flash, setFlash] = useState<{ pts: number; id: number } | null>(null);
+
+  // ── Mutable refs (game logic, no re-render needed) ────────────────────
+  const cmdIndexRef = useRef(0);
+  const btnStateRef = useRef<BtnState>("active");
+  const scoreRef = useRef(0);
+  const repsRef = useRef(0);
+  const holdsRef = useRef(0);
+  const cslhRef = useRef(0); // commandsSinceLastHold
+  const commandsUsedRef = useRef<string[]>([]);
+  const flashIdRef = useRef(0);
+  const tapLockRef = useRef(false);
+  const sessionEndedRef = useRef(false);
+
+  // ── Reanimated shared values ──────────────────────────────────────────
+  // btnColorPhase: 0=peach, 0.5=lavender, 1=mint
+  const btnColorPhase = useSharedValue(0);
+  const btnScale = useSharedValue(1);
+  const cmdTranslateX = useSharedValue(0);
+  const cmdScale = useSharedValue(1);
   const flashOpacity = useSharedValue(0);
+  const flashY = useSharedValue(0);
+  const sessionSV = useSharedValue(duration);
+  const holdSV = useSharedValue(0);
 
-  const animStyle = useAnimatedStyle(() => ({
-    width: `${Math.max(0, timerProgress.value * 100)}%` as `${number}%`,
-    backgroundColor: interpolateColor(
-      Math.max(0, timerProgress.value),
-      [0, 0.3, 1],
-      ["#ef4444", "#f59e0b", colors.mint],
-    ),
-  }));
-
-  const commandShakeStyle = useAnimatedStyle(() => ({
-    transform: [{ translateX: shakeX.value }],
-  }));
-
-  const flashStyle = useAnimatedStyle(() => ({
-    opacity: flashOpacity.value,
-  }));
-
-  const startTimer = useCallback(() => {
-    clearInterval(intervalRef.current!);
-    elapsedRef.current = 0;
-    setDisplayTime(windowSec);
-    setWindowExceeded(false);
-    setHoldPhase("idle");
-    timerProgress.value = 1;
-    timerProgress.value = withTiming(0, {
-      duration: windowSec * 1000,
+  // ── Start session timer on mount ──────────────────────────────────────
+  useEffect(() => {
+    sessionSV.value = withTiming(0, {
+      duration: duration * 1000,
       easing: Easing.linear,
     });
-    startTime.current = Date.now();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
-    intervalRef.current = setInterval(() => {
-      const elapsed = (Date.now() - startTime.current) / 1000;
-      elapsedRef.current = elapsed;
-      const remaining = windowSec - elapsed;
-      runOnJS(setDisplayTime)(parseFloat(remaining.toFixed(1)));
-      if (remaining <= 0) {
-        runOnJS(setWindowExceeded)(true);
-      }
-    }, 100);
-  }, [windowSec, timerProgress]);
-
-  useEffect(() => {
-    setResetCount(0);
-    setMaxPoints(20);
-    setPointsFlash(null);
-    setBonusBubble(null);
-    skippedRef.current = false;
-
-    if (commandIndex === 0) {
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-      const t1 = setTimeout(() => {
-        setCountdownStep("Set");
-        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-      }, 1000);
-      const t2 = setTimeout(() => {
-        setCountdownStep("Go!");
-        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
-      }, 2000);
-      const t3 = setTimeout(() => {
-        setCountdownStep(null);
-        startTimer();
-      }, 2800);
-      return () => {
-        clearTimeout(t1);
-        clearTimeout(t2);
-        clearTimeout(t3);
-        clearInterval(intervalRef.current!);
-        clearInterval(holdTimerRef.current!);
-      };
+  // ── Session timer reaction ────────────────────────────────────────────
+  const handleTimerEnd = useCallback(() => {
+    if (sessionEndedRef.current) return;
+    if (btnStateRef.current === "countdown") {
+      // Let hold finish; transitionToComplete will call endSession
+      sessionEndedRef.current = true;
     } else {
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-      startTimer();
+      endSession();
     }
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-    return () => {
-      clearInterval(intervalRef.current!);
-      clearInterval(holdTimerRef.current!);
-    };
-  }, [commandIndex]);
+  useAnimatedReaction(
+    () => Math.ceil(sessionSV.value),
+    (cur, prev) => {
+      if (cur !== prev) runOnJS(setTimerDisplay)(Math.max(0, cur));
+      if (cur <= 0 && prev !== null && prev > 0) runOnJS(handleTimerEnd)();
+    },
+    [handleTimerEnd]
+  );
 
-  const showPointsFlash = (pts: number) => {
-    setPointsFlash(pts);
-    flashOpacity.value = 1;
-    flashOpacity.value = withTiming(0, { duration: 1200 });
-    setTimeout(() => setPointsFlash(null), 1200);
-  };
-
-  const checkBonusBubble = (allInputs: RawCommandInput[]) => {
-    const lastInput = allInputs[allInputs.length - 1];
-    if (!lastInput) return;
-
-    if (
-      !lastInput.skipped &&
-      lastInput.timeSeconds <= lastInput.windowSeconds / 2
-    ) {
-      setBonusBubble("+5 Speed");
-      setTimeout(() => setBonusBubble(null), 1500);
-      return;
-    }
-
-    let streak = 0;
-    for (let i = allInputs.length - 1; i >= 0; i--) {
-      if (
-        !allInputs[i].skipped &&
-        allInputs[i].timeSeconds <= allInputs[i].windowSeconds
-      ) {
-        streak++;
-      } else break;
-    }
-    if (streak >= 3) {
-      setBonusBubble("Combo x" + streak + "!");
-      setTimeout(() => setBonusBubble(null), 1500);
-    }
-  };
-
-  const advanceOrEnd = useCallback((newInputs: RawCommandInput[], pts: number) => {
-    clearInterval(intervalRef.current!);
-    clearInterval(holdTimerRef.current!);
-    const result = calculateScore(newInputs, difficulty);
-    const displayPts = isExpert ? result.participationPoints : Math.max(0, result.participationPoints);
-    setScore(displayPts);
-    inputs.current = newInputs;
-    showPointsFlash(pts);
-    checkBonusBubble(newInputs);
-
-    if (commandIndex + 1 >= sequence.length) {
-      setTimeout(() => {
-        const finalResult = calculateScore(newInputs, difficulty);
-        router.replace({ pathname: "/blitz-end", params: { result: JSON.stringify(finalResult), difficulty, dogName: "" } });
-      }, 800);
-    } else {
-      setTimeout(() => setCommandIndex((i) => i + 1), 800);
-    }
-  }, [difficulty, isExpert, commandIndex, sequence.length]);
-
-  const handleSkip = useCallback(() => {
-    if (skippedRef.current) return;
-    skippedRef.current = true;
-    clearInterval(intervalRef.current!);
-    clearInterval(holdTimerRef.current!);
-    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-    const elapsed = elapsedRef.current;
-    const newInput: RawCommandInput = {
-      name: sequence[commandIndex],
-      skipped: true,
-      timeSeconds: elapsed,
-      windowSeconds: windowSec,
-      resetCount,
-    };
-    const secondsOver = Math.max(0, elapsed - windowSec);
-    const pts = isExpert ? -20 - Math.floor(secondsOver) : 0;
-    advanceOrEnd([...inputs.current, newInput], pts);
-  }, [sequence, commandIndex, windowSec, resetCount, isExpert, advanceOrEnd]);
-
-  const currentCommand = sequence[commandIndex] ?? "";
-
-  if (countdownStep) {
-    const isGo = countdownStep === "Go!";
-    return (
-      <View
-        style={[
-          styles.container,
-          {
-            backgroundColor: colors.background,
-            paddingTop: insets.top + (Platform.OS === "web" ? 67 : 0),
-            justifyContent: "center",
-          },
-        ]}
-      >
-        <Text
-          style={[
-            styles.commandWord,
-            {
-              color: isGo ? colors.dark : colors.mutedForeground,
-              fontFamily: "FredokaOne_400Regular",
-              marginBottom: 24,
-            },
-          ]}
-        >
-          {currentCommand}
-        </Text>
-        <Text
-          style={[
-            styles.countdownText,
-            {
-              color: isGo ? colors.mint : colors.peach,
-              fontFamily: "FredokaOne_400Regular",
-              marginBottom: isGo ? 48 : 0,
-            },
-          ]}
-        >
-          {countdownStep}
-        </Text>
-
-        {isGo && (
-          <View style={{ alignItems: "center", gap: 14, width: "100%", opacity: 0.4 }}>
-            <View style={[styles.holdButton, { borderColor: colors.peachMid, backgroundColor: colors.peach }]}>
-              <View style={styles.holdInner}>
-                <Text style={[styles.holdText, { fontFamily: "Nunito_900Black" }]}>HOLD</Text>
-                <Text style={[styles.holdSubtext, { fontFamily: "Nunito_400Regular" }]}>waiting...</Text>
-              </View>
-            </View>
-            <View style={[styles.resetBtn, { borderColor: colors.border }]}>
-              <Text style={[styles.resetText, { color: colors.mutedForeground, fontFamily: "Nunito_700Bold" }]}>
-                Reset
-              </Text>
-            </View>
-            <Text style={[styles.skipText, { color: colors.mutedForeground, fontFamily: "Nunito_400Regular" }]}>
-              skip command
-            </Text>
-          </View>
-        )}
-      </View>
+  // ── Hold countdown reaction ───────────────────────────────────────────
+  const transitionToComplete = useCallback(() => {
+    if (btnStateRef.current !== "countdown") return;
+    btnStateRef.current = "complete";
+    setBtnState("complete");
+    cancelAnimation(btnScale);
+    btnScale.value = withSequence(
+      withTiming(1.08, { duration: 100 }),
+      withTiming(1.0, { duration: 120 })
     );
-  }
+    btnColorPhase.value = withTiming(1, { duration: 200 });
+    if (sessionEndedRef.current) {
+      // Session timer already expired while we were in hold — end now
+      endSession();
+    }
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  useAnimatedReaction(
+    () => holdSV.value,
+    (val, prev) => {
+      const ceiled = Math.ceil(val);
+      const prevCeiled = prev !== null ? Math.ceil(prev) : null;
+      if (ceiled !== prevCeiled) runOnJS(setHoldDisplay)(Math.max(0, ceiled));
+      if (val <= 0.05 && prev !== null && prev > 0.05) runOnJS(transitionToComplete)();
+    },
+    [transitionToComplete]
+  );
+
+  // ── End session ───────────────────────────────────────────────────────
+  const endSession = useCallback(() => {
+    cancelAnimation(sessionSV);
+    cancelAnimation(holdSV);
+    router.replace({
+      pathname: "/blitz-end",
+      params: {
+        repsCompleted: String(repsRef.current),
+        holdsCompleted: String(holdsRef.current),
+        duration: String(duration),
+        commandsUsed: JSON.stringify(commandsUsedRef.current),
+      },
+    });
+  }, [duration]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // ── Show point flash ──────────────────────────────────────────────────
+  const showFlash = useCallback((pts: number) => {
+    flashIdRef.current += 1;
+    setFlash({ pts, id: flashIdRef.current });
+    flashOpacity.value = 1;
+    flashY.value = 0;
+    flashOpacity.value = withTiming(0, { duration: 800 });
+    flashY.value = withTiming(-44, { duration: 800 });
+  }, [flashOpacity, flashY]);
+
+  // ── Advance command index ─────────────────────────────────────────────
+  const nextCmdIndex = useCallback(() => {
+    const next = (cmdIndexRef.current + 1) % Math.max(commands.length, 1);
+    cmdIndexRef.current = next;
+    return next;
+  }, [commands.length]);
+
+  // Track command used
+  const trackCommand = useCallback(() => {
+    const name = commands[cmdIndexRef.current]?.name;
+    if (name && !commandsUsedRef.current.includes(name)) {
+      commandsUsedRef.current = [...commandsUsedRef.current, name];
+    }
+  }, [commands]);
+
+  // ── Slide to next command ─────────────────────────────────────────────
+  const slideToNext = useCallback(
+    (nextIdx: number, onArrival?: () => void) => {
+      cmdTranslateX.value = withTiming(
+        -SCREEN_WIDTH,
+        { duration: 250, easing: Easing.ease },
+        () => {
+          runOnJS(setCmdIndex)(nextIdx);
+          cmdTranslateX.value = SCREEN_WIDTH;
+          cmdTranslateX.value = withTiming(
+            0,
+            { duration: 250, easing: Easing.ease },
+            onArrival
+              ? () => runOnJS(onArrival)()
+              : undefined
+          );
+        }
+      );
+    },
+    [cmdTranslateX]
+  );
+
+  // ── Trigger hold ──────────────────────────────────────────────────────
+  const triggerHold = useCallback((holdSeconds: number) => {
+    btnStateRef.current = "countdown";
+    setBtnState("countdown");
+    cslhRef.current = 0;
+    btnColorPhase.value = withTiming(0.5, { duration: 300 });
+    holdSV.value = holdSeconds;
+    holdSV.value = withTiming(0, {
+      duration: holdSeconds * 1000,
+      easing: Easing.linear,
+    });
+    btnScale.value = withRepeat(
+      withSequence(
+        withTiming(1.04, { duration: 500 }),
+        withTiming(1.0, { duration: 500 })
+      ),
+      -1,
+      false
+    );
+  }, [btnColorPhase, holdSV, btnScale]);
+
+  // ── Marker tap (State 1) ──────────────────────────────────────────────
+  const handleMarkerTap = useCallback(() => {
+    if (btnStateRef.current !== "active") return;
+    if (tapLockRef.current) return;
+    tapLockRef.current = true;
+    setTimeout(() => { tapLockRef.current = false; }, 350);
+
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+
+    trackCommand();
+    repsRef.current += 1;
+    setReps(repsRef.current);
+    cslhRef.current += 1;
+    scoreRef.current += 5;
+    setScore(scoreRef.current);
+    showFlash(5);
+
+    const next = nextCmdIndex();
+    const cslh = cslhRef.current;
+
+    let shouldHold = false;
+    if (cslh >= 5) shouldHold = true;
+    else if (cslh >= 2) shouldHold = Math.random() < 0.4;
+
+    if (shouldHold) {
+      const holdSec = Math.floor(Math.random() * 12) + 1;
+      slideToNext(next, () => triggerHold(holdSec));
+    } else {
+      // Brief tick then slide
+      cmdScale.value = withSequence(
+        withTiming(1.1, { duration: 100 }),
+        withTiming(1.0, { duration: 120 })
+      );
+      cmdTranslateX.value = withDelay(
+        600,
+        withTiming(-SCREEN_WIDTH, { duration: 250, easing: Easing.ease }, () => {
+          runOnJS(setCmdIndex)(next);
+          cmdTranslateX.value = SCREEN_WIDTH;
+          cmdTranslateX.value = withTiming(0, { duration: 250, easing: Easing.ease });
+        })
+      );
+    }
+  }, [trackCommand, showFlash, nextCmdIndex, slideToNext, triggerHold, cmdScale, cmdTranslateX]);
+
+  // ── Hold complete tap (State 3) ───────────────────────────────────────
+  const handleHoldComplete = useCallback(() => {
+    if (btnStateRef.current !== "complete") return;
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
+
+    holdsRef.current += 1;
+    scoreRef.current += 10;
+    setScore(scoreRef.current);
+    showFlash(10);
+
+    btnStateRef.current = "active";
+    setBtnState("active");
+    btnColorPhase.value = withTiming(0, { duration: 150 });
+    cancelAnimation(btnScale);
+    btnScale.value = withTiming(1, { duration: 100 });
+
+    const next = nextCmdIndex();
+    slideToNext(next);
+  }, [showFlash, nextCmdIndex, slideToNext, btnColorPhase, btnScale]);
+
+  // ── Skip (State 1 only) ───────────────────────────────────────────────
+  const handleSkip = useCallback(() => {
+    if (btnStateRef.current !== "active") return;
+    const next = nextCmdIndex();
+    slideToNext(next);
+    // commandsSinceLastHold unchanged per spec
+  }, [nextCmdIndex, slideToNext]);
+
+  // ── Animated styles ───────────────────────────────────────────────────
+  const buttonAnimStyle = useAnimatedStyle(() => ({
+    backgroundColor: interpolateColor(
+      btnColorPhase.value,
+      [0, 0.5, 1],
+      [PEACH, LAVENDER, MINT]
+    ),
+    transform: [{ scale: btnScale.value }],
+  }));
+
+  const cmdAnimStyle = useAnimatedStyle(() => ({
+    transform: [
+      { translateX: cmdTranslateX.value },
+      { scale: cmdScale.value },
+    ],
+  }));
+
+  const flashAnimStyle = useAnimatedStyle(() => ({
+    opacity: flashOpacity.value,
+    transform: [{ translateY: flashY.value }],
+  }));
+
+  const isUrgent = timerDisplay <= 10;
+  const currentCmd = commands[cmdIndex]?.name ?? "";
+  const btnLabel =
+    btnState === "countdown" ? `Hold... ${holdDisplay}s` : markerCue;
 
   return (
     <View
@@ -287,130 +336,136 @@ export default function BlitzActiveScreen() {
         },
       ]}
     >
-      <View style={styles.topBar}>
-        <Text style={[styles.counter, { color: colors.mutedForeground, fontFamily: "Nunito_700Bold" }]}>
-          {commandIndex + 1} of {sequence.length}
+      {/* Row 1: Timer + Score */}
+      <View style={styles.topRow}>
+        <Text
+          style={[
+            styles.timerText,
+            {
+              color: isUrgent ? MINT : colors.dark,
+              fontFamily: "Nunito_900Black",
+            },
+          ]}
+        >
+          {timerDisplay}s
         </Text>
-        <View style={[styles.scorePill, { backgroundColor: colors.lemon }]}>
-          <Text style={[styles.scoreText, { color: colors.dark, fontFamily: "Nunito_900Black" }]}>
+        <View style={styles.scoreWrap}>
+          <Text
+            style={[styles.scoreText, { color: colors.dark, fontFamily: "Nunito_900Black" }]}
+          >
             {score} pts
           </Text>
+          {flash && (
+            <Animated.View style={[styles.flashWrap, flashAnimStyle]}>
+              <Text
+                style={[styles.flashText, { fontFamily: "FredokaOne_400Regular", color: MINT }]}
+              >
+                +{flash.pts}
+              </Text>
+            </Animated.View>
+          )}
         </View>
       </View>
 
-      <Animated.View style={commandShakeStyle}>
-        <Text style={[styles.commandWord, { color: colors.dark, fontFamily: "FredokaOne_400Regular" }]}>
-          {currentCommand}
+      {/* Row 2: Rep counter */}
+      <Text
+        style={[
+          styles.repText,
+          { color: colors.mutedForeground, fontFamily: "Nunito_700Bold" },
+        ]}
+      >
+        Rep {reps}
+      </Text>
+
+      {/* Row 3: Command word */}
+      <Animated.View style={[styles.cmdWrap, cmdAnimStyle]}>
+        <Text
+          style={[styles.cmdText, { color: colors.dark, fontFamily: "FredokaOne_400Regular" }]}
+        >
+          {currentCmd}
         </Text>
       </Animated.View>
 
-      <View style={styles.timerContainer}>
-        <Animated.View style={[styles.timerBar, animStyle]} />
-      </View>
-      <Text
-        style={[
-          styles.timerText,
-          {
-            color: windowExceeded ? "#ef4444" : colors.mutedForeground,
-            fontFamily: windowExceeded ? "Nunito_900Black" : "Nunito_700Bold",
-          },
-        ]}
-      >
-        {windowExceeded
-          ? `-${Math.abs(displayTime).toFixed(1)}s over`
-          : displayTime <= 0
-            ? "0s"
-            : `${displayTime.toFixed(1)}s remaining`}
-      </Text>
+      {/* Row 4: Marker button (3-state) */}
+      <Animated.View style={[styles.markerBtn, buttonAnimStyle]}>
+        <TouchableOpacity
+          style={styles.markerBtnInner}
+          onPress={
+            btnState === "active"
+              ? handleMarkerTap
+              : btnState === "complete"
+                ? handleHoldComplete
+                : undefined
+          }
+          disabled={btnState === "countdown"}
+          activeOpacity={0.88}
+        >
+          <Text style={[styles.markerBtnText, { fontFamily: "Nunito_900Black" }]}>
+            {btnLabel}
+          </Text>
+        </TouchableOpacity>
+      </Animated.View>
 
-      {pointsFlash !== null && (
-        <Animated.View style={[styles.flashContainer, flashStyle]}>
+      {/* Row 5: Skip (only visible in State 1) */}
+      {btnState === "active" && (
+        <TouchableOpacity
+          onPress={handleSkip}
+          activeOpacity={0.7}
+          style={styles.skipWrap}
+        >
           <Text
             style={[
-              styles.flashText,
-              { color: pointsFlash >= 0 ? colors.mint : "#ef4444", fontFamily: "FredokaOne_400Regular" },
+              styles.skipText,
+              { color: colors.mutedForeground, fontFamily: "Nunito_700Bold" },
             ]}
           >
-            {pointsFlash >= 0 ? "+" : ""}
-            {pointsFlash}
+            Skip →
           </Text>
-        </Animated.View>
+        </TouchableOpacity>
       )}
-
-      <TouchableOpacity style={[styles.holdButton, { borderColor: colors.peachMid, backgroundColor: colors.peach }]} activeOpacity={1}>
-        <View style={styles.holdInner}>
-          <Text style={[styles.holdText, { fontFamily: "Nunito_900Black" }]}>HOLD</Text>
-          <Text style={[styles.holdSubtext, { fontFamily: "Nunito_400Regular" }]}>waiting...</Text>
-        </View>
-      </TouchableOpacity>
-
-      <TouchableOpacity style={[styles.resetBtn, { borderColor: colors.border }]} activeOpacity={0.8}>
-        <Text style={[styles.resetText, { color: colors.mutedForeground, fontFamily: "Nunito_700Bold" }]}>
-          Reset
-        </Text>
-      </TouchableOpacity>
-
-      <TouchableOpacity onPress={handleSkip} activeOpacity={0.7}>
-        <Text style={[styles.skipText, { color: colors.mutedForeground, fontFamily: "Nunito_400Regular" }]}>
-          skip command
-        </Text>
-      </TouchableOpacity>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, paddingHorizontal: 24, alignItems: "center" },
-  topBar: {
+  container: {
+    flex: 1,
+    paddingHorizontal: 16,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  topRow: {
+    position: "absolute",
+    top: 0,
+    left: 16,
+    right: 16,
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    width: "100%",
-    marginTop: 16,
-    marginBottom: 12,
+    paddingTop: 16,
+    marginTop: Platform.OS === "ios" ? 0 : 0,
   },
-  counter: { fontSize: 16 },
-  scorePill: { paddingHorizontal: 14, paddingVertical: 6, borderRadius: 20 },
-  scoreText: { fontSize: 15 },
-  commandWord: { fontSize: 52, textAlign: "center", marginBottom: 16 },
-  countdownText: { fontSize: 72, textAlign: "center" },
-  timerContainer: {
+  timerText: { fontSize: 32 },
+  scoreWrap: { alignItems: "flex-end" },
+  scoreText: { fontSize: 18 },
+  flashWrap: { position: "absolute", top: -28, right: 0 },
+  flashText: { fontSize: 22, color: MINT },
+  repText: { fontSize: 13, marginBottom: 20 },
+  cmdWrap: { width: "100%", alignItems: "center", marginBottom: 32 },
+  cmdText: { fontSize: 52, textAlign: "center" },
+  markerBtn: {
     width: "100%",
-    height: 10,
-    backgroundColor: "#EDE6DE",
-    borderRadius: 5,
+    height: 64,
+    borderRadius: 14,
     overflow: "hidden",
-    marginBottom: 8,
-  },
-  timerBar: { height: "100%", borderRadius: 5 },
-  timerText: { fontSize: 14, marginBottom: 16 },
-  flashContainer: { marginBottom: 8 },
-  flashText: { fontSize: 32 },
-  holdButton: {
-    width: 180,
-    height: 180,
-    borderRadius: 90,
-    borderWidth: 3,
-    alignItems: "center",
-    justifyContent: "center",
-    shadowColor: "#FF8B6A",
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.3,
-    shadowRadius: 16,
-    elevation: 8,
     marginBottom: 16,
   },
-  holdInner: { alignItems: "center", gap: 4 },
-  holdText: { color: "#FFFFFF", fontSize: 24, letterSpacing: 3 },
-  holdSubtext: { color: "rgba(255,255,255,0.7)", fontSize: 12 },
-  resetBtn: {
-    paddingHorizontal: 32,
-    paddingVertical: 12,
-    borderRadius: 16,
-    borderWidth: 1.5,
-    marginBottom: 12,
+  markerBtnInner: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
   },
-  resetText: { fontSize: 15 },
-  skipText: { fontSize: 14, textDecorationLine: "underline" },
+  markerBtnText: { color: "#fff", fontSize: 18 },
+  skipWrap: { marginTop: 4 },
+  skipText: { fontSize: 12 },
 });
-
