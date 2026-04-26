@@ -63,6 +63,7 @@ export default function BlitzActiveScreen() {
   const [holdDisplay, setHoldDisplay] = useState(0);
   const [timerDisplay, setTimerDisplay] = useState(duration);
   const [flash, setFlash] = useState<{ pts: number; id: number } | null>(null);
+  const [countdownStep, setCountdownStep] = useState<"Ready" | "Set" | "Go!" | null>("Ready");
 
   // ── Mutable refs (game logic, no re-render needed) ────────────────────
   const cmdIndexRef = useRef(0);
@@ -87,12 +88,29 @@ export default function BlitzActiveScreen() {
   const sessionSV = useSharedValue(duration);
   const holdSV = useSharedValue(0);
 
-  // ── Start session timer on mount ──────────────────────────────────────
+  // ── Start session timer after Ready/Set/Go countdown ─────────────────
   useEffect(() => {
-    sessionSV.value = withTiming(0, {
-      duration: duration * 1000,
-      easing: Easing.linear,
-    });
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    const t1 = setTimeout(() => {
+      setCountdownStep("Set");
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    }, 1000);
+    const t2 = setTimeout(() => {
+      setCountdownStep("Go!");
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
+    }, 2000);
+    const t3 = setTimeout(() => {
+      setCountdownStep(null);
+      sessionSV.value = withTiming(0, {
+        duration: duration * 1000,
+        easing: Easing.linear,
+      });
+    }, 2800);
+    return () => {
+      clearTimeout(t1);
+      clearTimeout(t2);
+      clearTimeout(t3);
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -244,7 +262,6 @@ export default function BlitzActiveScreen() {
     setScore(scoreRef.current);
     showFlash(5);
 
-    const next = nextCmdIndex();
     const cslh = cslhRef.current;
 
     let shouldHold = false;
@@ -252,9 +269,11 @@ export default function BlitzActiveScreen() {
     else if (cslh >= 2) shouldHold = Math.random() < 0.4;
 
     if (shouldHold) {
+      // Keep current command visible during hold; handleHoldComplete advances index
       const holdSec = Math.floor(Math.random() * 12) + 1;
-      slideToNext(next, () => triggerHold(holdSec));
+      triggerHold(holdSec);
     } else {
+      const next = nextCmdIndex();
       // Brief tick then slide
       cmdScale.value = withSequence(
         withTiming(1.1, { duration: 100 }),
@@ -269,7 +288,7 @@ export default function BlitzActiveScreen() {
         })
       );
     }
-  }, [trackCommand, showFlash, nextCmdIndex, slideToNext, triggerHold, cmdScale, cmdTranslateX]);
+  }, [trackCommand, showFlash, nextCmdIndex, triggerHold, cmdScale, cmdTranslateX]);
 
   // ── Hold complete tap (State 3) ───────────────────────────────────────
   const handleHoldComplete = useCallback(() => {
@@ -325,6 +344,46 @@ export default function BlitzActiveScreen() {
   const currentCmd = commands[cmdIndex]?.name ?? "";
   const btnLabel =
     btnState === "countdown" ? `Hold... ${holdDisplay}s` : markerCue;
+
+  if (countdownStep) {
+    const isGo = countdownStep === "Go!";
+    return (
+      <View
+        style={[
+          styles.container,
+          {
+            backgroundColor: colors.background,
+            paddingTop: insets.top + (Platform.OS === "web" ? 67 : 0),
+            justifyContent: "center",
+          },
+        ]}
+      >
+        <Text
+          style={[
+            styles.cmdText,
+            {
+              color: isGo ? colors.dark : colors.mutedForeground,
+              fontFamily: "FredokaOne_400Regular",
+              marginBottom: 24,
+            },
+          ]}
+        >
+          {currentCmd}
+        </Text>
+        <Text
+          style={[
+            styles.countdownText,
+            {
+              color: isGo ? colors.mint : colors.peach,
+              fontFamily: "FredokaOne_400Regular",
+            },
+          ]}
+        >
+          {countdownStep}
+        </Text>
+      </View>
+    );
+  }
 
   return (
     <View
@@ -468,4 +527,5 @@ const styles = StyleSheet.create({
   markerBtnText: { color: "#fff", fontSize: 18 },
   skipWrap: { marginTop: 4 },
   skipText: { fontSize: 12 },
+  countdownText: { fontSize: 72, textAlign: "center" },
 });

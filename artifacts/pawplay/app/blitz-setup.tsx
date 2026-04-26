@@ -147,11 +147,11 @@ export default function BlitzSetupScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1 },
   content: { paddingHorizontal: 24, paddingBottom: 40 },
-  backBtn: { marginBottom: 16, alignSelf: "flex-start" },
-  header: { fontSize: 28, marginBottom: 4 },
-  subheader: { fontSize: 15, marginBottom: 24 },
-  infoBox: { borderLeftWidth: 4, borderRadius: 12, padding: 16, marginBottom: 32 },
-  infoText: { fontSize: 14, lineHeight: 22 },
+  backBtn: { marginBottom: 12, alignSelf: "flex-start" },
+  header: { fontSize: 36, marginBottom: 4 },
+  subheader: { fontSize: 16, marginBottom: 20 },
+  infoBox: { borderLeftWidth: 4, borderRadius: 12, padding: 16, marginBottom: 24 },
+  infoText: { fontSize: 14, lineHeight: 21 },
   sectionLabel: { fontSize: 15, marginBottom: 12 },
   durationRow: { flexDirection: "row", gap: 12, marginBottom: 36 },
   durationPill: {
@@ -171,9 +171,14 @@ const styles = StyleSheet.create({
   },
   lockedText: { fontSize: 14, flex: 1 },
   startBtn: {
-    borderRadius: 10,
+    borderRadius: 16,
     paddingVertical: 18,
     alignItems: "center",
+    shadowColor: "#3DB884",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 10,
+    elevation: 6,
   },
   startText: { color: "#fff", fontSize: 18 },
 });

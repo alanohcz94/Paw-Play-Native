@@ -16,11 +16,6 @@ import { useApp } from "@/context/AppContext";
 import { useAuth } from "@/lib/auth";
 import { useSound } from "@/hooks/useSound";
 
-const MINT = "#3DB884";
-const PEACH = "#FF8B6A";
-const LAVENDER = "#8B68FF";
-const SKY = "#68B4FF";
-
 const COPY_VARIANTS = [
   (name: string) => `${name} was locked in today! 🔥`,
   (name: string) => `Sharp session — ${name} never saw the hold coming ⚡`,
@@ -50,13 +45,17 @@ function calculateBlitzScore({
 export default function BlitzEndScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
-  const { repsCompleted: repsParam, holdsCompleted: holdsParam, duration: durParam, commandsUsed: cmdsParam } =
-    useLocalSearchParams<{
-      repsCompleted: string;
-      holdsCompleted: string;
-      duration: string;
-      commandsUsed: string;
-    }>();
+  const {
+    repsCompleted: repsParam,
+    holdsCompleted: holdsParam,
+    duration: durParam,
+    commandsUsed: cmdsParam,
+  } = useLocalSearchParams<{
+    repsCompleted: string;
+    holdsCompleted: string;
+    duration: string;
+    commandsUsed: string;
+  }>();
 
   const repsCompleted = parseInt(repsParam ?? "0", 10);
   const holdsCompleted = parseInt(holdsParam ?? "0", 10);
@@ -69,10 +68,16 @@ export default function BlitzEndScreen() {
 
   const [isPersonalBest, setIsPersonalBest] = useState(false);
   const [totalScore, setTotalScore] = useState(
-    calculateBlitzScore({ repsCompleted, holdsCompleted, isPersonalBest: false, timerCompleted: true })
+    calculateBlitzScore({
+      repsCompleted,
+      holdsCompleted,
+      isPersonalBest: false,
+      timerCompleted: true,
+    }),
   );
   const [copy] = useState(() => {
-    const variant = COPY_VARIANTS[Math.floor(Math.random() * COPY_VARIANTS.length)];
+    const variant =
+      COPY_VARIANTS[Math.floor(Math.random() * COPY_VARIANTS.length)];
     return variant(dog?.name ?? "your dog");
   });
 
@@ -113,9 +118,9 @@ export default function BlitzEndScreen() {
       let pb = false;
       if (prevRes.ok) {
         const { sessions } = await prevRes.json();
-        const blitzSessions = (sessions as { mode: string; commandsUsed: unknown[] }[]).filter(
-          (s) => s.mode === "blitz" && Array.isArray(s.commandsUsed)
-        );
+        const blitzSessions = (
+          sessions as { mode: string; commandsUsed: unknown[] }[]
+        ).filter((s) => s.mode === "blitz" && Array.isArray(s.commandsUsed));
         // commandsUsed array length is used as proxy for reps in saved sessions
         // If we stored repsCompleted as a bonus label we can check it; otherwise use commandsUsed length
         const prevMax = blitzSessions.reduce((max: number, s) => {
@@ -137,7 +142,12 @@ export default function BlitzEndScreen() {
       const bonuses: { name: string; label: string; points: number }[] = [
         { name: "session_complete", label: "Session Complete", points: 15 },
       ];
-      if (pb) bonuses.push({ name: "personal_best", label: "Personal Best", points: 20 });
+      if (pb)
+        bonuses.push({
+          name: "personal_best",
+          label: "Personal Best",
+          points: 20,
+        });
 
       const finalScore = calculateBlitzScore({
         repsCompleted,
@@ -187,10 +197,20 @@ export default function BlitzEndScreen() {
   };
 
   const breakdown = [
-    { label: "Base reps", value: `${repsCompleted} × 5`, pts: repsCompleted * 5 },
-    { label: "Hold bonus", value: `${holdsCompleted} × 10`, pts: holdsCompleted * 10 },
+    {
+      label: "Base reps",
+      value: `${repsCompleted} × 5`,
+      pts: repsCompleted * 5,
+    },
+    {
+      label: "Hold bonus",
+      value: `${holdsCompleted} × 10`,
+      pts: holdsCompleted * 10,
+    },
     { label: "Session complete", value: "+15", pts: 15 },
-    ...(isPersonalBest ? [{ label: "Personal best", value: "+20", pts: 20 }] : []),
+    ...(isPersonalBest
+      ? [{ label: "Personal best", value: "+20", pts: 20 }]
+      : []),
   ];
 
   return (
@@ -206,18 +226,29 @@ export default function BlitzEndScreen() {
       showsVerticalScrollIndicator={false}
     >
       <Text
-        style={[styles.title, { color: colors.dark, fontFamily: "FredokaOne_400Regular" }]}
+        style={[
+          styles.title,
+          { color: colors.dark, fontFamily: "FredokaOne_400Regular" },
+        ]}
       >
         {dog?.name ? `${dog.name}'s Blitz!` : "Blitz Complete!"}
       </Text>
 
       {/* Main score */}
       <Animated.View style={[styles.scoreWrap, scoreStyle]}>
-        <Text style={[styles.scoreValue, { color: MINT, fontFamily: "FredokaOne_400Regular" }]}>
+        <Text
+          style={[
+            styles.scoreValue,
+            { color: colors.mint, fontFamily: "FredokaOne_400Regular" },
+          ]}
+        >
           {totalScore}
         </Text>
         <Text
-          style={[styles.scoreLabel, { color: colors.mutedForeground, fontFamily: "Nunito_700Bold" }]}
+          style={[
+            styles.scoreLabel,
+            { color: colors.mutedForeground, fontFamily: "Nunito_700Bold" },
+          ]}
         >
           Blitz Points
         </Text>
@@ -225,7 +256,7 @@ export default function BlitzEndScreen() {
 
       {/* Personal best banner */}
       {isPersonalBest && (
-        <View style={[styles.pbBanner, { backgroundColor: MINT }]}>
+        <View style={[styles.pbBanner, { backgroundColor: colors.lemon }]}>
           <Text style={[styles.pbText, { fontFamily: "Nunito_900Black" }]}>
             New personal best! {repsCompleted} reps 🎉
           </Text>
@@ -235,12 +266,20 @@ export default function BlitzEndScreen() {
       {/* Stats row */}
       <Animated.View style={[styles.statsRow, statsStyle]}>
         {[
-          { label: "Reps", value: repsCompleted, color: PEACH },
-          { label: "Holds", value: holdsCompleted, color: LAVENDER },
-          { label: "Sec", value: duration, color: SKY },
+          { label: "Reps", value: repsCompleted, color: colors.peach },
+          { label: "Holds", value: holdsCompleted, color: colors.lavender },
+          { label: "Sec", value: duration, color: colors.sky },
         ].map(({ label, value, color }) => (
-          <View key={label} style={[styles.statCard, { backgroundColor: color + "22" }]}>
-            <Text style={[styles.statValue, { color, fontFamily: "FredokaOne_400Regular" }]}>
+          <View
+            key={label}
+            style={[styles.statCard, { backgroundColor: color + "22" }]}
+          >
+            <Text
+              style={[
+                styles.statValue,
+                { color, fontFamily: "FredokaOne_400Regular" },
+              ]}
+            >
               {value}
             </Text>
             <Text
@@ -256,7 +295,12 @@ export default function BlitzEndScreen() {
       </Animated.View>
 
       {/* Points breakdown */}
-      <View style={[styles.breakdownCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
+      <View
+        style={[
+          styles.breakdownCard,
+          { backgroundColor: colors.card, borderColor: colors.border },
+        ]}
+      >
         <Text
           style={[
             styles.breakdownTitle,
@@ -270,13 +314,19 @@ export default function BlitzEndScreen() {
             <Text
               style={[
                 styles.breakdownLabel,
-                { color: colors.mutedForeground, fontFamily: "Nunito_400Regular" },
+                {
+                  color: colors.mutedForeground,
+                  fontFamily: "Nunito_400Regular",
+                },
               ]}
             >
               {row.label}
             </Text>
             <Text
-              style={[styles.breakdownPts, { color: colors.dark, fontFamily: "Nunito_900Black" }]}
+              style={[
+                styles.breakdownPts,
+                { color: colors.dark, fontFamily: "Nunito_900Black" },
+              ]}
             >
               +{row.pts}
             </Text>
@@ -302,7 +352,10 @@ export default function BlitzEndScreen() {
                 style={[styles.chip, { backgroundColor: colors.mintLight }]}
               >
                 <Text
-                  style={[styles.chipText, { color: MINT, fontFamily: "Nunito_700Bold" }]}
+                  style={[
+                    styles.chipText,
+                    { color: colors.mint, fontFamily: "Nunito_700Bold" },
+                  ]}
                 >
                   {name}
                 </Text>
@@ -312,11 +365,35 @@ export default function BlitzEndScreen() {
         </View>
       )}
 
+      {/* Reward reminder */}
+      <View
+        style={[
+          styles.rewardReminder,
+          { backgroundColor: colors.mintLight, borderColor: colors.mint },
+        ]}
+      >
+        <Text
+          style={[
+            styles.rewardReminderText,
+            { color: colors.dark, fontFamily: "Nunito_700Bold" },
+          ]}
+        >
+          🎉 Remember to reward {dog?.name ?? "your dog"} with a treat! Always end on a good note.
+        </Text>
+      </View>
+
       {/* Streak */}
       {streak > 0 && (
-        <View style={[styles.streakBox, { backgroundColor: colors.peachLight }]}>
-          <Feather name="zap" size={18} color={PEACH} />
-          <Text style={[styles.streakText, { color: PEACH, fontFamily: "Nunito_900Black" }]}>
+        <View
+          style={[styles.streakBox, { backgroundColor: colors.peachLight }]}
+        >
+          <Feather name="zap" size={18} color={colors.peach} />
+          <Text
+            style={[
+              styles.streakText,
+              { color: colors.peach, fontFamily: "Nunito_900Black" },
+            ]}
+          >
             {streak} day streak!
           </Text>
         </View>
@@ -334,7 +411,7 @@ export default function BlitzEndScreen() {
 
       {/* Buttons */}
       <TouchableOpacity
-        style={[styles.goAgainBtn, { backgroundColor: MINT }]}
+        style={[styles.goAgainBtn, { backgroundColor: colors.peach }]}
         onPress={() =>
           router.replace({
             pathname: "/blitz-active",
@@ -343,7 +420,9 @@ export default function BlitzEndScreen() {
         }
         activeOpacity={0.85}
       >
-        <Text style={[styles.goAgainText, { fontFamily: "Nunito_900Black" }]}>Go Again</Text>
+        <Text style={[styles.goAgainText, { fontFamily: "Nunito_900Black" }]}>
+          Play Again
+        </Text>
       </TouchableOpacity>
 
       <TouchableOpacity
@@ -351,8 +430,13 @@ export default function BlitzEndScreen() {
         onPress={() => router.replace("/(tabs)")}
         activeOpacity={0.8}
       >
-        <Text style={[styles.homeText, { color: colors.dark, fontFamily: "Nunito_700Bold" }]}>
-          Home
+        <Text
+          style={[
+            styles.homeText,
+            { color: colors.dark, fontFamily: "Nunito_700Bold" },
+          ]}
+        >
+          Go Home
         </Text>
       </TouchableOpacity>
     </ScrollView>
@@ -362,10 +446,10 @@ export default function BlitzEndScreen() {
 const styles = StyleSheet.create({
   root: { flex: 1 },
   content: { paddingHorizontal: 24, alignItems: "center" },
-  title: { fontSize: 28, textAlign: "center", marginBottom: 8 },
-  scoreWrap: { alignItems: "center", marginBottom: 16 },
-  scoreValue: { fontSize: 72, lineHeight: 80 },
-  scoreLabel: { fontSize: 13 },
+  title: { fontSize: 30, textAlign: "center", marginBottom: 8 },
+  scoreWrap: { alignItems: "center", marginBottom: 24 },
+  scoreValue: { fontSize: 80, lineHeight: 88 },
+  scoreLabel: { fontSize: 14 },
   pbBanner: {
     width: "100%",
     borderRadius: 12,
@@ -392,13 +476,13 @@ const styles = StyleSheet.create({
   statLabel: { fontSize: 12 },
   breakdownCard: {
     width: "100%",
-    borderRadius: 16,
+    borderRadius: 20,
     borderWidth: 1,
-    padding: 16,
+    padding: 18,
     marginBottom: 20,
     gap: 10,
   },
-  breakdownTitle: { fontSize: 14, marginBottom: 4 },
+  breakdownTitle: { fontSize: 16, marginBottom: 4 },
   breakdownRow: { flexDirection: "row", justifyContent: "space-between" },
   breakdownLabel: { fontSize: 14 },
   breakdownPts: { fontSize: 14 },
@@ -407,16 +491,18 @@ const styles = StyleSheet.create({
   chips: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
   chip: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 20 },
   chipText: { fontSize: 13 },
+  rewardReminder: { borderRadius: 16, padding: 16, width: "100%", marginBottom: 16, borderWidth: 1.5 },
+  rewardReminderText: { fontSize: 15, textAlign: "center", lineHeight: 22 },
   streakBox: {
     flexDirection: "row",
     alignItems: "center",
     gap: 8,
-    paddingHorizontal: 18,
-    paddingVertical: 10,
+    paddingHorizontal: 20,
+    paddingVertical: 12,
     borderRadius: 20,
-    marginBottom: 16,
+    marginBottom: 24,
   },
-  streakText: { fontSize: 15 },
+  streakText: { fontSize: 16 },
   copy: { fontSize: 14, textAlign: "center", marginBottom: 28, lineHeight: 20 },
   goAgainBtn: {
     width: "100%",
@@ -424,6 +510,11 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     alignItems: "center",
     marginBottom: 12,
+    shadowColor: "#FF8B6A",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 10,
+    elevation: 6,
   },
   goAgainText: { color: "#fff", fontSize: 18 },
   homeBtn: {

@@ -48,7 +48,7 @@ export default function GamesScreen() {
         >
           Choose your training style
         </Text>
-
+        {/* Quick Bites Mode */}
         <TouchableOpacity
           style={[
             styles.modeCard,
@@ -92,54 +92,13 @@ export default function GamesScreen() {
             />
           </View>
         </TouchableOpacity>
-
-        <TouchableOpacity
-          style={[
-            styles.modeCard,
-            { backgroundColor: colors.mintLight, borderColor: colors.mintMid },
-          ]}
-          onPress={() => router.push("/training-config")}
-          activeOpacity={0.85}
-        >
-          <View style={styles.modeRow}>
-            <View style={[styles.modeIcon, { backgroundColor: colors.mint }]}>
-              <Feather name="book-open" size={22} color="#fff" />
-            </View>
-            <View style={styles.modeInfo}>
-              <Text
-                style={[
-                  styles.modeTitle,
-                  { color: colors.dark, fontFamily: "Nunito_900Black" },
-                ]}
-              >
-                Training
-              </Text>
-              <Text
-                style={[
-                  styles.modeDesc,
-                  {
-                    color: colors.mutedForeground,
-                    fontFamily: "Nunito_400Regular",
-                  },
-                ]}
-              >
-                Learn + practice commands
-              </Text>
-            </View>
-            <Feather
-              name="chevron-right"
-              size={22}
-              color={colors.mutedForeground}
-            />
-          </View>
-        </TouchableOpacity>
-
+        {/* Blitz Mode */}
         <TouchableOpacity
           style={[
             styles.modeCard,
             {
-              backgroundColor: colors.mintLight,
-              borderColor: colors.mintMid,
+              backgroundColor: colors.lemonLight,
+              borderColor: colors.lemon,
               opacity: blitzUnlocked ? 1 : 0.6,
             },
           ]}
@@ -184,6 +143,47 @@ export default function GamesScreen() {
             ) : (
               <Feather name="lock" size={18} color={colors.mutedForeground} />
             )}
+          </View>
+        </TouchableOpacity>
+        {/* Training Mode */}
+        <TouchableOpacity
+          style={[
+            styles.modeCard,
+            { backgroundColor: colors.mintLight, borderColor: colors.mintMid },
+          ]}
+          onPress={() => router.push("/training-config")}
+          activeOpacity={0.85}
+        >
+          <View style={styles.modeRow}>
+            <View style={[styles.modeIcon, { backgroundColor: colors.mint }]}>
+              <Feather name="book-open" size={22} color="#fff" />
+            </View>
+            <View style={styles.modeInfo}>
+              <Text
+                style={[
+                  styles.modeTitle,
+                  { color: colors.dark, fontFamily: "Nunito_900Black" },
+                ]}
+              >
+                Training
+              </Text>
+              <Text
+                style={[
+                  styles.modeDesc,
+                  {
+                    color: colors.mutedForeground,
+                    fontFamily: "Nunito_400Regular",
+                  },
+                ]}
+              >
+                Learn + practice commands
+              </Text>
+            </View>
+            <Feather
+              name="chevron-right"
+              size={22}
+              color={colors.mutedForeground}
+            />
           </View>
         </TouchableOpacity>
       </ScrollView>
