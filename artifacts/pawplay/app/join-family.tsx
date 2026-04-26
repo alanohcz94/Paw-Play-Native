@@ -43,14 +43,16 @@ export default function JoinFamilyScreen() {
         return;
       }
       const data = await res.json();
-      setFamilyId(data.family.id);
-      setInviteCode(data.family.inviteCode);
+      // Support both new { family, dog } format and legacy flat format
+      const familyObj = data.family ?? data;
+      setFamilyId(familyObj.id);
+      setInviteCode(familyObj.inviteCode);
       await authedFetch(`/api/users/${user?.id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           displayName: user?.firstName || "Family Member",
-          familyId: data.family.id,
+          familyId: familyObj.id,
         }),
       });
       await loadDogsFromApi();

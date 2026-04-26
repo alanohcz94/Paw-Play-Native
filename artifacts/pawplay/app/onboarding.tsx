@@ -55,7 +55,8 @@ export default function OnboardingScreen() {
         setJoinLoading(false);
         return;
       }
-      const family = await res.json();
+      const data = await res.json();
+      const family = data.family ?? data;
       setFamilyId(family.id);
       setInviteCode(family.inviteCode);
 

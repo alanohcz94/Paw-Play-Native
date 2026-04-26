@@ -57,12 +57,16 @@ router.post("/family/join/:code", async (req: Request, res: Response) => {
   const [pawUser] = await db.select().from(pawplayUsersTable).where(eq(pawplayUsersTable.id, userId));
   let userDog: typeof dogsTable.$inferSelect | undefined;
   let userCommands: (typeof commandsTable.$inferSelect)[] = [];
-  if (pawUser?.familyId && pawUser.familyId !== family.id) {
-    const userDogs = await db.select().from(dogsTable).where(eq(dogsTable.familyId, pawUser.familyId));
-    userDog = userDogs[0];
-    if (userDog) {
-      userCommands = await db.select().from(commandsTable).where(eq(commandsTable.dogId, userDog.id));
+  try {
+    if (pawUser?.familyId && pawUser.familyId !== family.id) {
+      const userDogs = await db.select().from(dogsTable).where(eq(dogsTable.familyId, pawUser.familyId));
+      userDog = userDogs[0];
+      if (userDog) {
+        userCommands = await db.select().from(commandsTable).where(eq(commandsTable.dogId, userDog.id));
+      }
     }
+  } catch (e) {
+    console.error("Failed to load user dog/commands for merge (non-fatal):", e);
   }
 
   // Add user to the new family
@@ -77,66 +81,70 @@ router.post("/family/join/:code", async (req: Request, res: Response) => {
   // Merge dog data if the user had a dog whose name matches one in the target family
   let mergedDog: typeof dogsTable.$inferSelect | null = null;
   if (userDog) {
-    const familyDogs = await db.select().from(dogsTable).where(eq(dogsTable.familyId, family.id));
-    const matchingDog = familyDogs.find(
-      (d) => d.name.toLowerCase() === userDog!.name.toLowerCase()
-    );
+    try {
+      const familyDogs = await db.select().from(dogsTable).where(eq(dogsTable.familyId, family.id));
+      const matchingDog = familyDogs.find(
+        (d: typeof dogsTable.$inferSelect) => d.name.toLowerCase() === userDog!.name.toLowerCase()
+      );
 
-    if (matchingDog) {
-      // Merge commands: sum counts for matching names, add new ones
-      const familyCommands = await db.select().from(commandsTable).where(eq(commandsTable.dogId, matchingDog.id));
-      const familyCommandMap = new Map(familyCommands.map((c) => [c.name.toLowerCase(), c]));
+      if (matchingDog) {
+        // Merge commands: sum counts for matching names, add new ones
+        const familyCommands = await db.select().from(commandsTable).where(eq(commandsTable.dogId, matchingDog.id));
+        const familyCommandMap = new Map(familyCommands.map((c: typeof commandsTable.$inferSelect) => [c.name.toLowerCase(), c]));
 
-      for (const uc of userCommands) {
-        const existing = familyCommandMap.get(uc.name.toLowerCase());
-        if (existing) {
-          const newTraining = existing.trainingSessionsCount + uc.trainingSessionsCount;
-          const newQbSuccesses = existing.qbSuccessesCount + uc.qbSuccessesCount;
-          const newQbSessions = existing.qbSessionsWithSuccess + uc.qbSessionsWithSuccess;
-          const newBlitz = (existing.blitzSuccessesCount ?? 0) + (uc.blitzSuccessesCount ?? 0);
-          const newLevel = Math.max(existing.level, uc.level);
-          await db.update(commandsTable).set({
-            level: newLevel,
-            trainingSessionsCount: newTraining,
-            qbSuccessesCount: newQbSuccesses,
-            qbSessionsWithSuccess: newQbSessions,
-            blitzSuccessesCount: newBlitz,
-            lastUsedAt: existing.lastUsedAt && uc.lastUsedAt
-              ? new Date(Math.max(new Date(existing.lastUsedAt).getTime(), new Date(uc.lastUsedAt).getTime()))
-              : existing.lastUsedAt ?? uc.lastUsedAt,
-          }).where(eq(commandsTable.id, existing.id));
-        } else {
-          await db.insert(commandsTable).values({
-            dogId: matchingDog.id,
-            name: uc.name,
-            level: uc.level,
-            trainingSessionsCount: uc.trainingSessionsCount,
-            qbSuccessesCount: uc.qbSuccessesCount,
-            qbSessionsWithSuccess: uc.qbSessionsWithSuccess,
-            blitzSuccessesCount: uc.blitzSuccessesCount,
-            lastUsedAt: uc.lastUsedAt,
-          });
+        for (const uc of userCommands) {
+          const existing = familyCommandMap.get(uc.name.toLowerCase());
+          if (existing) {
+            const newTraining = existing.trainingSessionsCount + uc.trainingSessionsCount;
+            const newQbSuccesses = existing.qbSuccessesCount + uc.qbSuccessesCount;
+            const newQbSessions = existing.qbSessionsWithSuccess + uc.qbSessionsWithSuccess;
+            const newBlitz = (existing.blitzSuccessesCount ?? 0) + (uc.blitzSuccessesCount ?? 0);
+            const newLevel = Math.max(existing.level, uc.level);
+            await db.update(commandsTable).set({
+              level: newLevel,
+              trainingSessionsCount: newTraining,
+              qbSuccessesCount: newQbSuccesses,
+              qbSessionsWithSuccess: newQbSessions,
+              blitzSuccessesCount: newBlitz,
+              lastUsedAt: existing.lastUsedAt && uc.lastUsedAt
+                ? new Date(Math.max(new Date(existing.lastUsedAt).getTime(), new Date(uc.lastUsedAt).getTime()))
+                : existing.lastUsedAt ?? uc.lastUsedAt,
+            }).where(eq(commandsTable.id, existing.id));
+          } else {
+            await db.insert(commandsTable).values({
+              dogId: matchingDog.id,
+              name: uc.name,
+              level: uc.level,
+              trainingSessionsCount: uc.trainingSessionsCount,
+              qbSuccessesCount: uc.qbSuccessesCount,
+              qbSessionsWithSuccess: uc.qbSessionsWithSuccess,
+              blitzSuccessesCount: uc.blitzSuccessesCount,
+              lastUsedAt: uc.lastUsedAt,
+            });
+          }
         }
+
+        // Re-attribute user's sessions to the family dog
+        await db
+          .update(sessionsRecordTable)
+          .set({ dogId: matchingDog.id })
+          .where(and(eq(sessionsRecordTable.dogId, userDog.id), eq(sessionsRecordTable.userId, userId)));
+
+        // Remove the solo dog (no longer needed)
+        await db.delete(commandsTable).where(eq(commandsTable.dogId, userDog.id));
+        await db.delete(dogsTable).where(eq(dogsTable.id, userDog.id));
+
+        // Fetch the updated family dog
+        const [refreshedDog] = await db.select().from(dogsTable).where(eq(dogsTable.id, matchingDog.id));
+        mergedDog = refreshedDog ?? null;
+      } else {
+        // No name match — move user's dog to the new family
+        await db.update(dogsTable).set({ familyId: family.id }).where(eq(dogsTable.id, userDog.id));
+        const [movedDog] = await db.select().from(dogsTable).where(eq(dogsTable.id, userDog.id));
+        mergedDog = movedDog ?? null;
       }
-
-      // Re-attribute user's sessions to the family dog
-      await db
-        .update(sessionsRecordTable)
-        .set({ dogId: matchingDog.id })
-        .where(and(eq(sessionsRecordTable.dogId, userDog.id), eq(sessionsRecordTable.userId, userId)));
-
-      // Remove the solo dog (no longer needed)
-      await db.delete(commandsTable).where(eq(commandsTable.dogId, userDog.id));
-      await db.delete(dogsTable).where(eq(dogsTable.id, userDog.id));
-
-      // Merge XP/level onto family dog
-      const [refreshedDog] = await db.select().from(dogsTable).where(eq(dogsTable.id, matchingDog.id));
-      mergedDog = refreshedDog ?? null;
-    } else {
-      // No name match — move user's dog to the new family
-      await db.update(dogsTable).set({ familyId: family.id }).where(eq(dogsTable.id, userDog.id));
-      const [movedDog] = await db.select().from(dogsTable).where(eq(dogsTable.id, userDog.id));
-      mergedDog = movedDog ?? null;
+    } catch (e) {
+      console.error("Dog merge failed during family join (non-fatal):", e);
     }
   }
 
