@@ -161,7 +161,7 @@ export default function GamesScreen() {
               <MaterialCommunityIcons
                 name="trophy-outline"
                 size={22}
-                color={obedienceUnlocked ? colors.dark : colors.mutedForeground}
+                color="#fff"
               />
             </View>
             <View style={styles.modeInfo}>
@@ -181,7 +181,7 @@ export default function GamesScreen() {
                     styles.progressLabel,
                     {
                       color: colors.mutedForeground,
-                      fontFamily: "Nunito_700Bold",
+                      fontFamily: "Nunito_400Regular",
                     },
                   ]}
                 >
