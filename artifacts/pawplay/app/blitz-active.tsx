@@ -28,6 +28,7 @@ import { useApp } from "@/context/AppContext";
 import colors from "@/constants/colors";
 
 const SCREEN_WIDTH = Dimensions.get("window").width;
+const SCREEN_HEIGHT = Dimensions.get("window").height;
 
 function shuffle<T>(arr: T[]): T[] {
   const a = [...arr];
@@ -416,12 +417,12 @@ export default function BlitzActiveScreen() {
       ]}
     >
       {/* Row 1: Timer + Score */}
-      <View style={styles.topRow}>
+      <View style={[styles.topRow, { top: SCREEN_HEIGHT * 0.30 }]}>
         <Text
           style={[
             styles.timerText,
             {
-              color: isUrgent ? colors.mint : colors.dark,
+              color: isUrgent ? colors.peach : colors.dark,
               fontFamily: "Nunito_900Black",
             },
           ]}
@@ -528,14 +529,11 @@ const styles = StyleSheet.create({
   },
   topRow: {
     position: "absolute",
-    top: 0,
     left: 16,
     right: 16,
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    paddingTop: 16,
-    marginTop: Platform.OS === "ios" ? 0 : 0,
   },
   timerText: { fontSize: 32 },
   scoreWrap: { alignItems: "flex-end" },
