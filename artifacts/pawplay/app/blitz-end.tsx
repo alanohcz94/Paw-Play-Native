@@ -16,13 +16,6 @@ import { useApp } from "@/context/AppContext";
 import { useAuth } from "@/lib/auth";
 import { useSound } from "@/hooks/useSound";
 
-const COPY_VARIANTS = [
-  (name: string) => `${name} was locked in today! 🔥`,
-  (name: string) => `Sharp session — ${name} never saw the hold coming ⚡`,
-  () => "Every rep counts — great Blitz! 💪",
-  (name: string) => `${name} held like a champ today 🏅`,
-];
-
 function calculateBlitzScore({
   repsCompleted,
   holdsCompleted,
@@ -75,11 +68,6 @@ export default function BlitzEndScreen() {
       timerCompleted: true,
     }),
   );
-  const [copy] = useState(() => {
-    const variant =
-      COPY_VARIANTS[Math.floor(Math.random() * COPY_VARIANTS.length)];
-    return variant(dog?.name ?? "your dog");
-  });
 
   const scoreAnim = useRef(new Animated.Value(0)).current;
   const statsAnim = useRef(new Animated.Value(0)).current;
@@ -254,15 +242,6 @@ export default function BlitzEndScreen() {
         </Text>
       </Animated.View>
 
-      {/* Personal best banner */}
-      {isPersonalBest && (
-        <View style={[styles.pbBanner, { backgroundColor: colors.lemon }]}>
-          <Text style={[styles.pbText, { fontFamily: "Nunito_900Black" }]}>
-            New personal best! {repsCompleted} reps 🎉
-          </Text>
-        </View>
-      )}
-
       {/* Stats row */}
       <Animated.View style={[styles.statsRow, statsStyle]}>
         {[
@@ -298,7 +277,10 @@ export default function BlitzEndScreen() {
       <View
         style={[
           styles.breakdownCard,
-          { backgroundColor: colors.card, borderColor: colors.border },
+          {
+            backgroundColor: colors.card,
+            borderColor: colors.border,
+          },
         ]}
       >
         <Text
@@ -315,8 +297,8 @@ export default function BlitzEndScreen() {
               style={[
                 styles.breakdownLabel,
                 {
-                  color: colors.mutedForeground,
-                  fontFamily: "Nunito_400Regular",
+                  color: colors.dark,
+                  fontFamily: "Nunito_700Bold",
                 },
               ]}
             >
@@ -325,10 +307,13 @@ export default function BlitzEndScreen() {
             <Text
               style={[
                 styles.breakdownPts,
-                { color: colors.dark, fontFamily: "Nunito_900Black" },
+                {
+                  color: colors.mint,
+                  fontFamily: "Nunito_900Black",
+                },
               ]}
             >
-              +{row.pts}
+              {row.pts}
             </Text>
           </View>
         ))}
@@ -378,7 +363,8 @@ export default function BlitzEndScreen() {
             { color: colors.dark, fontFamily: "Nunito_700Bold" },
           ]}
         >
-          🎉 Remember to reward {dog?.name ?? "your dog"} with a treat! Always end on a good note.
+          🎉 Remember to reward {dog?.name ?? "your dog"} with a treat! Always
+          end on a good note.
         </Text>
       </View>
 
@@ -398,16 +384,6 @@ export default function BlitzEndScreen() {
           </Text>
         </View>
       )}
-
-      {/* Copy */}
-      <Text
-        style={[
-          styles.copy,
-          { color: colors.mutedForeground, fontFamily: "Nunito_400Regular" },
-        ]}
-      >
-        {copy}
-      </Text>
 
       {/* Buttons */}
       <TouchableOpacity
@@ -483,15 +459,30 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   breakdownTitle: { fontSize: 16, marginBottom: 4 },
-  breakdownRow: { flexDirection: "row", justifyContent: "space-between" },
-  breakdownLabel: { fontSize: 14 },
+  breakdownRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    borderBottomWidth: 1,
+    borderColor: "#EDE6DE",
+    paddingVertical: 10,
+  },
+  breakdownLabel: {
+    fontSize: 14,
+  },
   breakdownPts: { fontSize: 14 },
   cmdsSection: { width: "100%", marginBottom: 20 },
   cmdsTitle: { fontSize: 14, marginBottom: 10 },
   chips: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
   chip: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 20 },
   chipText: { fontSize: 13 },
-  rewardReminder: { borderRadius: 16, padding: 16, width: "100%", marginBottom: 16, borderWidth: 1.5 },
+  rewardReminder: {
+    borderRadius: 16,
+    padding: 16,
+    width: "100%",
+    marginBottom: 16,
+    borderWidth: 1.5,
+  },
   rewardReminderText: { fontSize: 15, textAlign: "center", lineHeight: 22 },
   streakBox: {
     flexDirection: "row",
@@ -503,7 +494,6 @@ const styles = StyleSheet.create({
     marginBottom: 24,
   },
   streakText: { fontSize: 16 },
-  copy: { fontSize: 14, textAlign: "center", marginBottom: 28, lineHeight: 20 },
   goAgainBtn: {
     width: "100%",
     paddingVertical: 18,
