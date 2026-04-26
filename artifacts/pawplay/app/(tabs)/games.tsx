@@ -9,7 +9,7 @@ import {
 } from "react-native";
 import { router } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { Feather, MaterialCommunityIcons } from "@expo/vector-icons";
+import { Feather } from "@expo/vector-icons";
 import { useColors } from "@/hooks/useColors";
 import { useApp } from "@/context/AppContext";
 
@@ -18,11 +18,7 @@ export default function GamesScreen() {
   const insets = useSafeAreaInsets();
   const { commands } = useApp();
 
-  const level3Count = useMemo(
-    () => commands.filter((c) => c.level >= 3).length,
-    [commands],
-  );
-  const obedienceUnlocked = level3Count >= 7;
+  const blitzUnlocked = useMemo(() => commands.length >= 3, [commands]);
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
@@ -142,27 +138,17 @@ export default function GamesScreen() {
           style={[
             styles.modeCard,
             {
-              backgroundColor: colors.lemonLight,
-              borderColor: colors.lemon,
+              backgroundColor: colors.mintLight,
+              borderColor: colors.mintMid,
+              opacity: blitzUnlocked ? 1 : 0.6,
             },
           ]}
-          onPress={() => router.push("/blitz-setup")}
-          activeOpacity={0.85}
+          onPress={() => blitzUnlocked && router.push("/blitz-setup")}
+          activeOpacity={blitzUnlocked ? 0.85 : 1}
         >
           <View style={styles.modeRow}>
-            <View
-              style={[
-                styles.modeIcon,
-                {
-                  backgroundColor: colors.lemon,
-                },
-              ]}
-            >
-              <MaterialCommunityIcons
-                name="trophy-outline"
-                size={22}
-                color="#fff"
-              />
+            <View style={[styles.modeIcon, { backgroundColor: colors.mint }]}>
+              <Feather name="zap" size={22} color="#fff" />
             </View>
             <View style={styles.modeInfo}>
               <View style={styles.modeHeaderRow}>
@@ -189,11 +175,15 @@ export default function GamesScreen() {
                 </Text>
               </View>
             </View>
-            <Feather
-              name="chevron-right"
-              size={22}
-              color={colors.mutedForeground}
-            />
+            {blitzUnlocked ? (
+              <Feather
+                name="chevron-right"
+                size={22}
+                color={colors.mutedForeground}
+              />
+            ) : (
+              <Feather name="lock" size={18} color={colors.mutedForeground} />
+            )}
           </View>
         </TouchableOpacity>
       </ScrollView>

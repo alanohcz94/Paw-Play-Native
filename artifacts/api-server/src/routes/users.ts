@@ -84,7 +84,7 @@ router.delete("/users/:userId", async (req: Request, res: Response) => {
         await tx
           .update(familiesTable)
           .set({
-            memberIds: sql`COALESCE(${familiesTable.memberIds}, '[]'::jsonb) - ${userId}`,
+            memberIds: sql`COALESCE(${familiesTable.memberIds}, '[]'::jsonb) - ${userId}::text`,
           })
           .where(eq(familiesTable.id, pawUser.familyId));
       }
@@ -94,15 +94,21 @@ router.delete("/users/:userId", async (req: Request, res: Response) => {
       await tx.delete(pushTokensTable).where(eq(pushTokensTable.userId, userId));
       await tx.delete(pawplayUsersTable).where(eq(pawplayUsersTable.id, userId));
       await tx.delete(usersTable).where(eq(usersTable.id, userId));
-
-      await tx
-        .delete(sessionsTable)
-        .where(sql`(${sessionsTable.sess} -> 'user' ->> 'id') = ${userId}`);
     });
   } catch (err) {
     req.log?.error({ err, userId }, "Failed to delete account");
     res.status(500).json({ error: "Failed to delete account" });
     return;
+  }
+
+  // Clean up any remaining auth sessions for this user outside the transaction
+  // so a failure here doesn't roll back the account deletion.
+  try {
+    await db
+      .delete(sessionsTable)
+      .where(sql`${sessionsTable.sess}::text like ${"%" + userId + "%"}`);
+  } catch (err) {
+    req.log?.warn({ err, userId }, "Could not clean up auth sessions after account deletion");
   }
 
   const sid = getSessionId(req);
