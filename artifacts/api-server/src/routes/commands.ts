@@ -56,11 +56,12 @@ router.patch("/commands/:dogId/:name", async (req: Request, res: Response) => {
   }
   const { dogId, name } = req.params;
   const updates: Record<string, unknown> = {};
-  const { level, trainingSessionsCount, qbSuccessesCount, qbSessionsWithSuccess } = req.body;
+  const { level, trainingSessionsCount, qbSuccessesCount, qbSessionsWithSuccess, blitzSuccessesCount } = req.body;
   if (level !== undefined) updates.level = level;
   if (trainingSessionsCount !== undefined) updates.trainingSessionsCount = trainingSessionsCount;
   if (qbSuccessesCount !== undefined) updates.qbSuccessesCount = qbSuccessesCount;
   if (qbSessionsWithSuccess !== undefined) updates.qbSessionsWithSuccess = qbSessionsWithSuccess;
+  if (blitzSuccessesCount !== undefined) updates.blitzSuccessesCount = blitzSuccessesCount;
   updates.lastUsedAt = new Date();
   const [cmd] = await db.update(commandsTable).set(updates).where(and(eq(commandsTable.dogId, dogId), eq(commandsTable.name, name))).returning();
   if (!cmd) {

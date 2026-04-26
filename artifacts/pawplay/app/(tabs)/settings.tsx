@@ -52,6 +52,8 @@ export default function SettingsScreen() {
     soundEnabled,
     setSoundEnabled,
     resetState,
+    dog,
+    loadDogsFromApi,
   } = useApp();
   const { user, logout } = useAuth();
 
@@ -158,22 +160,27 @@ export default function SettingsScreen() {
     setLeaveError(null);
     try {
       const { authedFetch } = await import("@/lib/authedFetch");
-      const res = await authedFetch("/api/family/leave", { method: "POST" });
+      const res = await authedFetch("/api/family/leave", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ dogId: dog?.id }),
+      });
       if (!res.ok) {
         setLeaveError("Couldn't leave the family. Please try again.");
         return;
       }
-      const newFamily = await res.json();
-      setFamilyId(newFamily.id);
-      setInviteCode(newFamily.inviteCode);
+      const data = await res.json();
+      setFamilyId(data.family.id);
+      setInviteCode(data.family.inviteCode);
       setFetchedCode(null);
+      await loadDogsFromApi();
       setShowLeaveModal(false);
     } catch {
       setLeaveError("Something went wrong. Please try again.");
     } finally {
       setLeaveLoading(false);
     }
-  }, [setFamilyId, setInviteCode]);
+  }, [dog?.id, setFamilyId, setInviteCode, loadDogsFromApi]);
 
   const [notifications, setNotifications] = useState(false);
   const [remindersOn, setRemindersOn] = useState(reminderTime !== null);

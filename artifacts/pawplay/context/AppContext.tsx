@@ -25,6 +25,7 @@ export interface Command {
   trainingSessionsCount: number;
   qbSuccessesCount: number;
   qbSessionsWithSuccess: number;
+  blitzSuccessesCount: number;
   lastUsedAt?: string | null;
   addedAt: string;
 }

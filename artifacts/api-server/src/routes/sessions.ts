@@ -63,15 +63,18 @@ router.post("/sessions", async (req: Request, res: Response) => {
       const newTrainingCount = mode === "training"
         ? existing.trainingSessionsCount + repCount
         : existing.trainingSessionsCount;
-      const newQbSuccesses = (mode === "quickbites" || mode === "blitz") && agg.anySuccess
+      const newQbSuccesses = mode === "quickbites" && agg.anySuccess
         ? existing.qbSuccessesCount + repCount
         : existing.qbSuccessesCount;
-      const newQbSessionsWithSuccess = (mode === "quickbites" || mode === "blitz") && hasSuccess
+      const newQbSessionsWithSuccess = mode === "quickbites" && hasSuccess
         ? existing.qbSessionsWithSuccess + 1
         : existing.qbSessionsWithSuccess;
+      const newBlitzSuccesses = mode === "blitz" && agg.anySuccess
+        ? (existing.blitzSuccessesCount ?? 0) + repCount
+        : (existing.blitzSuccessesCount ?? 0);
       const newLevel = evaluateCommandLevel({
         trainingSessionsCount: newTrainingCount,
-        qbSuccessesCount: newQbSuccesses,
+        qbSuccessesCount: newQbSuccesses + newBlitzSuccesses,
         qbSessionsWithSuccess: newQbSessionsWithSuccess,
       });
       await db.update(commandsTable).set({
@@ -79,6 +82,7 @@ router.post("/sessions", async (req: Request, res: Response) => {
         trainingSessionsCount: newTrainingCount,
         qbSuccessesCount: newQbSuccesses,
         qbSessionsWithSuccess: newQbSessionsWithSuccess,
+        blitzSuccessesCount: newBlitzSuccesses,
         lastUsedAt: new Date(),
       }).where(and(eq(commandsTable.dogId, dogId), eq(commandsTable.name, name)));
     }

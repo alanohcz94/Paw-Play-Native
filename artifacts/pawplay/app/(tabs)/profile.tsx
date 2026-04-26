@@ -25,8 +25,9 @@ type MasteryLevel = "added" | "learning" | "reliable";
 function getCommandMastery(cmd: {
   trainingSessionsCount: number;
   qbSuccessesCount: number;
+  blitzSuccessesCount?: number;
 }): MasteryLevel {
-  const total = cmd.trainingSessionsCount + cmd.qbSuccessesCount;
+  const total = cmd.trainingSessionsCount + cmd.qbSuccessesCount + (cmd.blitzSuccessesCount ?? 0);
   if (total >= 100) return "reliable";
   if (total >= 1) return "learning";
   return "added";
@@ -411,7 +412,7 @@ export default function ProfileScreen() {
       ? (commands.find((c) => c.id === selectedCommandId) ?? null)
       : null;
     if (!cmd) return null;
-    const reps = cmd.trainingSessionsCount + cmd.qbSuccessesCount;
+    const reps = cmd.trainingSessionsCount + cmd.qbSuccessesCount + (cmd.blitzSuccessesCount ?? 0);
     const mastery = getCommandMastery(cmd);
     const mc = MASTERY_COLORS[mastery];
     const nextTarget = mastery === "added" ? 1 : 100;
@@ -1113,6 +1114,24 @@ export default function ProfileScreen() {
                       ]}
                     >
                       Quick Bites hits
+                    </Text>
+                  </View>
+                  <View style={styles.tooltipStatItem}>
+                    <Text
+                      style={[
+                        styles.tooltipStatValue,
+                        { color: colors.mint, fontFamily: "Nunito_900Black" },
+                      ]}
+                    >
+                      {tooltipData.cmd.blitzSuccessesCount ?? 0}
+                    </Text>
+                    <Text
+                      style={[
+                        styles.tooltipStatLabel,
+                        { color: colors.mutedForeground, fontFamily: "Nunito_400Regular" },
+                      ]}
+                    >
+                      Blitz reps
                     </Text>
                   </View>
                 </View>

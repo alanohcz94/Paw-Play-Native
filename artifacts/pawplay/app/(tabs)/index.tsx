@@ -168,6 +168,14 @@ export default function DashboardScreen() {
     );
   }, [sessions]);
 
+  const userDisplayMap = useMemo(() => {
+    const map: Record<string, string> = {};
+    for (const entry of leaderboard) {
+      map[entry.userId] = entry.displayName;
+    }
+    return map;
+  }, [leaderboard]);
+
   const topPaddingStyle = {
     paddingTop: insets.top + (Platform.OS === "web" ? 67 : 16),
   };
@@ -283,6 +291,9 @@ export default function DashboardScreen() {
                 !isQB && !isBlitz && s.durationSeconds
                   ? Math.round(s.durationSeconds / 30)
                   : null;
+              const trainerName = s.userId === user?.id
+                ? null
+                : (userDisplayMap[s.userId] ?? null);
               return (
                 <View
                   key={s.id ?? i}
@@ -320,6 +331,16 @@ export default function DashboardScreen() {
                         ]}
                       >
                         {reps} rep{reps !== 1 ? "s" : ""}
+                      </Text>
+                    )}
+                    {trainerName && (
+                      <Text
+                        style={[
+                          styles.historyMeta,
+                          { color: colors.lavender, fontFamily: "Nunito_700Bold" },
+                        ]}
+                      >
+                        {trainerName}
                       </Text>
                     )}
                   </View>

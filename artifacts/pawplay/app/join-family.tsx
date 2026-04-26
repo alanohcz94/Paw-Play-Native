@@ -20,7 +20,7 @@ import { useAuth } from "@/lib/auth";
 export default function JoinFamilyScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
-  const { setFamilyId, setInviteCode } = useApp();
+  const { setFamilyId, setInviteCode, loadDogsFromApi } = useApp();
   const { user } = useAuth();
 
   const [code, setCode] = useState("");
@@ -42,24 +42,25 @@ export default function JoinFamilyScreen() {
         setError("Invalid invite code. Please check and try again.");
         return;
       }
-      const family = await res.json();
-      setFamilyId(family.id);
-      setInviteCode(family.inviteCode);
+      const data = await res.json();
+      setFamilyId(data.family.id);
+      setInviteCode(data.family.inviteCode);
       await authedFetch(`/api/users/${user?.id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           displayName: user?.firstName || "Family Member",
-          familyId: family.id,
+          familyId: data.family.id,
         }),
       });
+      await loadDogsFromApi();
       router.back();
     } catch {
       setError("Something went wrong. Please try again.");
     } finally {
       setLoading(false);
     }
-  }, [code, setFamilyId, setInviteCode, user?.id, user?.firstName]);
+  }, [code, setFamilyId, setInviteCode, loadDogsFromApi, user?.id, user?.firstName]);
 
   const isReady = code.trim().length === 6;
 
