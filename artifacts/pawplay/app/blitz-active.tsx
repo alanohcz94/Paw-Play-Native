@@ -25,11 +25,9 @@ import Animated, {
 import * as Haptics from "expo-haptics";
 import { useColors } from "@/hooks/useColors";
 import { useApp } from "@/context/AppContext";
+import colors from "@/constants/colors";
 
 const SCREEN_WIDTH = Dimensions.get("window").width;
-const PEACH = "#FF8B6A";
-const LAVENDER = "#8B68FF";
-const MINT = "#3DB884";
 
 function shuffle<T>(arr: T[]): T[] {
   const a = [...arr];
@@ -45,14 +43,16 @@ type BtnState = "active" | "countdown" | "complete";
 export default function BlitzActiveScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
-  const { duration: durationParam } = useLocalSearchParams<{ duration: string }>();
+  const { duration: durationParam } = useLocalSearchParams<{
+    duration: string;
+  }>();
   const duration = parseInt(durationParam ?? "90", 10);
   const { dog, commands: allCommands } = useApp();
 
   const markerCue = dog?.markerCue || "Yes";
 
   const [commands] = useState(() =>
-    shuffle(allCommands.filter((c) => c.level >= 1))
+    shuffle(allCommands.filter((c) => c.level >= 1)),
   );
 
   // ── Display state (drives render) ──────────────────────────────────────
@@ -63,7 +63,9 @@ export default function BlitzActiveScreen() {
   const [holdDisplay, setHoldDisplay] = useState(0);
   const [timerDisplay, setTimerDisplay] = useState(duration);
   const [flash, setFlash] = useState<{ pts: number; id: number } | null>(null);
-  const [countdownStep, setCountdownStep] = useState<"Ready" | "Set" | "Go!" | null>("Ready");
+  const [countdownStep, setCountdownStep] = useState<
+    "Ready" | "Set" | "Go!" | null
+  >("Ready");
 
   // ── Mutable refs (game logic, no re-render needed) ────────────────────
   const cmdIndexRef = useRef(0);
@@ -78,7 +80,7 @@ export default function BlitzActiveScreen() {
   const sessionEndedRef = useRef(false);
 
   // ── Reanimated shared values ──────────────────────────────────────────
-  // btnColorPhase: 0=peach, 0.5=lavender, 1=mint
+  // btnColorPhase: 0=colors.peach, 0.5=lavender, 1=mint
   const btnColorPhase = useSharedValue(0);
   const btnScale = useSharedValue(1);
   const cmdTranslateX = useSharedValue(0);
@@ -131,7 +133,7 @@ export default function BlitzActiveScreen() {
       if (cur !== prev) runOnJS(setTimerDisplay)(Math.max(0, cur));
       if (cur <= 0 && prev !== null && prev > 0) runOnJS(handleTimerEnd)();
     },
-    [handleTimerEnd]
+    [handleTimerEnd],
   );
 
   // ── Hold countdown reaction ───────────────────────────────────────────
@@ -142,7 +144,7 @@ export default function BlitzActiveScreen() {
     cancelAnimation(btnScale);
     btnScale.value = withSequence(
       withTiming(1.08, { duration: 100 }),
-      withTiming(1.0, { duration: 120 })
+      withTiming(1.0, { duration: 120 }),
     );
     btnColorPhase.value = withTiming(1, { duration: 200 });
     if (sessionEndedRef.current) {
@@ -157,9 +159,10 @@ export default function BlitzActiveScreen() {
       const ceiled = Math.ceil(val);
       const prevCeiled = prev !== null ? Math.ceil(prev) : null;
       if (ceiled !== prevCeiled) runOnJS(setHoldDisplay)(Math.max(0, ceiled));
-      if (val <= 0.05 && prev !== null && prev > 0.05) runOnJS(transitionToComplete)();
+      if (val <= 0.05 && prev !== null && prev > 0.05)
+        runOnJS(transitionToComplete)();
     },
-    [transitionToComplete]
+    [transitionToComplete],
   );
 
   // ── End session ───────────────────────────────────────────────────────
@@ -178,14 +181,17 @@ export default function BlitzActiveScreen() {
   }, [duration]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Show point flash ──────────────────────────────────────────────────
-  const showFlash = useCallback((pts: number) => {
-    flashIdRef.current += 1;
-    setFlash({ pts, id: flashIdRef.current });
-    flashOpacity.value = 1;
-    flashY.value = 0;
-    flashOpacity.value = withTiming(0, { duration: 800 });
-    flashY.value = withTiming(-44, { duration: 800 });
-  }, [flashOpacity, flashY]);
+  const showFlash = useCallback(
+    (pts: number) => {
+      flashIdRef.current += 1;
+      setFlash({ pts, id: flashIdRef.current });
+      flashOpacity.value = 1;
+      flashY.value = 0;
+      flashOpacity.value = withTiming(0, { duration: 800 });
+      flashY.value = withTiming(-44, { duration: 800 });
+    },
+    [flashOpacity, flashY],
+  );
 
   // ── Advance command index ─────────────────────────────────────────────
   const nextCmdIndex = useCallback(() => {
@@ -214,43 +220,46 @@ export default function BlitzActiveScreen() {
           cmdTranslateX.value = withTiming(
             0,
             { duration: 250, easing: Easing.ease },
-            onArrival
-              ? () => runOnJS(onArrival)()
-              : undefined
+            onArrival ? () => runOnJS(onArrival)() : undefined,
           );
-        }
+        },
       );
     },
-    [cmdTranslateX]
+    [cmdTranslateX],
   );
 
   // ── Trigger hold ──────────────────────────────────────────────────────
-  const triggerHold = useCallback((holdSeconds: number) => {
-    btnStateRef.current = "countdown";
-    setBtnState("countdown");
-    cslhRef.current = 0;
-    btnColorPhase.value = withTiming(0.5, { duration: 300 });
-    holdSV.value = holdSeconds;
-    holdSV.value = withTiming(0, {
-      duration: holdSeconds * 1000,
-      easing: Easing.linear,
-    });
-    btnScale.value = withRepeat(
-      withSequence(
-        withTiming(1.04, { duration: 500 }),
-        withTiming(1.0, { duration: 500 })
-      ),
-      -1,
-      false
-    );
-  }, [btnColorPhase, holdSV, btnScale]);
+  const triggerHold = useCallback(
+    (holdSeconds: number) => {
+      btnStateRef.current = "countdown";
+      setBtnState("countdown");
+      cslhRef.current = 0;
+      btnColorPhase.value = withTiming(0.5, { duration: 300 });
+      holdSV.value = holdSeconds;
+      holdSV.value = withTiming(0, {
+        duration: holdSeconds * 1000,
+        easing: Easing.linear,
+      });
+      btnScale.value = withRepeat(
+        withSequence(
+          withTiming(1.04, { duration: 500 }),
+          withTiming(1.0, { duration: 500 }),
+        ),
+        -1,
+        false,
+      );
+    },
+    [btnColorPhase, holdSV, btnScale],
+  );
 
   // ── Marker tap (State 1) ──────────────────────────────────────────────
   const handleMarkerTap = useCallback(() => {
     if (btnStateRef.current !== "active") return;
     if (tapLockRef.current) return;
     tapLockRef.current = true;
-    setTimeout(() => { tapLockRef.current = false; }, 350);
+    setTimeout(() => {
+      tapLockRef.current = false;
+    }, 350);
 
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
 
@@ -277,18 +286,32 @@ export default function BlitzActiveScreen() {
       // Brief tick then slide
       cmdScale.value = withSequence(
         withTiming(1.1, { duration: 100 }),
-        withTiming(1.0, { duration: 120 })
+        withTiming(1.0, { duration: 120 }),
       );
       cmdTranslateX.value = withDelay(
         600,
-        withTiming(-SCREEN_WIDTH, { duration: 250, easing: Easing.ease }, () => {
-          runOnJS(setCmdIndex)(next);
-          cmdTranslateX.value = SCREEN_WIDTH;
-          cmdTranslateX.value = withTiming(0, { duration: 250, easing: Easing.ease });
-        })
+        withTiming(
+          -SCREEN_WIDTH,
+          { duration: 250, easing: Easing.ease },
+          () => {
+            runOnJS(setCmdIndex)(next);
+            cmdTranslateX.value = SCREEN_WIDTH;
+            cmdTranslateX.value = withTiming(0, {
+              duration: 250,
+              easing: Easing.ease,
+            });
+          },
+        ),
       );
     }
-  }, [trackCommand, showFlash, nextCmdIndex, triggerHold, cmdScale, cmdTranslateX]);
+  }, [
+    trackCommand,
+    showFlash,
+    nextCmdIndex,
+    triggerHold,
+    cmdScale,
+    cmdTranslateX,
+  ]);
 
   // ── Hold complete tap (State 3) ───────────────────────────────────────
   const handleHoldComplete = useCallback(() => {
@@ -323,16 +346,13 @@ export default function BlitzActiveScreen() {
     backgroundColor: interpolateColor(
       btnColorPhase.value,
       [0, 0.5, 1],
-      [PEACH, LAVENDER, MINT]
+      [colors.peach, colors.lavender, colors.mint],
     ),
     transform: [{ scale: btnScale.value }],
   }));
 
   const cmdAnimStyle = useAnimatedStyle(() => ({
-    transform: [
-      { translateX: cmdTranslateX.value },
-      { scale: cmdScale.value },
-    ],
+    transform: [{ translateX: cmdTranslateX.value }, { scale: cmdScale.value }],
   }));
 
   const flashAnimStyle = useAnimatedStyle(() => ({
@@ -401,7 +421,7 @@ export default function BlitzActiveScreen() {
           style={[
             styles.timerText,
             {
-              color: isUrgent ? MINT : colors.dark,
+              color: isUrgent ? colors.mint : colors.dark,
               fontFamily: "Nunito_900Black",
             },
           ]}
@@ -409,15 +429,23 @@ export default function BlitzActiveScreen() {
           {timerDisplay}s
         </Text>
         <View style={styles.scoreWrap}>
-          <Text
-            style={[styles.scoreText, { color: colors.dark, fontFamily: "Nunito_900Black" }]}
-          >
-            {score} pts
-          </Text>
+          <View style={[styles.scorePill, { backgroundColor: colors.lemon }]}>
+            <Text
+              style={[
+                styles.scoreText,
+                { color: colors.dark, fontFamily: "Nunito_900Black" },
+              ]}
+            >
+              {score} pts
+            </Text>
+          </View>
           {flash && (
             <Animated.View style={[styles.flashWrap, flashAnimStyle]}>
               <Text
-                style={[styles.flashText, { fontFamily: "FredokaOne_400Regular", color: MINT }]}
+                style={[
+                  styles.flashText,
+                  { fontFamily: "FredokaOne_400Regular", color: colors.mint },
+                ]}
               >
                 +{flash.pts}
               </Text>
@@ -439,7 +467,10 @@ export default function BlitzActiveScreen() {
       {/* Row 3: Command word */}
       <Animated.View style={[styles.cmdWrap, cmdAnimStyle]}>
         <Text
-          style={[styles.cmdText, { color: colors.dark, fontFamily: "FredokaOne_400Regular" }]}
+          style={[
+            styles.cmdText,
+            { color: colors.dark, fontFamily: "FredokaOne_400Regular" },
+          ]}
         >
           {currentCmd}
         </Text>
@@ -459,7 +490,9 @@ export default function BlitzActiveScreen() {
           disabled={btnState === "countdown"}
           activeOpacity={0.88}
         >
-          <Text style={[styles.markerBtnText, { fontFamily: "Nunito_900Black" }]}>
+          <Text
+            style={[styles.markerBtnText, { fontFamily: "Nunito_900Black" }]}
+          >
             {btnLabel}
           </Text>
         </TouchableOpacity>
@@ -506,9 +539,10 @@ const styles = StyleSheet.create({
   },
   timerText: { fontSize: 32 },
   scoreWrap: { alignItems: "flex-end" },
-  scoreText: { fontSize: 18 },
+  scorePill: { paddingHorizontal: 14, paddingVertical: 6, borderRadius: 20 },
+  scoreText: { fontSize: 15 },
   flashWrap: { position: "absolute", top: -28, right: 0 },
-  flashText: { fontSize: 22, color: MINT },
+  flashText: { fontSize: 22, color: colors.mint },
   repText: { fontSize: 13, marginBottom: 20 },
   cmdWrap: { width: "100%", alignItems: "center", marginBottom: 32 },
   cmdText: { fontSize: 52, textAlign: "center" },
