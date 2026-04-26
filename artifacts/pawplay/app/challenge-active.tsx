@@ -190,7 +190,7 @@ export default function ChallengeActiveScreen() {
     if (commandIndex + 1 >= sequence.length) {
       setTimeout(() => {
         const finalResult = calculateScore(newInputs, difficulty);
-        router.replace({ pathname: "/blitz-end", params: { result: JSON.stringify(finalResult), difficulty, dogName: "" } });
+        router.replace({ pathname: "/challenge-end", params: { result: JSON.stringify(finalResult), difficulty, dogName: "" } });
       }, 800);
     } else {
       setTimeout(() => setCommandIndex((i) => i + 1), 800);

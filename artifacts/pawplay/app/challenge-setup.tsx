@@ -120,7 +120,7 @@ export default function ChallengeSetupScreen() {
           </TouchableOpacity>
           <TouchableOpacity
             style={[styles.goBtn, { backgroundColor: colors.peach }]}
-            onPress={() => router.push({ pathname: "/blitz-active", params: { sequence: JSON.stringify(sequence), difficulty } })}
+            onPress={() => router.push({ pathname: "/challenge-active", params: { sequence: JSON.stringify(sequence), difficulty } })}
             activeOpacity={0.85}
           >
             <Text style={[styles.goText, { fontFamily: "Nunito_900Black" }]}>Let's Go!</Text>
