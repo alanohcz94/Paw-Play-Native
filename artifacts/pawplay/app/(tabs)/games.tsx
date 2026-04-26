@@ -48,7 +48,7 @@ export default function GamesScreen() {
         >
           Choose your training style
         </Text>
-
+        {/* Quick Bites Mode */}
         <TouchableOpacity
           style={[
             styles.modeCard,
@@ -92,7 +92,60 @@ export default function GamesScreen() {
             />
           </View>
         </TouchableOpacity>
-
+        {/* Blitz Mode */}
+        <TouchableOpacity
+          style={[
+            styles.modeCard,
+            {
+              backgroundColor: colors.lemonLight,
+              borderColor: colors.lemon,
+              opacity: blitzUnlocked ? 1 : 0.6,
+            },
+          ]}
+          onPress={() => blitzUnlocked && router.push("/blitz-setup")}
+          activeOpacity={blitzUnlocked ? 0.85 : 1}
+        >
+          <View style={styles.modeRow}>
+            <View style={[styles.modeIcon, { backgroundColor: colors.lemon }]}>
+              <Feather name="briefcase" size={22} color="#fff" />
+            </View>
+            <View style={styles.modeInfo}>
+              <View style={styles.modeHeaderRow}>
+                <Text
+                  style={[
+                    styles.modeTitle,
+                    { color: colors.dark, fontFamily: "Nunito_900Black" },
+                  ]}
+                >
+                  Blitz
+                </Text>
+              </View>
+              <View style={styles.progressSection}>
+                <Text
+                  style={[
+                    styles.progressLabel,
+                    {
+                      color: colors.mutedForeground,
+                      fontFamily: "Nunito_400Regular",
+                    },
+                  ]}
+                >
+                  Random sequence 1-2 min
+                </Text>
+              </View>
+            </View>
+            {blitzUnlocked ? (
+              <Feather
+                name="chevron-right"
+                size={22}
+                color={colors.mutedForeground}
+              />
+            ) : (
+              <Feather name="lock" size={18} color={colors.mutedForeground} />
+            )}
+          </View>
+        </TouchableOpacity>
+        {/* Training Mode */}
         <TouchableOpacity
           style={[
             styles.modeCard,
@@ -131,59 +184,6 @@ export default function GamesScreen() {
               size={22}
               color={colors.mutedForeground}
             />
-          </View>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={[
-            styles.modeCard,
-            {
-              backgroundColor: colors.mintLight,
-              borderColor: colors.mintMid,
-              opacity: blitzUnlocked ? 1 : 0.6,
-            },
-          ]}
-          onPress={() => blitzUnlocked && router.push("/blitz-setup")}
-          activeOpacity={blitzUnlocked ? 0.85 : 1}
-        >
-          <View style={styles.modeRow}>
-            <View style={[styles.modeIcon, { backgroundColor: colors.mint }]}>
-              <Feather name="zap" size={22} color="#fff" />
-            </View>
-            <View style={styles.modeInfo}>
-              <View style={styles.modeHeaderRow}>
-                <Text
-                  style={[
-                    styles.modeTitle,
-                    { color: colors.dark, fontFamily: "Nunito_900Black" },
-                  ]}
-                >
-                  Blitz
-                </Text>
-              </View>
-              <View style={styles.progressSection}>
-                <Text
-                  style={[
-                    styles.progressLabel,
-                    {
-                      color: colors.mutedForeground,
-                      fontFamily: "Nunito_400Regular",
-                    },
-                  ]}
-                >
-                  Random sequence 1-2 min
-                </Text>
-              </View>
-            </View>
-            {blitzUnlocked ? (
-              <Feather
-                name="chevron-right"
-                size={22}
-                color={colors.mutedForeground}
-              />
-            ) : (
-              <Feather name="lock" size={18} color={colors.mutedForeground} />
-            )}
           </View>
         </TouchableOpacity>
       </ScrollView>
