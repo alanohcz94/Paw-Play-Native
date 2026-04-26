@@ -28,7 +28,6 @@ import { useApp } from "@/context/AppContext";
 import colors from "@/constants/colors";
 
 const SCREEN_WIDTH = Dimensions.get("window").width;
-const SCREEN_HEIGHT = Dimensions.get("window").height;
 
 function shuffle<T>(arr: T[]): T[] {
   const a = [...arr];
@@ -361,6 +360,16 @@ export default function BlitzActiveScreen() {
     transform: [{ translateY: flashY.value }],
   }));
 
+  const timerBarAnimStyle = useAnimatedStyle(() => ({
+    width:
+      `${Math.max(0, (sessionSV.value / duration) * 100)}%` as `${number}%`,
+    backgroundColor: interpolateColor(
+      Math.max(0, sessionSV.value / duration),
+      [0, 0.3, 1],
+      ["#ef4444", "#f59e0b", colors.mint],
+    ),
+  }));
+
   const isUrgent = timerDisplay <= 10;
   const currentCmd = commands[cmdIndex]?.name ?? "";
   const btnLabel =
@@ -416,19 +425,8 @@ export default function BlitzActiveScreen() {
         },
       ]}
     >
-      {/* Row 1: Timer + Score */}
-      <View style={[styles.topRow, { top: SCREEN_HEIGHT * 0.30 }]}>
-        <Text
-          style={[
-            styles.timerText,
-            {
-              color: isUrgent ? colors.peach : colors.dark,
-              fontFamily: "Nunito_900Black",
-            },
-          ]}
-        >
-          {timerDisplay}s
-        </Text>
+      {/* Row 1: Score */}
+      <View style={styles.topRow}>
         <View style={styles.scoreWrap}>
           <View style={[styles.scorePill, { backgroundColor: colors.lemon }]}>
             <Text
@@ -477,6 +475,22 @@ export default function BlitzActiveScreen() {
         </Text>
       </Animated.View>
 
+      {/* Timer bar + label */}
+      <View style={styles.timerContainer}>
+        <Animated.View style={[styles.timerBar, timerBarAnimStyle]} />
+      </View>
+      <Text
+        style={[
+          styles.timerText,
+          {
+            color: isUrgent ? "#ef4444" : colors.mutedForeground,
+            fontFamily: isUrgent ? "Nunito_900Black" : "Nunito_700Bold",
+          },
+        ]}
+      >
+        {timerDisplay <= 0 ? "0s" : `${timerDisplay}s remaining`}
+      </Text>
+
       {/* Row 4: Marker button (3-state) */}
       <Animated.View style={[styles.markerBtn, buttonAnimStyle]}>
         <TouchableOpacity
@@ -504,7 +518,7 @@ export default function BlitzActiveScreen() {
         <TouchableOpacity
           onPress={handleSkip}
           activeOpacity={0.7}
-          style={styles.skipWrap}
+          style={styles.skipBtn}
         >
           <Text
             style={[
@@ -529,13 +543,24 @@ const styles = StyleSheet.create({
   },
   topRow: {
     position: "absolute",
+    top: "5%",
     left: 16,
     right: 16,
     flexDirection: "row",
-    justifyContent: "space-between",
+    justifyContent: "flex-end",
     alignItems: "center",
+    paddingTop: 16,
   },
-  timerText: { fontSize: 32 },
+  timerContainer: {
+    width: "100%",
+    height: 10,
+    backgroundColor: "#EDE6DE",
+    borderRadius: 5,
+    overflow: "hidden",
+    marginBottom: 8,
+  },
+  timerBar: { height: "100%", borderRadius: 5 },
+  timerText: { fontSize: 14, marginBottom: 16 },
   scoreWrap: { alignItems: "flex-end" },
   scorePill: { paddingHorizontal: 14, paddingVertical: 6, borderRadius: 20 },
   scoreText: { fontSize: 15 },
@@ -557,7 +582,16 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   markerBtnText: { color: "#fff", fontSize: 18 },
-  skipWrap: { marginTop: 4 },
+  skipBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    paddingVertical: 16,
+    borderRadius: 16,
+    borderWidth: 1.5,
+    marginTop: 4,
+  },
   skipText: { fontSize: 12 },
   countdownText: { fontSize: 72, textAlign: "center" },
 });
