@@ -106,8 +106,8 @@ export default function GamesScreen() {
           activeOpacity={blitzUnlocked ? 0.85 : 1}
         >
           <View style={styles.modeRow}>
-            <View style={[styles.modeIcon, { backgroundColor: colors.mint }]}>
-              <Feather name="zap" size={22} color="#fff" />
+            <View style={[styles.modeIcon, { backgroundColor: colors.lemon }]}>
+              <Feather name="briefcase" size={22} color="#fff" />
             </View>
             <View style={styles.modeInfo}>
               <View style={styles.modeHeaderRow}>
