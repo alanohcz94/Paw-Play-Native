@@ -515,26 +515,29 @@ export default function BlitzActiveScreen() {
 
       {/* Row 5: Skip (only visible in State 1) */}
       {btnState === "active" && (
-        <TouchableOpacity
-          onPress={handleSkip}
-          activeOpacity={0.7}
-          style={styles.skipBtn}
-        >
-          <Text
-            style={[
-              styles.skipText,
-              { color: colors.mutedForeground, fontFamily: "Nunito_700Bold" },
-            ]}
+        <View style={styles.actions}>
+          <TouchableOpacity
+            onPress={handleSkip}
+            activeOpacity={0.85}
+            style={[styles.skipBtn, { borderColor: colors.border }]}
           >
-            Skip →
-          </Text>
-        </TouchableOpacity>
+            <Text
+              style={[
+                styles.skipText,
+                { color: colors.mutedForeground, fontFamily: "Nunito_700Bold" },
+              ]}
+            >
+              Skip →
+            </Text>
+          </TouchableOpacity>
+        </View>
       )}
     </View>
   );
 }
 
 const styles = StyleSheet.create({
+  actions: { gap: 14, width: "100%" },
   container: {
     flex: 1,
     paddingHorizontal: 16,
@@ -586,11 +589,10 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    gap: 8,
+    gap: 4,
     paddingVertical: 16,
     borderRadius: 16,
     borderWidth: 1.5,
-    marginTop: 4,
   },
   skipText: { fontSize: 12 },
   countdownText: { fontSize: 72, textAlign: "center" },
