@@ -148,34 +148,39 @@ export default function GamesScreen() {
         >
           <View style={styles.modeRow}>
             <View style={[styles.modeIcon, { backgroundColor: colors.mint }]}>
-              <Feather
-                name="zap"
-                size={22}
-                color="#fff"
-              />
+              <Feather name="zap" size={22} color="#fff" />
             </View>
             <View style={styles.modeInfo}>
-              <Text
-                style={[
-                  styles.modeTitle,
-                  { color: colors.dark, fontFamily: "Nunito_900Black" },
-                ]}
-              >
-                Blitz ⚡
-              </Text>
-              <Text
-                style={[
-                  styles.modeDesc,
-                  { color: colors.mutedForeground, fontFamily: "Nunito_400Regular" },
-                ]}
-              >
-                {blitzUnlocked
-                  ? "Commands flow — hold when the button says"
-                  : `Add at least 3 commands to unlock`}
-              </Text>
+              <View style={styles.modeHeaderRow}>
+                <Text
+                  style={[
+                    styles.modeTitle,
+                    { color: colors.dark, fontFamily: "Nunito_900Black" },
+                  ]}
+                >
+                  Blitz
+                </Text>
+              </View>
+              <View style={styles.progressSection}>
+                <Text
+                  style={[
+                    styles.progressLabel,
+                    {
+                      color: colors.mutedForeground,
+                      fontFamily: "Nunito_400Regular",
+                    },
+                  ]}
+                >
+                  Random sequence 1-2 min
+                </Text>
+              </View>
             </View>
             {blitzUnlocked ? (
-              <Feather name="chevron-right" size={22} color={colors.mutedForeground} />
+              <Feather
+                name="chevron-right"
+                size={22}
+                color={colors.mutedForeground}
+              />
             ) : (
               <Feather name="lock" size={18} color={colors.mutedForeground} />
             )}
