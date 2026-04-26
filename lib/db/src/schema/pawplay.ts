@@ -51,6 +51,7 @@ export const commandsTable = pgTable("commands", {
   trainingSessionsCount: integer("training_sessions_count").notNull().default(0),
   qbSuccessesCount: integer("qb_successes_count").notNull().default(0),
   qbSessionsWithSuccess: integer("qb_sessions_with_success").notNull().default(0),
+  blitzSuccessesCount: integer("blitz_successes_count").notNull().default(0),
   lastUsedAt: timestamp("last_used_at", { withTimezone: true }),
   addedAt: timestamp("added_at", { withTimezone: true }).notNull().defaultNow(),
 });
