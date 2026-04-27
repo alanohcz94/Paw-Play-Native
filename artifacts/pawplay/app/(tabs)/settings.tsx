@@ -98,6 +98,27 @@ export default function SettingsScreen() {
   const [addingFriend, setAddingFriend] = useState(false);
   const [friendError, setFriendError] = useState<string | null>(null);
   const [friendSuccess, setFriendSuccess] = useState<string | null>(null);
+  const [friendsList, setFriendsList] = useState<
+    { id: string; displayName: string }[]
+  >([]);
+
+  const loadFriends = useCallback(async () => {
+    try {
+      const { authedFetch } = await import("@/lib/authedFetch");
+      const res = await authedFetch("/api/friends");
+      if (res.ok) {
+        const { friends } = await res.json();
+        setFriendsList(friends ?? []);
+      }
+    } catch (e) {
+      console.warn("Failed to load friends:", e);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!user?.id) return;
+    void loadFriends();
+  }, [user?.id, loadFriends]);
 
   // Lazy-fetch own invite code if missing
   useEffect(() => {
@@ -116,6 +137,35 @@ export default function SettingsScreen() {
     };
     load();
   }, [inviteCode, user?.id, setInviteCode]);
+
+  const handleRemoveFriendFromList = useCallback(
+    async (friendId: string, displayName: string) => {
+      const message = `Remove ${displayName} from your friends?`;
+      const performRemove = async () => {
+        try {
+          const { authedFetch } = await import("@/lib/authedFetch");
+          const res = await authedFetch(`/api/friends/${friendId}`, {
+            method: "DELETE",
+          });
+          if (res.ok) {
+            setFriendsList((prev) => prev.filter((f) => f.id !== friendId));
+          }
+        } catch (e) {
+          console.warn("Failed to remove friend:", e);
+        }
+      };
+      if (Platform.OS === "web") {
+        if (window.confirm(message)) await performRemove();
+      } else {
+        const { Alert } = await import("react-native");
+        Alert.alert("Remove Friend", message, [
+          { text: "Cancel", style: "cancel" },
+          { text: "Remove", style: "destructive", onPress: () => void performRemove() },
+        ]);
+      }
+    },
+    [],
+  );
 
   const handleCopyCode = useCallback(() => {
     if (!inviteCode) return;
@@ -363,6 +413,46 @@ export default function SettingsScreen() {
           {friendSuccess && (
             <Text style={[styles.friendSuccess, { color: colors.mint, fontFamily: "Nunito_700Bold" }]}>{friendSuccess}</Text>
           )}
+
+          {/* Your friends list */}
+          <View style={[styles.divider, { backgroundColor: colors.border }]} />
+          <Text style={[styles.settingLabel, { color: colors.dark, fontFamily: "Nunito_700Bold", marginBottom: 8 }]}>
+            Your Friends ({friendsList.length})
+          </Text>
+          {friendsList.length === 0 ? (
+            <Text style={[styles.settingSubLabel, { color: colors.mutedForeground, fontFamily: "Nunito_400Regular" }]}>
+              You haven't added anyone yet.
+            </Text>
+          ) : (
+            <>
+              <Text style={[styles.settingSubLabel, { color: colors.mutedForeground, fontFamily: "Nunito_400Regular", marginBottom: 8 }]}>
+                Tap the X to remove a friend (you'll both stop seeing each other).
+              </Text>
+              {friendsList.map((f) => (
+                <View
+                  key={f.id}
+                  style={[styles.friendRow, { borderColor: colors.border }]}
+                >
+                  <View style={[styles.friendAvatar, { backgroundColor: colors.lavLight }]}>
+                    <Text style={[styles.friendAvatarText, { color: colors.lavender, fontFamily: "Nunito_900Black" }]}>
+                      {(f.displayName ?? "?")[0].toUpperCase()}
+                    </Text>
+                  </View>
+                  <Text style={[styles.friendRowName, { color: colors.dark, fontFamily: "Nunito_700Bold" }]}>
+                    {f.displayName}
+                  </Text>
+                  <TouchableOpacity
+                    onPress={() => handleRemoveFriendFromList(f.id, f.displayName)}
+                    activeOpacity={0.7}
+                    style={styles.friendRemoveBtn}
+                    accessibilityLabel={`Remove ${f.displayName}`}
+                  >
+                    <Feather name="x" size={18} color={colors.destructive} />
+                  </TouchableOpacity>
+                </View>
+              ))}
+            </>
+          )}
         </View>
 
         {/* Account */}
@@ -510,6 +600,22 @@ const styles = StyleSheet.create({
   addFriendBtnText: { color: "#fff", fontSize: 15 },
   friendError: { fontSize: 13, marginTop: 8 },
   friendSuccess: { fontSize: 13, marginTop: 8 },
+  friendRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    paddingVertical: 8,
+  },
+  friendAvatar: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  friendAvatarText: { fontSize: 14 },
+  friendRowName: { flex: 1, fontSize: 15 },
+  friendRemoveBtn: { padding: 6, borderRadius: 16 },
   pickerBackdrop: { flex: 1, backgroundColor: "rgba(0,0,0,0.4)", justifyContent: "flex-end" },
   pickerSheet: { borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 24, gap: 4 },
   pickerTitle: { fontSize: 24, marginBottom: 12 },

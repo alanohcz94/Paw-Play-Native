@@ -19,6 +19,8 @@ import { useColors } from "@/hooks/useColors";
 import { useApp } from "@/context/AppContext";
 import { useAuth } from "@/lib/auth";
 import { ALL_COMMANDS } from "@/utils/scoring";
+import FamilyLeaderboard from "@/components/FamilyLeaderboard";
+import type { LeaderboardEntry } from "@/types/api";
 
 type MasteryLevel = "added" | "learning" | "reliable";
 
@@ -190,9 +192,7 @@ export default function ProfileScreen() {
   const insets = useSafeAreaInsets();
   const { dog, commands, streak, setDog, setCommands } = useApp();
   const { user } = useAuth();
-  const [familyMembers, setFamilyMembers] = useState<
-    { userId: string; displayName: string; totalPoints: number }[]
-  >([]);
+  const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
   const [editMode, setEditMode] = useState(false);
   const [releaseCue, setReleaseCue] = useState(dog?.releaseCue ?? "Free");
   const [markerCue, setMarkerCue] = useState(dog?.markerCue ?? "Yes");
@@ -223,7 +223,7 @@ export default function ProfileScreen() {
         const res = await authedFetch(`/api/leaderboard`);
         if (res.ok) {
           const { entries } = await res.json();
-          setFamilyMembers(entries);
+          setLeaderboard(entries);
         }
       } catch (e) {
         console.warn("Failed to load profile data:", e);
@@ -337,6 +337,34 @@ export default function ProfileScreen() {
       console.error(e);
     }
   }, [dog, user, apiBase, releaseCue, markerCue, setDog]);
+
+  const handleRemoveFriend = useCallback(
+    async (friendId: string) => {
+      try {
+        const { authedFetch } = await import("@/lib/authedFetch");
+        const res = await authedFetch(`/api/friends/${friendId}`, {
+          method: "DELETE",
+        });
+        if (!res.ok) {
+          const body = await res.json().catch(() => ({}));
+          const msg = body.error ?? "Could not remove friend. Please try again.";
+          if (Platform.OS === "web") window.alert(msg);
+          else Alert.alert("Error", msg);
+          return;
+        }
+        const lbRes = await authedFetch(`/api/leaderboard`);
+        if (lbRes.ok) {
+          const { entries } = await lbRes.json();
+          setLeaderboard(entries);
+        }
+      } catch {
+        const msg = "Could not remove friend. Please try again.";
+        if (Platform.OS === "web") window.alert(msg);
+        else Alert.alert("Error", msg);
+      }
+    },
+    [],
+  );
 
   const handleRemoveCommand = useCallback(
     async (commandId: string) => {
@@ -858,75 +886,11 @@ export default function ProfileScreen() {
           ))}
         </View>
 
-        {familyMembers.length > 0 && (
-          <>
-            <Text
-              style={[
-                styles.sectionTitle,
-                { color: colors.dark, fontFamily: "Nunito_900Black" },
-              ]}
-            >
-              Family Members
-            </Text>
-            <View
-              style={[
-                styles.familyCard,
-                { backgroundColor: colors.card, borderColor: colors.border },
-              ]}
-            >
-              {familyMembers.map((member, i) => (
-                <View
-                  key={member.userId}
-                  style={[
-                    styles.familyRow,
-                    i < familyMembers.length - 1 && {
-                      borderBottomWidth: 1,
-                      borderBottomColor: colors.border,
-                    },
-                  ]}
-                >
-                  <View
-                    style={[
-                      styles.familyAvatar,
-                      { backgroundColor: colors.lavLight },
-                    ]}
-                  >
-                    <Text
-                      style={[
-                        styles.familyAvatarText,
-                        {
-                          color: colors.lavender,
-                          fontFamily: "Nunito_900Black",
-                        },
-                      ]}
-                    >
-                      {(member.displayName ?? "?")[0].toUpperCase()}
-                    </Text>
-                  </View>
-                  <View style={styles.familyInfo}>
-                    <Text
-                      style={[
-                        styles.familyName,
-                        { color: colors.dark, fontFamily: "Nunito_700Bold" },
-                      ]}
-                    >
-                      {member.displayName}
-                      {member.userId === user?.id ? " (you)" : ""}
-                    </Text>
-                  </View>
-                  <Text
-                    style={[
-                      styles.familyPts,
-                      { color: colors.peach, fontFamily: "Nunito_900Black" },
-                    ]}
-                  >
-                    {member.totalPoints} pts
-                  </Text>
-                </View>
-              ))}
-            </View>
-          </>
-        )}
+        <FamilyLeaderboard
+          leaderboard={leaderboard}
+          currentUserId={user?.id}
+          onRemoveFriend={handleRemoveFriend}
+        />
 
         <TouchableOpacity
           style={[

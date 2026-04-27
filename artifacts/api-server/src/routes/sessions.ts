@@ -1,7 +1,19 @@
 import { Router, type Request, type Response } from "express";
 import { db } from "@workspace/db";
-import { sessionsRecordTable, commandsTable } from "@workspace/db";
+import { sessionsRecordTable, commandsTable, dogsTable } from "@workspace/db";
 import { and, eq, sql, gte, lte } from "drizzle-orm";
+
+async function assertDogOwned(
+  dogId: string,
+  userId: string,
+): Promise<boolean> {
+  const [dog] = await db
+    .select({ userId: dogsTable.userId })
+    .from(dogsTable)
+    .where(eq(dogsTable.id, dogId))
+    .limit(1);
+  return !!dog && dog.userId === userId;
+}
 
 const router = Router();
 
@@ -24,6 +36,10 @@ router.post("/sessions", async (req: Request, res: Response) => {
   const { dogId, mode, difficulty, rawScore, participationPoints, bonuses, commandsUsed, durationSeconds, completed } = req.body;
   if (!dogId || !mode) {
     res.status(400).json({ error: "dogId and mode are required" });
+    return;
+  }
+  if (!(await assertDogOwned(dogId, userId))) {
+    res.status(404).json({ error: "Dog not found" });
     return;
   }
 
@@ -96,10 +112,16 @@ router.get("/sessions", async (req: Request, res: Response) => {
     res.status(401).json({ error: "Unauthorized" });
     return;
   }
-  const { dogId, userId, limit, date } = req.query;
-  const conditions = [];
-  if (dogId) conditions.push(eq(sessionsRecordTable.dogId, dogId as string));
-  if (userId) conditions.push(eq(sessionsRecordTable.userId, userId as string));
+  const { dogId, limit, date } = req.query;
+  const callerId = req.user.id;
+  const conditions = [eq(sessionsRecordTable.userId, callerId)];
+  if (dogId) {
+    if (!(await assertDogOwned(dogId as string, callerId))) {
+      res.json({ sessions: [] });
+      return;
+    }
+    conditions.push(eq(sessionsRecordTable.dogId, dogId as string));
+  }
   if (date) {
     // date = "YYYY-MM-DD", match full day in UTC
     const dayStart = new Date(`${date}T00:00:00.000Z`);
