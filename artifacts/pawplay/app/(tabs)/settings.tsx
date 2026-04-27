@@ -10,11 +10,11 @@ import {
   Modal,
   Pressable,
   Share,
-  Clipboard,
   TextInput,
   ActivityIndicator,
 } from "react-native";
 import { router } from "expo-router";
+import * as Clipboard from "expo-clipboard";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Feather } from "@expo/vector-icons";
 import { useColors } from "@/hooks/useColors";
@@ -167,9 +167,9 @@ export default function SettingsScreen() {
     [],
   );
 
-  const handleCopyCode = useCallback(() => {
+  const handleCopyCode = useCallback(async () => {
     if (!inviteCode) return;
-    Clipboard.setString(inviteCode);
+    await Clipboard.setStringAsync(inviteCode);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   }, [inviteCode]);

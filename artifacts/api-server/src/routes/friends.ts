@@ -81,7 +81,11 @@ router.get("/friends", async (req: Request, res: Response) => {
   }
   const friendIds = rows.map((r) => r.friendId);
   const users = await db
-    .select()
+    .select({
+      id: pawplayUsersTable.id,
+      displayName: pawplayUsersTable.displayName,
+      inviteCode: pawplayUsersTable.inviteCode,
+    })
     .from(pawplayUsersTable)
     .where(inArray(pawplayUsersTable.id, friendIds));
   res.json({ friends: users });
@@ -108,7 +112,11 @@ router.post("/friends", async (req: Request, res: Response) => {
   );
 
   const [target] = await db
-    .select()
+    .select({
+      id: pawplayUsersTable.id,
+      displayName: pawplayUsersTable.displayName,
+      inviteCode: pawplayUsersTable.inviteCode,
+    })
     .from(pawplayUsersTable)
     .where(eq(pawplayUsersTable.inviteCode, code));
   if (!target) {
