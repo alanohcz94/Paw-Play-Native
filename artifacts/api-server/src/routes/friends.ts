@@ -1,6 +1,6 @@
 import crypto from "crypto";
 import { Router, type IRouter, type Request, type Response } from "express";
-import { and, eq, gte, inArray, lte, or, sql } from "drizzle-orm";
+import { and, eq, gte, inArray, lte, or } from "drizzle-orm";
 import { db } from "@workspace/db";
 import {
   pawplayUsersTable,
@@ -358,9 +358,6 @@ router.get("/yearly-chart", async (req: Request, res: Response) => {
   );
   const best = months.reduce((b, m) => (m.hours > b.hours ? m : b), months[0]);
   const bestMonth = best.hours > 0 ? monthNames[best.month - 1] : null;
-
-  // Avoid unused-import warning when types are tree-shaken
-  void sql;
 
   res.json({ months, totalHours, bestMonth });
 });
