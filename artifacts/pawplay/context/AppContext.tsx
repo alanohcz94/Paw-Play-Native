@@ -6,7 +6,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 
 export interface Dog {
   id: string;
-  familyId: string;
+  userId: string;
   name: string;
   age?: number | null;
   breed?: string | null;
@@ -40,7 +40,6 @@ export interface AppState {
   activeDogId: string | null;
   dog: Dog | null;
   commands: Command[];
-  familyId: string | null;
   inviteCode: string | null;
   streak: number;
   lastTrainedDate: string | null;
@@ -56,7 +55,6 @@ interface AppContextValue extends AppState {
   setDogs: (dogs: Dog[]) => void;
   setActiveDogId: (id: string | null) => void;
   setCommands: (commands: Command[]) => void;
-  setFamilyId: (id: string | null) => void;
   setInviteCode: (code: string | null) => void;
   setStreak: (streak: number) => void;
   setLastTrainedDate: (date: string | null) => void;
@@ -68,16 +66,16 @@ interface AppContextValue extends AppState {
   setReminderTime: (time: string | null) => void;
   setSoundEnabled: (v: boolean) => void;
   addDog: (dog: Dog) => void;
-  loadDogsFromApi: () => Promise<void>;
+  loadDogsFromApi: (userId: string) => Promise<void>;
   resetState: () => void;
 }
 
 const AppContext = createContext<AppContextValue>({
-  dogs: [], activeDogId: null, dog: null, commands: [], familyId: null,
+  dogs: [], activeDogId: null, dog: null, commands: [],
   inviteCode: null, streak: 0, lastTrainedDate: null, isNewUser: true,
   onboardingComplete: false, seenAchievements: [], reminderTime: null, soundEnabled: true,
   setDog: () => {}, setDogs: () => {}, setActiveDogId: () => {}, setCommands: () => {},
-  setFamilyId: () => {}, setInviteCode: () => {}, setStreak: () => {},
+  setInviteCode: () => {}, setStreak: () => {},
   setLastTrainedDate: () => {}, updateUserStreak: () => {}, setIsNewUser: () => {}, setOnboardingComplete: () => {},
   refreshStreak: () => {}, markAchievementSeen: () => {}, setReminderTime: () => {},
   setSoundEnabled: () => {}, addDog: () => {}, loadDogsFromApi: async () => {}, resetState: () => {},
@@ -89,7 +87,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [dogs, setDogsState] = useState<Dog[]>([]);
   const [activeDogId, setActiveDogIdState] = useState<string | null>(null);
   const [commands, setCommandsState] = useState<Command[]>([]);
-  const [familyId, setFamilyIdState] = useState<string | null>(null);
   const [inviteCode, setInviteCodeState] = useState<string | null>(null);
   const [dogStreaks, setDogStreaksState] = useState<Record<string, DogStreak>>({});
   const [dogSeenAchievements, setDogSeenAchievementsState] = useState<Record<string, string[]>>({});
@@ -140,7 +137,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
           setActiveDogIdState(saved.dog.id);
         }
         if (saved.commands) setCommandsState(saved.commands);
-        if (saved.familyId) setFamilyIdState(saved.familyId);
         if (saved.inviteCode) setInviteCodeState(saved.inviteCode);
 
         if (saved.dogStreaks) {
@@ -231,11 +227,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setActiveDogIdState(d.id);
   }, [save]);
 
-  const loadDogsFromApi = useCallback(async () => {
-    if (!familyId) return;
+  const loadDogsFromApi = useCallback(async (userId: string) => {
+    if (!userId) return;
     try {
       const { authedFetch } = await import("@/lib/authedFetch");
-      const res = await authedFetch(`/api/family/${familyId}/dogs`);
+      const res = await authedFetch(`/api/users/${userId}/dogs`);
       if (res.ok) {
         const { dogs: fetchedDogs } = await res.json();
         if (fetchedDogs && fetchedDogs.length > 0) {
@@ -257,16 +253,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
     } catch (e) {
       console.error("Failed to load dogs:", e);
     }
-  }, [familyId, save, loadCommandsForDog]);
+  }, [save, loadCommandsForDog]);
 
   const setCommands = useCallback((c: Command[]) => {
     setCommandsState(c);
     save({ commands: c });
-  }, [save]);
-
-  const setFamilyId = useCallback((id: string | null) => {
-    setFamilyIdState(id);
-    save({ familyId: id ?? undefined });
   }, [save]);
 
   const setInviteCode = useCallback((code: string | null) => {
@@ -359,7 +350,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setDogsState([]);
     setActiveDogIdState(null);
     setCommandsState([]);
-    setFamilyIdState(null);
     setInviteCodeState(null);
     setDogStreaksState({});
     setDogSeenAchievementsState({});
@@ -373,15 +363,15 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   // Stable context value — only changes when actual state changes
   const value = useMemo<AppContextValue>(() => ({
-    dogs, activeDogId, dog, commands, familyId, inviteCode, streak, lastTrainedDate,
+    dogs, activeDogId, dog, commands, inviteCode, streak, lastTrainedDate,
     isNewUser, onboardingComplete, seenAchievements, reminderTime, soundEnabled,
-    setDog, setDogs, setActiveDogId, addDog, setCommands, setFamilyId, setInviteCode,
+    setDog, setDogs, setActiveDogId, addDog, setCommands, setInviteCode,
     setStreak, setLastTrainedDate, updateUserStreak, setIsNewUser, setOnboardingComplete, refreshStreak,
     markAchievementSeen, setReminderTime, setSoundEnabled, loadDogsFromApi, resetState,
   }), [
-    dogs, activeDogId, dog, commands, familyId, inviteCode, streak, lastTrainedDate,
+    dogs, activeDogId, dog, commands, inviteCode, streak, lastTrainedDate,
     isNewUser, onboardingComplete, seenAchievements, reminderTime, soundEnabled,
-    setDog, setDogs, setActiveDogId, addDog, setCommands, setFamilyId, setInviteCode,
+    setDog, setDogs, setActiveDogId, addDog, setCommands, setInviteCode,
     setStreak, setLastTrainedDate, updateUserStreak, setIsNewUser, setOnboardingComplete, refreshStreak,
     markAchievementSeen, setReminderTime, setSoundEnabled, loadDogsFromApi, resetState,
   ]);

@@ -1,26 +1,31 @@
-import { Router, type Request, type Response } from "express";
+import { Router, type IRouter, type Request, type Response } from "express";
 import { db } from "@workspace/db";
 import {
   pawplayUsersTable,
   pushTokensTable,
   usersTable,
-  familiesTable,
   sessionsRecordTable,
   achievementsTable,
+  dogsTable,
+  commandsTable,
+  friendshipsTable,
 } from "@workspace/db";
-import { eq, sql } from "drizzle-orm";
+import { eq, inArray, or, sql } from "drizzle-orm";
 import { sessionsTable } from "@workspace/db";
 import { deleteSession, getSessionId } from "../lib/auth";
 
-const router = Router();
+const router: IRouter = Router();
 
 router.get("/users/:userId", async (req: Request, res: Response) => {
   if (!req.isAuthenticated()) {
     res.status(401).json({ error: "Unauthorized" });
     return;
   }
-  const { userId } = req.params;
-  const [user] = await db.select().from(pawplayUsersTable).where(eq(pawplayUsersTable.id, userId));
+  const userId = req.params.userId as string;
+  const [user] = await db
+    .select()
+    .from(pawplayUsersTable)
+    .where(eq(pawplayUsersTable.id, userId));
   if (!user) {
     res.status(404).json({ error: "User not found" });
     return;
@@ -33,21 +38,31 @@ router.patch("/users/:userId", async (req: Request, res: Response) => {
     res.status(401).json({ error: "Unauthorized" });
     return;
   }
-  const { userId } = req.params;
-  const { displayName, familyId, expoPushToken } = req.body;
-  const updates: Record<string, unknown> = {};
-  if (displayName !== undefined) updates.displayName = displayName;
-  if (familyId !== undefined) updates.familyId = familyId;
-  if (expoPushToken !== undefined) updates.expoPushToken = expoPushToken;
-
-  const [existing] = await db.select().from(pawplayUsersTable).where(eq(pawplayUsersTable.id, userId));
-  if (!existing) {
-    const [created] = await db.insert(pawplayUsersTable).values({ id: userId, ...updates }).returning();
-    res.json(created);
+  const userId = req.params.userId as string;
+  if (req.user.id !== userId) {
+    res.status(403).json({ error: "Forbidden" });
     return;
   }
-  const [updated] = await db.update(pawplayUsersTable).set(updates).where(eq(pawplayUsersTable.id, userId)).returning();
-  res.json(updated);
+  const { displayName, expoPushToken } = req.body;
+  const updates: Record<string, unknown> = {};
+  if (displayName !== undefined) updates.displayName = displayName;
+  if (expoPushToken !== undefined) updates.expoPushToken = expoPushToken;
+
+  if (Object.keys(updates).length === 0) {
+    const [existing] = await db
+      .select()
+      .from(pawplayUsersTable)
+      .where(eq(pawplayUsersTable.id, userId));
+    res.json(existing ?? null);
+    return;
+  }
+
+  const [updated] = await db
+    .update(pawplayUsersTable)
+    .set(updates)
+    .where(eq(pawplayUsersTable.id, userId))
+    .returning();
+  res.json(updated ?? null);
 });
 
 router.patch("/users/:userId/push-token", async (req: Request, res: Response) => {
@@ -55,10 +70,19 @@ router.patch("/users/:userId/push-token", async (req: Request, res: Response) =>
     res.status(401).json({ error: "Unauthorized" });
     return;
   }
-  const { userId } = req.params;
+  const userId = req.params.userId as string;
+  if (req.user.id !== userId) {
+    res.status(403).json({ error: "Forbidden" });
+    return;
+  }
   const { expoPushToken, platform } = req.body;
-  await db.insert(pushTokensTable).values({ userId, expoPushToken, platform: platform ?? "ios" })
-    .onConflictDoUpdate({ target: pushTokensTable.userId, set: { expoPushToken, platform, updatedAt: new Date() } });
+  await db
+    .insert(pushTokensTable)
+    .values({ userId, expoPushToken, platform: platform ?? "ios" })
+    .onConflictDoUpdate({
+      target: pushTokensTable.userId,
+      set: { expoPushToken, platform, updatedAt: new Date() },
+    });
   res.json({ success: true });
 });
 
@@ -67,7 +91,7 @@ router.delete("/users/:userId", async (req: Request, res: Response) => {
     res.status(401).json({ error: "Unauthorized" });
     return;
   }
-  const { userId } = req.params;
+  const userId = req.params.userId as string;
   if (req.user.id !== userId) {
     res.status(403).json({ error: "Forbidden" });
     return;
@@ -75,24 +99,43 @@ router.delete("/users/:userId", async (req: Request, res: Response) => {
 
   try {
     await db.transaction(async (tx) => {
-      const [pawUser] = await tx
+      const userDogs = await tx
         .select()
-        .from(pawplayUsersTable)
-        .where(eq(pawplayUsersTable.id, userId));
+        .from(dogsTable)
+        .where(eq(dogsTable.userId, userId));
+      const dogIds = userDogs.map((d) => d.id);
 
-      if (pawUser?.familyId) {
+      if (dogIds.length > 0) {
         await tx
-          .update(familiesTable)
-          .set({
-            memberIds: sql`COALESCE(${familiesTable.memberIds}, '[]'::jsonb) - ${userId}::text`,
-          })
-          .where(eq(familiesTable.id, pawUser.familyId));
+          .delete(commandsTable)
+          .where(inArray(commandsTable.dogId, dogIds));
+        await tx
+          .delete(sessionsRecordTable)
+          .where(inArray(sessionsRecordTable.dogId, dogIds));
+        await tx
+          .delete(achievementsTable)
+          .where(inArray(achievementsTable.dogId, dogIds));
+        await tx.delete(dogsTable).where(inArray(dogsTable.id, dogIds));
       }
 
-      await tx.delete(sessionsRecordTable).where(eq(sessionsRecordTable.userId, userId));
-      await tx.delete(achievementsTable).where(eq(achievementsTable.userId, userId));
+      await tx
+        .delete(sessionsRecordTable)
+        .where(eq(sessionsRecordTable.userId, userId));
+      await tx
+        .delete(achievementsTable)
+        .where(eq(achievementsTable.userId, userId));
+      await tx
+        .delete(friendshipsTable)
+        .where(
+          or(
+            eq(friendshipsTable.userId, userId),
+            eq(friendshipsTable.friendId, userId),
+          ),
+        );
       await tx.delete(pushTokensTable).where(eq(pushTokensTable.userId, userId));
-      await tx.delete(pawplayUsersTable).where(eq(pawplayUsersTable.id, userId));
+      await tx
+        .delete(pawplayUsersTable)
+        .where(eq(pawplayUsersTable.id, userId));
       await tx.delete(usersTable).where(eq(usersTable.id, userId));
     });
   } catch (err) {
@@ -108,7 +151,10 @@ router.delete("/users/:userId", async (req: Request, res: Response) => {
       .delete(sessionsTable)
       .where(sql`${sessionsTable.sess}::text like ${"%" + userId + "%"}`);
   } catch (err) {
-    req.log?.warn({ err, userId }, "Could not clean up auth sessions after account deletion");
+    req.log?.warn(
+      { err, userId },
+      "Could not clean up auth sessions after account deletion",
+    );
   }
 
   const sid = getSessionId(req);
@@ -116,7 +162,10 @@ router.delete("/users/:userId", async (req: Request, res: Response) => {
     try {
       await deleteSession(sid);
     } catch (err) {
-      req.log?.warn({ err, sid }, "Failed to delete current session after account deletion");
+      req.log?.warn(
+        { err, sid },
+        "Failed to delete current session after account deletion",
+      );
     }
   }
 

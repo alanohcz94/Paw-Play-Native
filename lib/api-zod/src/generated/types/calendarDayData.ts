@@ -9,6 +9,6 @@
 export interface CalendarDayData {
   date: string;
   trainedByMe: boolean;
-  trainedByFamily: boolean;
+  trainedByFriends: boolean;
   sessionCount: number;
 }

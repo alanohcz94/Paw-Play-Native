@@ -1,5 +1,5 @@
-import React, { useMemo } from "react";
-import { View, Text, StyleSheet } from "react-native";
+import React, { useMemo, useCallback } from "react";
+import { View, Text, StyleSheet, TouchableOpacity, Platform, Alert } from "react-native";
 import { useColors } from "@/hooks/useColors";
 import type { LeaderboardEntry } from "@/types/api";
 
@@ -12,16 +12,25 @@ const RANK_COLORS: Record<number, string> = {
 function LeaderboardRow({
   entry,
   rank,
+  isMe,
+  onRemove,
 }: {
   entry: LeaderboardEntry;
   rank: number;
+  isMe: boolean;
+  onRemove?: (friendId: string, displayName: string) => void;
 }) {
   const colors = useColors();
   const rankBg = RANK_COLORS[rank] ?? "transparent";
   const isTop3 = rank < 3;
 
+  const handlePress = useCallback(() => {
+    if (isMe || !onRemove) return;
+    onRemove(entry.userId, entry.displayName);
+  }, [isMe, onRemove, entry.userId, entry.displayName]);
+
   return (
-    <View
+    <TouchableOpacity
       style={[
         styles.row,
         {
@@ -32,8 +41,12 @@ function LeaderboardRow({
           paddingHorizontal: 12,
           paddingVertical: 10,
           marginBottom: 8,
+          backgroundColor: isMe ? colors.peachLight : "transparent",
         },
       ]}
+      onPress={handlePress}
+      activeOpacity={isMe ? 1 : 0.7}
+      disabled={isMe || !onRemove}
     >
       <View style={{ position: "relative" }}>
         <View style={[styles.rankBadge, { backgroundColor: rankBg }]}>
@@ -64,6 +77,7 @@ function LeaderboardRow({
           ]}
         >
           {entry.displayName}
+          {isMe ? " (you)" : ""}
         </Text>
         <Text
           style={[
@@ -71,7 +85,7 @@ function LeaderboardRow({
             { color: colors.mutedForeground, fontFamily: "Nunito_400Regular" },
           ]}
         >
-          {entry.sessionCount} day streak
+          {entry.sessionCount} session{entry.sessionCount === 1 ? "" : "s"}
         </Text>
       </View>
 
@@ -93,19 +107,41 @@ function LeaderboardRow({
           points
         </Text>
       </View>
-    </View>
+    </TouchableOpacity>
   );
 }
 
 export default function FamilyLeaderboard({
   leaderboard,
+  currentUserId,
+  onRemoveFriend,
 }: {
   leaderboard: LeaderboardEntry[];
+  currentUserId?: string;
+  onRemoveFriend?: (friendId: string) => Promise<void> | void;
 }) {
   const colors = useColors();
   const totalPoints = useMemo(
     () => leaderboard.reduce((sum, e) => sum + e.totalPoints, 0),
     [leaderboard],
+  );
+
+  const handleRemove = useCallback(
+    (friendId: string, displayName: string) => {
+      if (!onRemoveFriend) return;
+      const message = `Remove ${displayName} from your friends? You'll both stop seeing each other on the leaderboard.`;
+      if (Platform.OS === "web") {
+        if (window.confirm(message)) {
+          void onRemoveFriend(friendId);
+        }
+        return;
+      }
+      Alert.alert("Remove Friend", message, [
+        { text: "Cancel", style: "cancel" },
+        { text: "Remove", style: "destructive", onPress: () => void onRemoveFriend(friendId) },
+      ]);
+    },
+    [onRemoveFriend],
   );
 
   if (leaderboard.length === 0) return null;
@@ -124,7 +160,7 @@ export default function FamilyLeaderboard({
             { color: colors.dark, fontFamily: "Nunito_900Black" },
           ]}
         >
-          Family Leaderboard
+          Friends Leaderboard
         </Text>
         <View
           style={[styles.totalBadge, { backgroundColor: colors.lemonLight }]}
@@ -140,8 +176,25 @@ export default function FamilyLeaderboard({
         </View>
       </View>
 
+      {onRemoveFriend && leaderboard.length > 1 && (
+        <Text
+          style={[
+            styles.hint,
+            { color: colors.mutedForeground, fontFamily: "Nunito_400Regular" },
+          ]}
+        >
+          Tap a friend to remove them
+        </Text>
+      )}
+
       {leaderboard.map((entry, i) => (
-        <LeaderboardRow key={entry.userId} entry={entry} rank={i} />
+        <LeaderboardRow
+          key={entry.userId}
+          entry={entry}
+          rank={i}
+          isMe={entry.userId === currentUserId}
+          onRemove={handleRemove}
+        />
       ))}
     </View>
   );
@@ -156,6 +209,7 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   cardTitle: { fontSize: 16, marginBottom: 8 },
+  hint: { fontSize: 12, marginBottom: 8 },
   totalBadge: { paddingHorizontal: 8, paddingVertical: 3, borderRadius: 12 },
   totalBadgeText: { fontSize: 13 },
   row: { flexDirection: "row", alignItems: "center", gap: 10 },

@@ -16,20 +16,17 @@ import { LinearGradient } from "expo-linear-gradient";
 
 const FEATURES = [
   { icon: "zap" as const, label: "Gamified training sessions" },
-  { icon: "users" as const, label: "Train as a family together" },
+  { icon: "users" as const, label: "Train with friends" },
   { icon: "award" as const, label: "Earn achievements & streaks" },
 ];
 
 export default function HomeScreen() {
   const { isAuthenticated, isLoading, login, user, loginError, clearLoginError } = useAuth();
   const {
-    onboardingComplete,
-    familyId,
-    loadDogsFromApi,
-    setFamilyId,
     setOnboardingComplete,
     setDogs,
     setCommands,
+    setInviteCode,
   } = useApp();
   const colors = useColors();
   const insets = useSafeAreaInsets();
@@ -39,36 +36,28 @@ export default function HomeScreen() {
     if (!isLoading && isAuthenticated && user?.id && !hasNavigated.current) {
       const restore = async () => {
         hasNavigated.current = true;
-        if (onboardingComplete && familyId) {
-          await loadDogsFromApi();
-          router.replace("/(tabs)");
-          return;
-        }
         try {
           const { authedFetch } = await import("@/lib/authedFetch");
-          const res = await authedFetch(`/api/users/${user.id}`);
-          if (res.status === 401) return;
-          if (res.ok) {
-            const pawplayUser = await res.json();
-            if (pawplayUser?.familyId) {
-              setFamilyId(pawplayUser.familyId);
+          // Lazy-creates pawplay user row + invite code if missing
+          const meRes = await authedFetch(`/api/users/me`);
+          if (meRes.status === 401) return;
+          if (meRes.ok) {
+            const me = await meRes.json();
+            if (me?.inviteCode) setInviteCode(me.inviteCode);
+          }
+
+          const dogsRes = await authedFetch(`/api/users/${user.id}/dogs`);
+          if (dogsRes.status === 401) return;
+          if (dogsRes.ok) {
+            const { dogs: fetchedDogs } = await dogsRes.json();
+            if (fetchedDogs && fetchedDogs.length > 0) {
+              setDogs(fetchedDogs);
               setOnboardingComplete(true);
-              const dogsRes = await authedFetch(
-                `/api/family/${pawplayUser.familyId}/dogs`,
-              );
-              if (dogsRes.status === 401) return;
-              if (dogsRes.ok) {
-                const { dogs: fetchedDogs } = await dogsRes.json();
-                setDogs(fetchedDogs);
-                // Also load commands for the active dog so profile/games work immediately
-                if (fetchedDogs.length > 0) {
-                  const activeDogId = fetchedDogs[0].id;
-                  const cmdsRes = await authedFetch(`/api/dogs/${activeDogId}/commands`);
-                  if (cmdsRes.ok) {
-                    const { commands: cmds } = await cmdsRes.json();
-                    setCommands(cmds);
-                  }
-                }
+              const activeDogId = fetchedDogs[0].id;
+              const cmdsRes = await authedFetch(`/api/dogs/${activeDogId}/commands`);
+              if (cmdsRes.ok) {
+                const { commands: cmds } = await cmdsRes.json();
+                setCommands(cmds);
               }
               router.replace("/(tabs)");
               return;
@@ -81,7 +70,7 @@ export default function HomeScreen() {
       };
       restore();
     }
-  }, [isAuthenticated, isLoading, user?.id, onboardingComplete, familyId]);
+  }, [isAuthenticated, isLoading, user?.id, setDogs, setOnboardingComplete, setCommands, setInviteCode]);
 
   if (isAuthenticated) return null;
 
@@ -117,35 +106,19 @@ export default function HomeScreen() {
             { color: colors.mutedForeground, fontFamily: "Nunito_700Bold" },
           ]}
         >
-          Gamified dog training for the whole family
+          Gamified dog training, with your friends
         </Text>
       </View>
 
       {/* Feature highlights */}
-      <View
-        style={[
-          styles.featuresCard,
-          { backgroundColor: "rgba(255,255,255,0.7)" },
-        ]}
-      >
-        {FEATURES.map((f, i) => (
+      <View style={styles.featuresSection}>
+        {FEATURES.map((f) => (
           <View
             key={f.label}
-            style={[
-              styles.featureRow,
-              i < FEATURES.length - 1 && {
-                borderBottomWidth: 1,
-                borderBottomColor: "rgba(0,0,0,0.06)",
-              },
-            ]}
+            style={[styles.featureRow, { backgroundColor: colors.card, borderColor: colors.border }]}
           >
-            <View
-              style={[
-                styles.featureIcon,
-                { backgroundColor: colors.peachLight },
-              ]}
-            >
-              <Feather name={f.icon} size={16} color={colors.peach} />
+            <View style={[styles.featureIconBox, { backgroundColor: colors.peachLight }]}>
+              <Feather name={f.icon} size={18} color={colors.peach} />
             </View>
             <Text
               style={[
@@ -159,155 +132,74 @@ export default function HomeScreen() {
         ))}
       </View>
 
-      {/* CTAs */}
-      <View style={styles.ctaSection}>
-        {loginError ? (
-          <View
+      {/* Auth error */}
+      {loginError && (
+        <View
+          style={[
+            styles.errorBanner,
+            { backgroundColor: colors.destructive + "1a", borderColor: colors.destructive },
+          ]}
+        >
+          <Feather name="alert-circle" size={16} color={colors.destructive} />
+          <Text
             style={[
-              styles.errorBanner,
-              { backgroundColor: "#FDECEC", borderColor: "#E5484D" },
+              styles.errorText,
+              { color: colors.destructive, fontFamily: "Nunito_700Bold" },
             ]}
-            accessibilityRole="alert"
-            accessibilityLiveRegion="polite"
+            numberOfLines={2}
           >
-            <Feather name="alert-circle" size={16} color="#C62A2F" />
-            <Text
-              style={[
-                styles.errorBannerText,
-                { color: "#8A1F23", fontFamily: "Nunito_700Bold" },
-              ]}
-            >
-              {loginError}
-            </Text>
-            <TouchableOpacity
-              onPress={clearLoginError}
-              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-              accessibilityLabel="Dismiss error"
-            >
-              <Feather name="x" size={16} color="#8A1F23" />
-            </TouchableOpacity>
-          </View>
-        ) : null}
+            {loginError}
+          </Text>
+          <TouchableOpacity onPress={clearLoginError} hitSlop={8}>
+            <Feather name="x" size={16} color={colors.destructive} />
+          </TouchableOpacity>
+        </View>
+      )}
+
+      {/* CTA */}
+      <View style={styles.ctaSection}>
         <TouchableOpacity
-          style={[styles.primaryBtn, { backgroundColor: colors.peach }]}
-          onPress={() => router.push("/demo")}
+          onPress={login}
+          style={[styles.loginButton, { backgroundColor: colors.peach }]}
           activeOpacity={0.85}
         >
-          <Feather name="play-circle" size={20} color="#fff" />
-          <Text
-            style={[styles.primaryBtnText, { fontFamily: "Nunito_900Black" }]}
-          >
-            Try a Quick Demo
-          </Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={[styles.secondaryBtn, { borderColor: colors.peach }]}
-          onPress={login}
-          activeOpacity={0.8}
-        >
-          <Feather name="log-in" size={18} color={colors.peach} />
           <Text
             style={[
-              styles.secondaryBtnText,
-              { color: colors.peach, fontFamily: "Nunito_700Bold" },
+              styles.loginButtonText,
+              { color: "#fff", fontFamily: "Nunito_900Black" },
             ]}
           >
-            Already have an account? Sign in
+            {isLoading ? "Loading…" : "Get Started"}
           </Text>
         </TouchableOpacity>
+        <Text
+          style={[
+            styles.disclaimer,
+            { color: colors.mutedForeground, fontFamily: "Nunito_400Regular" },
+          ]}
+        >
+          Sign in with your Replit account
+        </Text>
       </View>
     </LinearGradient>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    alignItems: "center",
-    justifyContent: "center",
-    paddingHorizontal: 24,
-    gap: 28,
-  },
-  heroSection: {
-    alignItems: "center",
-    gap: 10,
-  },
-  pawIconContainer: {
-    width: 96,
-    height: 96,
-    borderRadius: 48,
-    alignItems: "center",
-    justifyContent: "center",
-    marginBottom: 4,
-    shadowColor: "#FF8B6A",
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.3,
-    shadowRadius: 16,
-    elevation: 8,
-  },
-  pawEmoji: { fontSize: 48 },
-  appName: { fontSize: 48, letterSpacing: 1 },
-  tagline: { fontSize: 16, textAlign: "center", lineHeight: 24 },
-  featuresCard: {
-    width: "100%",
-    borderRadius: 20,
-    paddingVertical: 4,
-    paddingHorizontal: 16,
-  },
-  featureRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 12,
-    paddingVertical: 12,
-  },
-  featureIcon: {
-    width: 34,
-    height: 34,
-    borderRadius: 10,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  featureLabel: { fontSize: 14 },
-  ctaSection: {
-    width: "100%",
-    gap: 12,
-  },
-  errorBanner: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-    paddingVertical: 10,
-    paddingHorizontal: 12,
-    borderWidth: 1,
-    borderRadius: 12,
-  },
-  errorBannerText: {
-    flex: 1,
-    fontSize: 14,
-  },
-  primaryBtn: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 10,
-    paddingVertical: 18,
-    borderRadius: 16,
-    shadowColor: "#FF8B6A",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 12,
-    elevation: 6,
-  },
-  primaryBtnText: { color: "#fff", fontSize: 18 },
-  secondaryBtn: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 8,
-    paddingVertical: 16,
-    borderRadius: 16,
-    borderWidth: 2,
-  },
-  secondaryBtnText: { fontSize: 15 },
+  container: { flex: 1, paddingHorizontal: 24, justifyContent: "space-between" },
+  heroSection: { alignItems: "center", marginTop: 28, gap: 8 },
+  pawIconContainer: { width: 84, height: 84, borderRadius: 42, alignItems: "center", justifyContent: "center", marginBottom: 8 },
+  pawEmoji: { fontSize: 44 },
+  appName: { fontSize: 44 },
+  tagline: { fontSize: 15, textAlign: "center", paddingHorizontal: 12 },
+  featuresSection: { gap: 10, marginVertical: 16 },
+  featureRow: { flexDirection: "row", alignItems: "center", gap: 12, padding: 14, borderRadius: 14, borderWidth: 1 },
+  featureIconBox: { width: 36, height: 36, borderRadius: 10, alignItems: "center", justifyContent: "center" },
+  featureLabel: { fontSize: 14, flex: 1 },
+  errorBanner: { flexDirection: "row", alignItems: "center", gap: 8, padding: 12, borderRadius: 12, borderWidth: 1, marginBottom: 12 },
+  errorText: { fontSize: 13, flex: 1 },
+  ctaSection: { gap: 8, marginBottom: 12 },
+  loginButton: { paddingVertical: 18, borderRadius: 16, alignItems: "center" },
+  loginButtonText: { fontSize: 18 },
+  disclaimer: { textAlign: "center", fontSize: 12 },
 });

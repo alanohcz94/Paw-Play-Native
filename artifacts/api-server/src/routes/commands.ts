@@ -10,7 +10,7 @@ router.get("/dogs/:dogId/commands", async (req: Request, res: Response) => {
     res.status(401).json({ error: "Unauthorized" });
     return;
   }
-  const { dogId } = req.params;
+  const dogId = req.params.dogId as string;
   const commands = await db.select().from(commandsTable).where(eq(commandsTable.dogId, dogId));
   res.json({ commands });
 });
@@ -20,7 +20,7 @@ router.post("/dogs/:dogId/commands", async (req: Request, res: Response) => {
     res.status(401).json({ error: "Unauthorized" });
     return;
   }
-  const { dogId } = req.params;
+  const dogId = req.params.dogId as string;
   const { name } = req.body;
   if (!name) {
     res.status(400).json({ error: "name is required" });
@@ -40,7 +40,7 @@ router.delete("/dogs/:dogId/commands/:commandId", async (req: Request, res: Resp
     res.status(401).json({ error: "Unauthorized" });
     return;
   }
-  const { dogId, commandId } = req.params;
+  const dogId = req.params.dogId as string; const commandId = req.params.commandId as string;
   const deleted = await db.delete(commandsTable).where(and(eq(commandsTable.dogId, dogId), eq(commandsTable.id, commandId))).returning();
   if (deleted.length === 0) {
     res.status(404).json({ error: "Command not found" });
@@ -54,7 +54,7 @@ router.patch("/commands/:dogId/:name", async (req: Request, res: Response) => {
     res.status(401).json({ error: "Unauthorized" });
     return;
   }
-  const { dogId, name } = req.params;
+  const dogId = req.params.dogId as string; const name = req.params.name as string;
   const updates: Record<string, unknown> = {};
   const { level, trainingSessionsCount, qbSuccessesCount, qbSessionsWithSuccess, blitzSuccessesCount } = req.body;
   if (level !== undefined) updates.level = level;

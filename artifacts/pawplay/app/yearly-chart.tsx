@@ -6,7 +6,6 @@ import { router } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Feather } from "@expo/vector-icons";
 import { useColors } from "@/hooks/useColors";
-import { useApp } from "@/context/AppContext";
 
 const MONTH_SHORT = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
@@ -59,20 +58,17 @@ function Bar({ data, maxHours, currentMonth, colors, index }: { data: MonthData;
 export default function YearlyChartScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
-  const { familyId } = useApp();
   const [monthsData, setMonthsData] = useState<MonthData[]>([]);
   const [totalHours, setTotalHours] = useState(0);
   const [bestMonth, setBestMonth] = useState<string | null>(null);
   const year = new Date().getFullYear();
   const currentMonth = new Date().getMonth() + 1;
-  const apiBase = process.env.EXPO_PUBLIC_DOMAIN ? `https://${process.env.EXPO_PUBLIC_DOMAIN}` : "";
 
   useEffect(() => {
-    if (!familyId) return;
     const load = async () => {
       try {
         const { authedFetch } = await import("@/lib/authedFetch");
-        const res = await authedFetch(`/api/family/${familyId}/yearly-chart?year=${year}`);
+        const res = await authedFetch(`/api/yearly-chart?year=${year}`);
         if (res.ok) {
           const data = await res.json();
           setMonthsData(data.months);
@@ -84,7 +80,7 @@ export default function YearlyChartScreen() {
       }
     };
     load();
-  }, [familyId]);
+  }, [year]);
 
   const maxHours = monthsData.length > 0 ? Math.max(...monthsData.map((m) => m.hours), 1) : 1;
 

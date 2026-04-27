@@ -62,7 +62,7 @@ const WEEK_DAYS = ["M", "T", "W", "T", "F", "S", "S"];
 export default function DashboardScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
-  const { dog, dogs, streak, familyId, loadDogsFromApi } = useApp();
+  const { dog, dogs, streak, loadDogsFromApi } = useApp();
   const { user } = useAuth();
   const [sessions, setSessions] = useState<Session[]>([]);
   const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
@@ -70,7 +70,7 @@ export default function DashboardScreen() {
   const [sessionsThisWeek, setSessionsThisWeek] = useState(0);
   const [daysThisWeek, setDaysThisWeek] = useState(0);
   const [trainedDays, setTrainedDays] = useState<number[]>([]);
-  const dogsLoadedForFamily = useRef<string | null>(null);
+  const dogsLoadedForUser = useRef<string | null>(null);
 
   // Clear stale data immediately when the active dog changes
   useEffect(() => {
@@ -85,11 +85,24 @@ export default function DashboardScreen() {
     : "";
 
   const loadDogs = async () => {
-    if (!familyId || !user?.id || dogsLoadedForFamily.current === familyId)
-      return;
-    await loadDogsFromApi();
-    dogsLoadedForFamily.current = familyId;
+    if (!user?.id || dogsLoadedForUser.current === user.id) return;
+    await loadDogsFromApi(user.id);
+    dogsLoadedForUser.current = user.id;
   };
+
+  const loadLeaderboard = useCallback(async () => {
+    if (!user?.id) return;
+    try {
+      const { authedFetch } = await import("@/lib/authedFetch");
+      const lbRes = await authedFetch(`/api/leaderboard`);
+      if (lbRes.ok) {
+        const { entries } = await lbRes.json();
+        setLeaderboard(entries);
+      }
+    } catch (e) {
+      console.error(e);
+    }
+  }, [user?.id]);
 
   const loadData = async () => {
     if (!dog?.id || !user?.id) return;
@@ -123,25 +136,32 @@ export default function DashboardScreen() {
         setTrainedDays(Array.from(thisWeekDays));
       }
 
-      if (familyId) {
-        const lbRes = await authedFetch(
-          `/api/family/${familyId}/leaderboard`,
-        );
-        if (lbRes.ok) {
-          const { entries } = await lbRes.json();
-          setLeaderboard(entries);
-        }
-      }
+      await loadLeaderboard();
     } catch (e) {
       console.error(e);
     }
   };
 
+  const handleRemoveFriend = useCallback(
+    async (friendId: string) => {
+      try {
+        const { authedFetch } = await import("@/lib/authedFetch");
+        const res = await authedFetch(`/api/friends/${friendId}`, { method: "DELETE" });
+        if (res.ok) {
+          await loadLeaderboard();
+        }
+      } catch (e) {
+        console.error("Failed to remove friend:", e);
+      }
+    },
+    [loadLeaderboard],
+  );
+
   useFocusEffect(
     useCallback(() => {
       loadDogs();
       loadData();
-    }, [dog?.id, familyId]),
+    }, [dog?.id, user?.id]),
   );
 
   const onRefresh = async () => {
@@ -481,7 +501,11 @@ export default function DashboardScreen() {
           </Text>
         </TouchableOpacity>
 
-        <FamilyLeaderboard leaderboard={leaderboard} />
+        <FamilyLeaderboard
+          leaderboard={leaderboard}
+          currentUserId={user?.id}
+          onRemoveFriend={handleRemoveFriend}
+        />
       </ScrollView>
 
       <TouchableOpacity

@@ -309,7 +309,7 @@ export const GetFamilyCalendarResponse = zod.object({
     zod.object({
       date: zod.string(),
       trainedByMe: zod.boolean(),
-      trainedByFamily: zod.boolean(),
+      trainedByFriends: zod.boolean(),
       sessionCount: zod.number(),
     }),
   ),

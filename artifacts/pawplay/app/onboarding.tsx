@@ -1,6 +1,6 @@
 import React, { useState, useCallback } from "react";
 import {
-  View, Text, StyleSheet, TouchableOpacity, TextInput, ScrollView, Platform, ActivityIndicator,
+  View, Text, StyleSheet, TouchableOpacity, TextInput, ScrollView, Platform,
 } from "react-native";
 import { Feather } from "@expo/vector-icons";
 import { router } from "expo-router";
@@ -10,29 +10,18 @@ import { useApp } from "@/context/AppContext";
 import { useAuth } from "@/lib/auth";
 import { ALL_COMMANDS } from "@/utils/scoring";
 
-const STEPS_JOIN   = ["family", "done"] as const;
-const STEPS_CREATE = ["family", "dog", "commands", "done"] as const;
-type Step = "family" | "dog" | "commands" | "done";
+const STEPS = ["dog", "commands", "done"] as const;
+type Step = typeof STEPS[number];
 
 export default function OnboardingScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
-  const { setDog, setCommands, setOnboardingComplete, setFamilyId, setInviteCode } = useApp();
+  const { setDog, setCommands, setOnboardingComplete, setInviteCode } = useApp();
   const { user } = useAuth();
-  const [step, setStep] = useState<Step>("family");
+  const [step, setStep] = useState<Step>("dog");
   const [dogName, setDogName] = useState("");
   const [selectedCommands, setSelectedCommands] = useState<string[]>([]);
-
-  // Family step state
-  const [familyTab, setFamilyTab] = useState<"join" | "skip">("skip");
-  const [joinCode, setJoinCode] = useState("");
-  const [joinError, setJoinError] = useState("");
-  const [isJoining, setIsJoining] = useState(false);
-  const [joinLoading, setJoinLoading] = useState(false);
-
   const [isLoading, setIsLoading] = useState(false);
-
-  const apiBase = process.env.EXPO_PUBLIC_DOMAIN ? `https://${process.env.EXPO_PUBLIC_DOMAIN}` : "";
 
   const toggleCommand = useCallback((cmd: string) => {
     setSelectedCommands((prev) =>
@@ -40,79 +29,48 @@ export default function OnboardingScreen() {
     );
   }, []);
 
-  const handleJoinFamily = useCallback(async () => {
-    const code = joinCode.trim().toUpperCase();
-    if (!code) { setJoinError("Please enter an invite code."); return; }
-    setJoinError("");
-    setJoinLoading(true);
-    try {
-      const { authedFetch } = await import("@/lib/authedFetch");
-      const res = await authedFetch(`/api/family/join/${code}`, {
-        method: "POST",
-      });
-      if (!res.ok) {
-        setJoinError("Invalid invite code. Please check and try again.");
-        setJoinLoading(false);
-        return;
-      }
-      const data = await res.json();
-      const family = data.family ?? data;
-      setFamilyId(family.id);
-      setInviteCode(family.inviteCode);
-
-      await authedFetch(`/api/users/${user?.id}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ displayName: user?.firstName || "Family Member", familyId: family.id }),
-      });
-
-      setIsJoining(true);
-      setStep("done");
-    } catch {
-      setJoinError("Something went wrong. Please try again.");
-    } finally {
-      setJoinLoading(false);
-    }
-  }, [joinCode, apiBase, setFamilyId, setInviteCode, user?.id]);
-
-  const handleCreateFamily = useCallback(async (userId: string) => {
+  const handleComplete = useCallback(async () => {
+    if (!user?.id) return;
+    setIsLoading(true);
     try {
       const { authedFetch } = await import("@/lib/authedFetch");
       const jsonHeaders = { "Content-Type": "application/json" };
-      const res = await authedFetch(`/api/family`, {
-        method: "POST",
-        headers: jsonHeaders,
-        body: JSON.stringify({}),
-      });
-      if (res.ok) {
-        const family = await res.json();
-        setFamilyId(family.id);
-        setInviteCode(family.inviteCode);
 
-        await authedFetch(`/api/users/${userId}`, {
+      // Make sure pawplay user record exists + grab our invite code
+      const meRes = await authedFetch(`/api/users/me`);
+      if (meRes.ok) {
+        const me = await meRes.json();
+        if (me?.inviteCode) setInviteCode(me.inviteCode);
+      }
+
+      // Optional displayName patch (uses first name from auth)
+      if (user.firstName) {
+        await authedFetch(`/api/users/${user.id}`, {
           method: "PATCH",
           headers: jsonHeaders,
-          body: JSON.stringify({ displayName: user?.firstName || "Family Member", familyId: family.id }),
+          body: JSON.stringify({ displayName: user.firstName }),
         });
+      }
 
-        const dogRes = await authedFetch(`/api/dogs`, {
-          method: "POST",
-          headers: jsonHeaders,
-          body: JSON.stringify({ name: dogName, familyId: family.id }),
-        });
-        if (dogRes.ok) {
-          const dog = await dogRes.json();
-          setDog(dog);
+      const dogRes = await authedFetch(`/api/dogs`, {
+        method: "POST",
+        headers: jsonHeaders,
+        body: JSON.stringify({ name: dogName }),
+      });
+      if (dogRes.ok) {
+        const dog = await dogRes.json();
+        setDog(dog);
 
-          const cmdPromises = selectedCommands.map((name) =>
-            authedFetch(`/api/dogs/${dog.id}/commands`, {
-              method: "POST",
-              headers: jsonHeaders,
-              body: JSON.stringify({ name }),
-            })
+        if (selectedCommands.length > 0) {
+          await Promise.all(
+            selectedCommands.map((name) =>
+              authedFetch(`/api/dogs/${dog.id}/commands`, {
+                method: "POST",
+                headers: jsonHeaders,
+                body: JSON.stringify({ name }),
+              })
+            )
           );
-          await Promise.all(cmdPromises);
-
           const cmdsRes = await authedFetch(`/api/dogs/${dog.id}/commands`);
           if (cmdsRes.ok) {
             const { commands } = await cmdsRes.json();
@@ -120,99 +78,24 @@ export default function OnboardingScreen() {
           }
         }
       }
+
+      setOnboardingComplete(true);
+      router.replace("/(tabs)");
     } catch (err) {
       console.error("Onboarding error:", err);
+    } finally {
+      setIsLoading(false);
     }
-  }, [apiBase, dogName, selectedCommands, setDog, setCommands, setFamilyId, setInviteCode, user?.firstName]);
+  }, [user?.id, user?.firstName, dogName, selectedCommands, setDog, setCommands, setOnboardingComplete, setInviteCode]);
 
-  const handleComplete = useCallback(async () => {
-    if (!user?.id) return;
-    setIsLoading(true);
-    if (!isJoining) {
-      // New family creator: create family + dog + commands
-      await handleCreateFamily(user.id);
-    }
-    setOnboardingComplete(true);
-    setIsLoading(false);
-    router.replace("/(tabs)");
-  }, [user?.id, isJoining, handleCreateFamily, setOnboardingComplete]);
-
-  const activeSteps = isJoining ? STEPS_JOIN : STEPS_CREATE;
-  const progressIdx = activeSteps.indexOf(step as typeof activeSteps[number]);
-  const progress = (Math.max(0, progressIdx) + 1) / activeSteps.length;
+  const progressIdx = STEPS.indexOf(step);
+  const progress = (progressIdx + 1) / STEPS.length;
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background, paddingTop: insets.top + (Platform.OS === "web" ? 67 : 0), paddingBottom: insets.bottom + (Platform.OS === "web" ? 34 : 0) }]}>
       <View style={styles.progressBar}>
         <View style={[styles.progressFill, { width: `${progress * 100}%`, backgroundColor: colors.lavender }]} />
       </View>
-
-      {step === "family" && (
-        <ScrollView style={styles.stepContent} showsVerticalScrollIndicator={false}>
-          <Text style={[styles.stepTitle, { color: colors.dark, fontFamily: "FredokaOne_400Regular" }]}>Join your family</Text>
-          <Text style={[styles.stepSubtitle, { color: colors.mutedForeground, fontFamily: "Nunito_400Regular" }]}>
-            Train together and share your dog's progress. Each person keeps their own points!
-          </Text>
-
-          {/* Tab toggle */}
-          <View style={[styles.tabRow, { backgroundColor: colors.muted, borderRadius: 14 }]}>
-            <TouchableOpacity
-              style={[styles.tab, familyTab === "join" && { backgroundColor: colors.card, borderRadius: 12 }]}
-              onPress={() => { setFamilyTab("join"); setJoinError(""); }}
-              activeOpacity={0.8}
-            >
-              <Text style={[styles.tabText, { color: familyTab === "join" ? colors.dark : colors.mutedForeground, fontFamily: "Nunito_700Bold" }]}>I have a code</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[styles.tab, familyTab === "skip" && { backgroundColor: colors.card, borderRadius: 12 }]}
-              onPress={() => setFamilyTab("skip")}
-              activeOpacity={0.8}
-            >
-              <Text style={[styles.tabText, { color: familyTab === "skip" ? colors.dark : colors.mutedForeground, fontFamily: "Nunito_700Bold" }]}>Skip for now</Text>
-            </TouchableOpacity>
-          </View>
-
-          {familyTab === "join" && (
-            <View style={styles.joinSection}>
-              <Text style={[styles.label, { color: colors.dark, fontFamily: "Nunito_700Bold", marginTop: 20 }]}>Enter invite code</Text>
-              <TextInput
-                style={[styles.codeInput, { backgroundColor: colors.card, borderColor: joinError ? colors.destructive : colors.border, color: colors.dark, fontFamily: "Nunito_900Black", letterSpacing: 6 }]}
-                value={joinCode}
-                onChangeText={(t) => { setJoinCode(t.toUpperCase()); setJoinError(""); }}
-                placeholder="A3F2BC"
-                placeholderTextColor={colors.mutedForeground}
-                autoCapitalize="characters"
-                maxLength={6}
-              />
-              {joinError ? (
-                <Text style={[styles.errorText, { color: colors.destructive, fontFamily: "Nunito_400Regular" }]}>{joinError}</Text>
-              ) : null}
-              <TouchableOpacity
-                style={[styles.nextButton, { backgroundColor: joinCode.trim().length === 6 ? colors.lavender : colors.muted, marginTop: 8 }]}
-                onPress={handleJoinFamily}
-                disabled={joinLoading || joinCode.trim().length < 4}
-                activeOpacity={0.85}
-              >
-                {joinLoading ? (
-                  <ActivityIndicator color="#fff" />
-                ) : (
-                  <Text style={[styles.nextButtonText, { color: joinCode.trim().length >= 4 ? "#fff" : colors.mutedForeground, fontFamily: "Nunito_900Black" }]}>Join Family</Text>
-                )}
-              </TouchableOpacity>
-            </View>
-          )}
-
-          {familyTab === "skip" && (
-            <TouchableOpacity
-              style={[styles.nextButton, { backgroundColor: colors.peach, marginTop: 24 }]}
-              onPress={() => setStep("dog")}
-              activeOpacity={0.85}
-            >
-              <Text style={[styles.nextButtonText, { color: "#fff", fontFamily: "Nunito_900Black" }]}>Continue</Text>
-            </TouchableOpacity>
-          )}
-        </ScrollView>
-      )}
 
       {step === "dog" && (
         <ScrollView style={styles.stepContent} showsVerticalScrollIndicator={false}>
@@ -281,9 +164,7 @@ export default function OnboardingScreen() {
             </View>
             <Text style={[styles.stepTitle, { color: colors.dark, fontFamily: "FredokaOne_400Regular", textAlign: "center" }]}>You're all set!</Text>
             <Text style={[styles.stepSubtitle, { color: colors.mutedForeground, fontFamily: "Nunito_400Regular", textAlign: "center" }]}>
-              {isJoining
-                ? "You've joined the family! Your shared dogs are ready to train."
-                : `${dogName} is ready to start training. Let's play!`}
+              {dogName} is ready to start training. Let's play!
             </Text>
           </View>
 
@@ -320,11 +201,4 @@ const styles = StyleSheet.create({
   celebrationContainer: { flex: 1, alignItems: "center", justifyContent: "center", gap: 16 },
   celebrationCircle: { width: 120, height: 120, borderRadius: 60, alignItems: "center", justifyContent: "center" },
   celebrationEmoji: { fontSize: 56 },
-  // Family step
-  tabRow: { flexDirection: "row", padding: 4, marginBottom: 4 },
-  tab: { flex: 1, paddingVertical: 10, alignItems: "center" },
-  tabText: { fontSize: 15 },
-  joinSection: {},
-  codeInput: { borderWidth: 1.5, borderRadius: 12, padding: 16, fontSize: 24, marginBottom: 4, textAlign: "center" },
-  errorText: { fontSize: 13, marginBottom: 8, marginTop: 2 },
 });

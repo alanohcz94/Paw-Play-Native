@@ -4,34 +4,26 @@ import {
   integer,
   jsonb,
   pgTable,
+  primaryKey,
   real,
   text,
   timestamp,
   varchar,
 } from "drizzle-orm/pg-core";
 
-export const familiesTable = pgTable("families", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  createdBy: varchar("created_by").notNull(),
-  inviteCode: varchar("invite_code", { length: 6 }).notNull().unique(),
-  memberIds: jsonb("member_ids").notNull().default(sql`'[]'::jsonb`),
-  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
-});
-
 export const pawplayUsersTable = pgTable("pawplay_users", {
   id: varchar("id").primaryKey(),
   replitId: varchar("replit_id"),
   displayName: varchar("display_name"),
   email: varchar("email"),
-  familyId: varchar("family_id"),
-  role: varchar("role").default("adult"),
+  inviteCode: varchar("invite_code", { length: 6 }).notNull().unique(),
   expoPushToken: varchar("expo_push_token"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
 export const dogsTable = pgTable("dogs", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  familyId: varchar("family_id").notNull(),
+  userId: varchar("user_id").notNull(),
   name: varchar("name").notNull(),
   age: real("age"),
   breed: varchar("breed"),
@@ -86,3 +78,15 @@ export const pushTokensTable = pgTable("push_tokens", {
   platform: varchar("platform"),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });
+
+export const friendshipsTable = pgTable(
+  "friendships",
+  {
+    userId: varchar("user_id").notNull(),
+    friendId: varchar("friend_id").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => ({
+    pk: primaryKey({ columns: [t.userId, t.friendId] }),
+  }),
+);

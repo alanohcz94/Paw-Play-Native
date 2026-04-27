@@ -13,14 +13,12 @@ import { ALL_COMMANDS } from "@/utils/scoring";
 export default function AddDogScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
-  const { familyId, addDog, setCommands, setActiveDogId } = useApp();
+  const { addDog, setCommands, setActiveDogId } = useApp();
   const { user } = useAuth();
   const [step, setStep] = useState<"dog" | "commands">("dog");
   const [dogName, setDogName] = useState("");
   const [selectedCommands, setSelectedCommands] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(false);
-
-  const apiBase = process.env.EXPO_PUBLIC_DOMAIN ? `https://${process.env.EXPO_PUBLIC_DOMAIN}` : "";
 
   const toggleCommand = useCallback((cmd: string) => {
     setSelectedCommands((prev) =>
@@ -29,7 +27,7 @@ export default function AddDogScreen() {
   }, []);
 
   const handleCreate = useCallback(async () => {
-    if (!user?.id || !familyId) return;
+    if (!user?.id) return;
     setIsLoading(true);
     try {
       const { authedFetch } = await import("@/lib/authedFetch");
@@ -38,7 +36,7 @@ export default function AddDogScreen() {
       const dogRes = await authedFetch(`/api/dogs`, {
         method: "POST",
         headers,
-        body: JSON.stringify({ name: dogName, familyId }),
+        body: JSON.stringify({ name: dogName }),
       });
       if (!dogRes.ok) {
         Alert.alert("Error", "Could not create dog. Please try again.");
@@ -74,7 +72,7 @@ export default function AddDogScreen() {
     } finally {
       setIsLoading(false);
     }
-  }, [user?.id, familyId, apiBase, dogName, selectedCommands, addDog, setCommands, setActiveDogId]);
+  }, [user?.id, dogName, selectedCommands, addDog, setCommands, setActiveDogId]);
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background, paddingTop: insets.top + (Platform.OS === "web" ? 67 : 0), paddingBottom: insets.bottom + (Platform.OS === "web" ? 34 : 0) }]}>
@@ -89,7 +87,7 @@ export default function AddDogScreen() {
       {step === "dog" && (
         <ScrollView style={styles.stepContent} showsVerticalScrollIndicator={false}>
           <Text style={[styles.stepTitle, { color: colors.dark, fontFamily: "FredokaOne_400Regular" }]}>Tell us about your pup!</Text>
-          <Text style={[styles.stepSubtitle, { color: colors.mutedForeground, fontFamily: "Nunito_400Regular" }]}>Add another dog to your family</Text>
+          <Text style={[styles.stepSubtitle, { color: colors.mutedForeground, fontFamily: "Nunito_400Regular" }]}>Add another dog to your pack</Text>
 
           <Text style={[styles.label, { color: colors.dark, fontFamily: "Nunito_700Bold" }]}>Dog's name *</Text>
           <TextInput

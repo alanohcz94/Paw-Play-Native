@@ -188,8 +188,7 @@ function AddCommandPanel({
 export default function ProfileScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
-  const { dog, commands, streak, setDog, setCommands, familyId } =
-    useApp();
+  const { dog, commands, streak, setDog, setCommands } = useApp();
   const { user } = useAuth();
   const [familyMembers, setFamilyMembers] = useState<
     { userId: string; displayName: string; totalPoints: number }[]
@@ -220,20 +219,18 @@ export default function ProfileScreen() {
           const { commands: cmds } = await cmdsRes.json();
           setCommands(cmds);
         }
-        // Load family leaderboard members
-        if (familyId) {
-          const res = await authedFetch(`/api/family/${familyId}/leaderboard`);
-          if (res.ok) {
-            const { entries } = await res.json();
-            setFamilyMembers(entries);
-          }
+        // Load friends leaderboard members
+        const res = await authedFetch(`/api/leaderboard`);
+        if (res.ok) {
+          const { entries } = await res.json();
+          setFamilyMembers(entries);
         }
       } catch (e) {
         console.warn("Failed to load profile data:", e);
       }
     };
     load();
-  }, [dog?.id, familyId]));
+  }, [dog?.id]));
 
   const level3Count = useMemo(
     () =>

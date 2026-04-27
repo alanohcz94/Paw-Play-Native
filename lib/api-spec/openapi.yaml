@@ -841,13 +841,13 @@ components:
 
     CalendarDayData:
       type: object
-      required: [date, trainedByMe, trainedByFamily, sessionCount]
+      required: [date, trainedByMe, trainedByFriends, sessionCount]
       properties:
         date:
           type: string
         trainedByMe:
           type: boolean
-        trainedByFamily:
+        trainedByFriends:
           type: boolean
         sessionCount:
           type: integer

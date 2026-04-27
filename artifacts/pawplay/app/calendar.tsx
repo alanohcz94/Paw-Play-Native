@@ -15,7 +15,7 @@ const DAY_NAMES = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 interface CalendarDay {
   date: string;
   trainedByMe: boolean;
-  trainedByFamily: boolean;
+  trainedByFriends: boolean;
   sessionCount: number;
 }
 
@@ -31,7 +31,7 @@ interface SessionRecord {
 export default function CalendarScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
-  const { familyId, dog } = useApp();
+  const { dog } = useApp();
   const { user } = useAuth();
   const [calendarData, setCalendarData] = useState<CalendarDay[]>([]);
   const [totalSessions, setTotalSessions] = useState(0);
@@ -47,10 +47,10 @@ export default function CalendarScreen() {
   const apiBase = process.env.EXPO_PUBLIC_DOMAIN ? `https://${process.env.EXPO_PUBLIC_DOMAIN}` : "";
 
   const loadCalendar = async () => {
-    if (!familyId) return;
+    if (!user?.id) return;
     try {
       const { authedFetch } = await import("@/lib/authedFetch");
-      const res = await authedFetch(`/api/family/${familyId}/calendar?month=${month}&year=${year}`);
+      const res = await authedFetch(`/api/calendar?month=${month}&year=${year}`);
       if (res.ok) {
         const data = await res.json();
         setCalendarData(data.days);
@@ -94,7 +94,7 @@ export default function CalendarScreen() {
     }
   };
 
-  useEffect(() => { loadCalendar(); }, [month, year, familyId]);
+  useEffect(() => { loadCalendar(); }, [month, year, user?.id]);
 
   // Clear selected day when navigating months
   useEffect(() => { setSelectedDay(null); setDaySessions([]); }, [month, year]);
@@ -120,9 +120,9 @@ export default function CalendarScreen() {
 
   const getDotColor = (data: CalendarDay | undefined): string => {
     if (!data) return "transparent";
-    if (data.trainedByMe && data.trainedByFamily) return colors.lemon;
+    if (data.trainedByMe && data.trainedByFriends) return colors.lemon;
     if (data.trainedByMe) return colors.mint;
-    if (data.trainedByFamily) return colors.peach;
+    if (data.trainedByFriends) return colors.peach;
     return "transparent";
   };
 
@@ -197,7 +197,7 @@ export default function CalendarScreen() {
                 styles.dayCell,
                 todayCell && { borderWidth: 2, borderColor: colors.peach, borderRadius: 10 },
                 selected && { backgroundColor: colors.lavLight, borderRadius: 10 },
-                !data?.trainedByMe && !data?.trainedByFamily && !todayCell && !future && { backgroundColor: `${colors.muted}40` },
+                !data?.trainedByMe && !data?.trainedByFriends && !todayCell && !future && { backgroundColor: `${colors.muted}40` },
               ]}
               onPress={() => handleDayPress(day)}
               activeOpacity={future ? 1 : 0.7}
@@ -213,7 +213,7 @@ export default function CalendarScreen() {
       <View style={styles.legend}>
         {[
           { color: colors.mint, label: "Your session" },
-          { color: colors.peach, label: "Family session" },
+          { color: colors.peach, label: "Friend's session" },
           { color: colors.lemon, label: "Both trained" },
         ].map(({ color, label }) => (
           <View key={label} style={styles.legendItem}>
