@@ -1,4 +1,4 @@
-import React, { useEffect } from "react";
+import React, { useEffect, useRef } from "react";
 import {
   View,
   Text,
@@ -29,13 +29,16 @@ export default function HomeScreen() {
     setFamilyId,
     setOnboardingComplete,
     setDogs,
+    setCommands,
   } = useApp();
   const colors = useColors();
   const insets = useSafeAreaInsets();
+  const hasNavigated = useRef(false);
 
   useEffect(() => {
-    if (!isLoading && isAuthenticated && user?.id) {
+    if (!isLoading && isAuthenticated && user?.id && !hasNavigated.current) {
       const restore = async () => {
+        hasNavigated.current = true;
         if (onboardingComplete && familyId) {
           await loadDogsFromApi();
           router.replace("/(tabs)");
@@ -57,6 +60,15 @@ export default function HomeScreen() {
               if (dogsRes.ok) {
                 const { dogs: fetchedDogs } = await dogsRes.json();
                 setDogs(fetchedDogs);
+                // Also load commands for the active dog so profile/games work immediately
+                if (fetchedDogs.length > 0) {
+                  const activeDogId = fetchedDogs[0].id;
+                  const cmdsRes = await authedFetch(`/api/dogs/${activeDogId}/commands`);
+                  if (cmdsRes.ok) {
+                    const { commands: cmds } = await cmdsRes.json();
+                    setCommands(cmds);
+                  }
+                }
               }
               router.replace("/(tabs)");
               return;
@@ -69,7 +81,7 @@ export default function HomeScreen() {
       };
       restore();
     }
-  }, [isAuthenticated, isLoading, user?.id]);
+  }, [isAuthenticated, isLoading, user?.id, onboardingComplete, familyId]);
 
   if (isAuthenticated) return null;
 

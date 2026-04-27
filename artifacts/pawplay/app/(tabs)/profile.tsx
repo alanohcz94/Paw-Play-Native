@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useMemo } from "react";
+import React, { useState, useCallback, useMemo } from "react";
 import {
   View,
   Text,
@@ -12,7 +12,7 @@ import {
   Modal,
   Pressable,
 } from "react-native";
-import { router } from "expo-router";
+import { router, useFocusEffect } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Feather } from "@expo/vector-icons";
 import { useColors } from "@/hooks/useColors";
@@ -209,24 +209,31 @@ export default function ProfileScreen() {
     ? `https://${process.env.EXPO_PUBLIC_DOMAIN}`
     : "";
 
-  useEffect(() => {
-    if (!familyId) return;
+  useFocusEffect(useCallback(() => {
+    if (!dog?.id) return;
     const load = async () => {
       try {
         const { authedFetch } = await import("@/lib/authedFetch");
-        const res = await authedFetch(
-          `/api/family/${familyId}/leaderboard`,
-        );
-        if (res.ok) {
-          const { entries } = await res.json();
-          setFamilyMembers(entries);
+        // Always refresh commands when profile is focused
+        const cmdsRes = await authedFetch(`/api/dogs/${dog.id}/commands`);
+        if (cmdsRes.ok) {
+          const { commands: cmds } = await cmdsRes.json();
+          setCommands(cmds);
+        }
+        // Load family leaderboard members
+        if (familyId) {
+          const res = await authedFetch(`/api/family/${familyId}/leaderboard`);
+          if (res.ok) {
+            const { entries } = await res.json();
+            setFamilyMembers(entries);
+          }
         }
       } catch (e) {
-        console.warn("Failed to load family members:", e);
+        console.warn("Failed to load profile data:", e);
       }
     };
     load();
-  }, [familyId]);
+  }, [dog?.id, familyId]));
 
   const level3Count = useMemo(
     () =>
