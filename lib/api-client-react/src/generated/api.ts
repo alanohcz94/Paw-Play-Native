@@ -19,20 +19,22 @@ import type {
 import type {
   AchievementsResponse,
   AddCommandBody,
+  AddFriendBody,
+  AddFriendResponse,
   AuthUserEnvelope,
   BeginBrowserLoginParams,
   CalendarResponse,
   CommandResponse,
   CommandsResponse,
   CreateDogBody,
-  CreateFamilyBody,
   CreateSessionBody,
   DogResponse,
+  DogsResponse,
   ErrorEnvelope,
-  FamilyResponse,
-  GetFamilyCalendarParams,
-  GetFamilyYearlyChartParams,
+  FriendsListResponse,
+  GetCalendarParams,
   GetSessionsParams,
+  GetYearlyChartParams,
   HandleBrowserLoginCallbackParams,
   HealthStatus,
   LeaderboardResponse,
@@ -1349,586 +1351,62 @@ export function useGetSessions<
 }
 
 /**
- * @summary Create a family
+ * @summary Get the current PawPlay user (lazy-creates with an invite code)
  */
-export const getCreateFamilyUrl = () => {
-  return `/api/family`;
+export const getGetMeUrl = () => {
+  return `/api/users/me`;
 };
 
-export const createFamily = async (
-  createFamilyBody: CreateFamilyBody,
-  options?: RequestInit,
-): Promise<FamilyResponse> => {
-  return customFetch<FamilyResponse>(getCreateFamilyUrl(), {
-    ...options,
-    method: "POST",
-    headers: { "Content-Type": "application/json", ...options?.headers },
-    body: JSON.stringify(createFamilyBody),
-  });
-};
-
-export const getCreateFamilyMutationOptions = <
-  TError = ErrorType<unknown>,
-  TContext = unknown,
->(options?: {
-  mutation?: UseMutationOptions<
-    Awaited<ReturnType<typeof createFamily>>,
-    TError,
-    { data: BodyType<CreateFamilyBody> },
-    TContext
-  >;
-  request?: SecondParameter<typeof customFetch>;
-}): UseMutationOptions<
-  Awaited<ReturnType<typeof createFamily>>,
-  TError,
-  { data: BodyType<CreateFamilyBody> },
-  TContext
-> => {
-  const mutationKey = ["createFamily"];
-  const { mutation: mutationOptions, request: requestOptions } = options
-    ? options.mutation &&
-      "mutationKey" in options.mutation &&
-      options.mutation.mutationKey
-      ? options
-      : { ...options, mutation: { ...options.mutation, mutationKey } }
-    : { mutation: { mutationKey }, request: undefined };
-
-  const mutationFn: MutationFunction<
-    Awaited<ReturnType<typeof createFamily>>,
-    { data: BodyType<CreateFamilyBody> }
-  > = (props) => {
-    const { data } = props ?? {};
-
-    return createFamily(data, requestOptions);
-  };
-
-  return { mutationFn, ...mutationOptions };
-};
-
-export type CreateFamilyMutationResult = NonNullable<
-  Awaited<ReturnType<typeof createFamily>>
->;
-export type CreateFamilyMutationBody = BodyType<CreateFamilyBody>;
-export type CreateFamilyMutationError = ErrorType<unknown>;
-
-/**
- * @summary Create a family
- */
-export const useCreateFamily = <
-  TError = ErrorType<unknown>,
-  TContext = unknown,
->(options?: {
-  mutation?: UseMutationOptions<
-    Awaited<ReturnType<typeof createFamily>>,
-    TError,
-    { data: BodyType<CreateFamilyBody> },
-    TContext
-  >;
-  request?: SecondParameter<typeof customFetch>;
-}): UseMutationResult<
-  Awaited<ReturnType<typeof createFamily>>,
-  TError,
-  { data: BodyType<CreateFamilyBody> },
-  TContext
-> => {
-  return useMutation(getCreateFamilyMutationOptions(options));
-};
-
-/**
- * @summary Join a family by invite code
- */
-export const getJoinFamilyUrl = (code: string) => {
-  return `/api/family/join/${code}`;
-};
-
-export const joinFamily = async (
-  code: string,
-  options?: RequestInit,
-): Promise<FamilyResponse> => {
-  return customFetch<FamilyResponse>(getJoinFamilyUrl(code), {
-    ...options,
-    method: "POST",
-  });
-};
-
-export const getJoinFamilyMutationOptions = <
-  TError = ErrorType<unknown>,
-  TContext = unknown,
->(options?: {
-  mutation?: UseMutationOptions<
-    Awaited<ReturnType<typeof joinFamily>>,
-    TError,
-    { code: string },
-    TContext
-  >;
-  request?: SecondParameter<typeof customFetch>;
-}): UseMutationOptions<
-  Awaited<ReturnType<typeof joinFamily>>,
-  TError,
-  { code: string },
-  TContext
-> => {
-  const mutationKey = ["joinFamily"];
-  const { mutation: mutationOptions, request: requestOptions } = options
-    ? options.mutation &&
-      "mutationKey" in options.mutation &&
-      options.mutation.mutationKey
-      ? options
-      : { ...options, mutation: { ...options.mutation, mutationKey } }
-    : { mutation: { mutationKey }, request: undefined };
-
-  const mutationFn: MutationFunction<
-    Awaited<ReturnType<typeof joinFamily>>,
-    { code: string }
-  > = (props) => {
-    const { code } = props ?? {};
-
-    return joinFamily(code, requestOptions);
-  };
-
-  return { mutationFn, ...mutationOptions };
-};
-
-export type JoinFamilyMutationResult = NonNullable<
-  Awaited<ReturnType<typeof joinFamily>>
->;
-
-export type JoinFamilyMutationError = ErrorType<unknown>;
-
-/**
- * @summary Join a family by invite code
- */
-export const useJoinFamily = <
-  TError = ErrorType<unknown>,
-  TContext = unknown,
->(options?: {
-  mutation?: UseMutationOptions<
-    Awaited<ReturnType<typeof joinFamily>>,
-    TError,
-    { code: string },
-    TContext
-  >;
-  request?: SecondParameter<typeof customFetch>;
-}): UseMutationResult<
-  Awaited<ReturnType<typeof joinFamily>>,
-  TError,
-  { code: string },
-  TContext
-> => {
-  return useMutation(getJoinFamilyMutationOptions(options));
-};
-
-/**
- * @summary Get family leaderboard
- */
-export const getGetFamilyLeaderboardUrl = (familyId: string) => {
-  return `/api/family/${familyId}/leaderboard`;
-};
-
-export const getFamilyLeaderboard = async (
-  familyId: string,
-  options?: RequestInit,
-): Promise<LeaderboardResponse> => {
-  return customFetch<LeaderboardResponse>(
-    getGetFamilyLeaderboardUrl(familyId),
-    {
-      ...options,
-      method: "GET",
-    },
-  );
-};
-
-export const getGetFamilyLeaderboardQueryKey = (familyId: string) => {
-  return [`/api/family/${familyId}/leaderboard`] as const;
-};
-
-export const getGetFamilyLeaderboardQueryOptions = <
-  TData = Awaited<ReturnType<typeof getFamilyLeaderboard>>,
-  TError = ErrorType<unknown>,
->(
-  familyId: string,
-  options?: {
-    query?: UseQueryOptions<
-      Awaited<ReturnType<typeof getFamilyLeaderboard>>,
-      TError,
-      TData
-    >;
-    request?: SecondParameter<typeof customFetch>;
-  },
-) => {
-  const { query: queryOptions, request: requestOptions } = options ?? {};
-
-  const queryKey =
-    queryOptions?.queryKey ?? getGetFamilyLeaderboardQueryKey(familyId);
-
-  const queryFn: QueryFunction<
-    Awaited<ReturnType<typeof getFamilyLeaderboard>>
-  > = ({ signal }) =>
-    getFamilyLeaderboard(familyId, { signal, ...requestOptions });
-
-  return {
-    queryKey,
-    queryFn,
-    enabled: !!familyId,
-    ...queryOptions,
-  } as UseQueryOptions<
-    Awaited<ReturnType<typeof getFamilyLeaderboard>>,
-    TError,
-    TData
-  > & { queryKey: QueryKey };
-};
-
-export type GetFamilyLeaderboardQueryResult = NonNullable<
-  Awaited<ReturnType<typeof getFamilyLeaderboard>>
->;
-export type GetFamilyLeaderboardQueryError = ErrorType<unknown>;
-
-/**
- * @summary Get family leaderboard
- */
-
-export function useGetFamilyLeaderboard<
-  TData = Awaited<ReturnType<typeof getFamilyLeaderboard>>,
-  TError = ErrorType<unknown>,
->(
-  familyId: string,
-  options?: {
-    query?: UseQueryOptions<
-      Awaited<ReturnType<typeof getFamilyLeaderboard>>,
-      TError,
-      TData
-    >;
-    request?: SecondParameter<typeof customFetch>;
-  },
-): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
-  const queryOptions = getGetFamilyLeaderboardQueryOptions(familyId, options);
-
-  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
-    queryKey: QueryKey;
-  };
-
-  return { ...query, queryKey: queryOptions.queryKey };
-}
-
-/**
- * @summary Get family calendar data for a month
- */
-export const getGetFamilyCalendarUrl = (
-  familyId: string,
-  params: GetFamilyCalendarParams,
-) => {
-  const normalizedParams = new URLSearchParams();
-
-  Object.entries(params || {}).forEach(([key, value]) => {
-    if (value !== undefined) {
-      normalizedParams.append(key, value === null ? "null" : value.toString());
-    }
-  });
-
-  const stringifiedParams = normalizedParams.toString();
-
-  return stringifiedParams.length > 0
-    ? `/api/family/${familyId}/calendar?${stringifiedParams}`
-    : `/api/family/${familyId}/calendar`;
-};
-
-export const getFamilyCalendar = async (
-  familyId: string,
-  params: GetFamilyCalendarParams,
-  options?: RequestInit,
-): Promise<CalendarResponse> => {
-  return customFetch<CalendarResponse>(
-    getGetFamilyCalendarUrl(familyId, params),
-    {
-      ...options,
-      method: "GET",
-    },
-  );
-};
-
-export const getGetFamilyCalendarQueryKey = (
-  familyId: string,
-  params?: GetFamilyCalendarParams,
-) => {
-  return [
-    `/api/family/${familyId}/calendar`,
-    ...(params ? [params] : []),
-  ] as const;
-};
-
-export const getGetFamilyCalendarQueryOptions = <
-  TData = Awaited<ReturnType<typeof getFamilyCalendar>>,
-  TError = ErrorType<unknown>,
->(
-  familyId: string,
-  params: GetFamilyCalendarParams,
-  options?: {
-    query?: UseQueryOptions<
-      Awaited<ReturnType<typeof getFamilyCalendar>>,
-      TError,
-      TData
-    >;
-    request?: SecondParameter<typeof customFetch>;
-  },
-) => {
-  const { query: queryOptions, request: requestOptions } = options ?? {};
-
-  const queryKey =
-    queryOptions?.queryKey ?? getGetFamilyCalendarQueryKey(familyId, params);
-
-  const queryFn: QueryFunction<
-    Awaited<ReturnType<typeof getFamilyCalendar>>
-  > = ({ signal }) =>
-    getFamilyCalendar(familyId, params, { signal, ...requestOptions });
-
-  return {
-    queryKey,
-    queryFn,
-    enabled: !!familyId,
-    ...queryOptions,
-  } as UseQueryOptions<
-    Awaited<ReturnType<typeof getFamilyCalendar>>,
-    TError,
-    TData
-  > & { queryKey: QueryKey };
-};
-
-export type GetFamilyCalendarQueryResult = NonNullable<
-  Awaited<ReturnType<typeof getFamilyCalendar>>
->;
-export type GetFamilyCalendarQueryError = ErrorType<unknown>;
-
-/**
- * @summary Get family calendar data for a month
- */
-
-export function useGetFamilyCalendar<
-  TData = Awaited<ReturnType<typeof getFamilyCalendar>>,
-  TError = ErrorType<unknown>,
->(
-  familyId: string,
-  params: GetFamilyCalendarParams,
-  options?: {
-    query?: UseQueryOptions<
-      Awaited<ReturnType<typeof getFamilyCalendar>>,
-      TError,
-      TData
-    >;
-    request?: SecondParameter<typeof customFetch>;
-  },
-): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
-  const queryOptions = getGetFamilyCalendarQueryOptions(
-    familyId,
-    params,
-    options,
-  );
-
-  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
-    queryKey: QueryKey;
-  };
-
-  return { ...query, queryKey: queryOptions.queryKey };
-}
-
-/**
- * @summary Get yearly training chart data
- */
-export const getGetFamilyYearlyChartUrl = (
-  familyId: string,
-  params: GetFamilyYearlyChartParams,
-) => {
-  const normalizedParams = new URLSearchParams();
-
-  Object.entries(params || {}).forEach(([key, value]) => {
-    if (value !== undefined) {
-      normalizedParams.append(key, value === null ? "null" : value.toString());
-    }
-  });
-
-  const stringifiedParams = normalizedParams.toString();
-
-  return stringifiedParams.length > 0
-    ? `/api/family/${familyId}/yearly-chart?${stringifiedParams}`
-    : `/api/family/${familyId}/yearly-chart`;
-};
-
-export const getFamilyYearlyChart = async (
-  familyId: string,
-  params: GetFamilyYearlyChartParams,
-  options?: RequestInit,
-): Promise<YearlyChartResponse> => {
-  return customFetch<YearlyChartResponse>(
-    getGetFamilyYearlyChartUrl(familyId, params),
-    {
-      ...options,
-      method: "GET",
-    },
-  );
-};
-
-export const getGetFamilyYearlyChartQueryKey = (
-  familyId: string,
-  params?: GetFamilyYearlyChartParams,
-) => {
-  return [
-    `/api/family/${familyId}/yearly-chart`,
-    ...(params ? [params] : []),
-  ] as const;
-};
-
-export const getGetFamilyYearlyChartQueryOptions = <
-  TData = Awaited<ReturnType<typeof getFamilyYearlyChart>>,
-  TError = ErrorType<unknown>,
->(
-  familyId: string,
-  params: GetFamilyYearlyChartParams,
-  options?: {
-    query?: UseQueryOptions<
-      Awaited<ReturnType<typeof getFamilyYearlyChart>>,
-      TError,
-      TData
-    >;
-    request?: SecondParameter<typeof customFetch>;
-  },
-) => {
-  const { query: queryOptions, request: requestOptions } = options ?? {};
-
-  const queryKey =
-    queryOptions?.queryKey ?? getGetFamilyYearlyChartQueryKey(familyId, params);
-
-  const queryFn: QueryFunction<
-    Awaited<ReturnType<typeof getFamilyYearlyChart>>
-  > = ({ signal }) =>
-    getFamilyYearlyChart(familyId, params, { signal, ...requestOptions });
-
-  return {
-    queryKey,
-    queryFn,
-    enabled: !!familyId,
-    ...queryOptions,
-  } as UseQueryOptions<
-    Awaited<ReturnType<typeof getFamilyYearlyChart>>,
-    TError,
-    TData
-  > & { queryKey: QueryKey };
-};
-
-export type GetFamilyYearlyChartQueryResult = NonNullable<
-  Awaited<ReturnType<typeof getFamilyYearlyChart>>
->;
-export type GetFamilyYearlyChartQueryError = ErrorType<unknown>;
-
-/**
- * @summary Get yearly training chart data
- */
-
-export function useGetFamilyYearlyChart<
-  TData = Awaited<ReturnType<typeof getFamilyYearlyChart>>,
-  TError = ErrorType<unknown>,
->(
-  familyId: string,
-  params: GetFamilyYearlyChartParams,
-  options?: {
-    query?: UseQueryOptions<
-      Awaited<ReturnType<typeof getFamilyYearlyChart>>,
-      TError,
-      TData
-    >;
-    request?: SecondParameter<typeof customFetch>;
-  },
-): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
-  const queryOptions = getGetFamilyYearlyChartQueryOptions(
-    familyId,
-    params,
-    options,
-  );
-
-  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
-    queryKey: QueryKey;
-  };
-
-  return { ...query, queryKey: queryOptions.queryKey };
-}
-
-/**
- * @summary Get a PawPlay user profile
- */
-export const getGetPawplayUserUrl = (userId: string) => {
-  return `/api/users/${userId}`;
-};
-
-export const getPawplayUser = async (
-  userId: string,
+export const getMe = async (
   options?: RequestInit,
 ): Promise<PawplayUserResponse> => {
-  return customFetch<PawplayUserResponse>(getGetPawplayUserUrl(userId), {
+  return customFetch<PawplayUserResponse>(getGetMeUrl(), {
     ...options,
     method: "GET",
   });
 };
 
-export const getGetPawplayUserQueryKey = (userId: string) => {
-  return [`/api/users/${userId}`] as const;
+export const getGetMeQueryKey = () => {
+  return [`/api/users/me`] as const;
 };
 
-export const getGetPawplayUserQueryOptions = <
-  TData = Awaited<ReturnType<typeof getPawplayUser>>,
+export const getGetMeQueryOptions = <
+  TData = Awaited<ReturnType<typeof getMe>>,
   TError = ErrorType<unknown>,
->(
-  userId: string,
-  options?: {
-    query?: UseQueryOptions<
-      Awaited<ReturnType<typeof getPawplayUser>>,
-      TError,
-      TData
-    >;
-    request?: SecondParameter<typeof customFetch>;
-  },
-) => {
+>(options?: {
+  query?: UseQueryOptions<Awaited<ReturnType<typeof getMe>>, TError, TData>;
+  request?: SecondParameter<typeof customFetch>;
+}) => {
   const { query: queryOptions, request: requestOptions } = options ?? {};
 
-  const queryKey = queryOptions?.queryKey ?? getGetPawplayUserQueryKey(userId);
+  const queryKey = queryOptions?.queryKey ?? getGetMeQueryKey();
 
-  const queryFn: QueryFunction<Awaited<ReturnType<typeof getPawplayUser>>> = ({
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof getMe>>> = ({
     signal,
-  }) => getPawplayUser(userId, { signal, ...requestOptions });
+  }) => getMe({ signal, ...requestOptions });
 
-  return {
-    queryKey,
-    queryFn,
-    enabled: !!userId,
-    ...queryOptions,
-  } as UseQueryOptions<
-    Awaited<ReturnType<typeof getPawplayUser>>,
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof getMe>>,
     TError,
     TData
   > & { queryKey: QueryKey };
 };
 
-export type GetPawplayUserQueryResult = NonNullable<
-  Awaited<ReturnType<typeof getPawplayUser>>
->;
-export type GetPawplayUserQueryError = ErrorType<unknown>;
+export type GetMeQueryResult = NonNullable<Awaited<ReturnType<typeof getMe>>>;
+export type GetMeQueryError = ErrorType<unknown>;
 
 /**
- * @summary Get a PawPlay user profile
+ * @summary Get the current PawPlay user (lazy-creates with an invite code)
  */
 
-export function useGetPawplayUser<
-  TData = Awaited<ReturnType<typeof getPawplayUser>>,
+export function useGetMe<
+  TData = Awaited<ReturnType<typeof getMe>>,
   TError = ErrorType<unknown>,
->(
-  userId: string,
-  options?: {
-    query?: UseQueryOptions<
-      Awaited<ReturnType<typeof getPawplayUser>>,
-      TError,
-      TData
-    >;
-    request?: SecondParameter<typeof customFetch>;
-  },
-): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
-  const queryOptions = getGetPawplayUserQueryOptions(userId, options);
+>(options?: {
+  query?: UseQueryOptions<Awaited<ReturnType<typeof getMe>>, TError, TData>;
+  request?: SecondParameter<typeof customFetch>;
+}): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetMeQueryOptions(options);
 
   const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
     queryKey: QueryKey;
@@ -2023,6 +1501,601 @@ export const useUpdatePawplayUser = <
 > => {
   return useMutation(getUpdatePawplayUserMutationOptions(options));
 };
+
+/**
+ * @summary Get all dogs owned by a user (must be the caller)
+ */
+export const getGetUserDogsUrl = (userId: string) => {
+  return `/api/users/${userId}/dogs`;
+};
+
+export const getUserDogs = async (
+  userId: string,
+  options?: RequestInit,
+): Promise<DogsResponse> => {
+  return customFetch<DogsResponse>(getGetUserDogsUrl(userId), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetUserDogsQueryKey = (userId: string) => {
+  return [`/api/users/${userId}/dogs`] as const;
+};
+
+export const getGetUserDogsQueryOptions = <
+  TData = Awaited<ReturnType<typeof getUserDogs>>,
+  TError = ErrorType<unknown>,
+>(
+  userId: string,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getUserDogs>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getGetUserDogsQueryKey(userId);
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof getUserDogs>>> = ({
+    signal,
+  }) => getUserDogs(userId, { signal, ...requestOptions });
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: !!userId,
+    ...queryOptions,
+  } as UseQueryOptions<
+    Awaited<ReturnType<typeof getUserDogs>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetUserDogsQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getUserDogs>>
+>;
+export type GetUserDogsQueryError = ErrorType<unknown>;
+
+/**
+ * @summary Get all dogs owned by a user (must be the caller)
+ */
+
+export function useGetUserDogs<
+  TData = Awaited<ReturnType<typeof getUserDogs>>,
+  TError = ErrorType<unknown>,
+>(
+  userId: string,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getUserDogs>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetUserDogsQueryOptions(userId, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary List the caller's friends
+ */
+export const getListFriendsUrl = () => {
+  return `/api/friends`;
+};
+
+export const listFriends = async (
+  options?: RequestInit,
+): Promise<FriendsListResponse> => {
+  return customFetch<FriendsListResponse>(getListFriendsUrl(), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getListFriendsQueryKey = () => {
+  return [`/api/friends`] as const;
+};
+
+export const getListFriendsQueryOptions = <
+  TData = Awaited<ReturnType<typeof listFriends>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof listFriends>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getListFriendsQueryKey();
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof listFriends>>> = ({
+    signal,
+  }) => listFriends({ signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof listFriends>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type ListFriendsQueryResult = NonNullable<
+  Awaited<ReturnType<typeof listFriends>>
+>;
+export type ListFriendsQueryError = ErrorType<unknown>;
+
+/**
+ * @summary List the caller's friends
+ */
+
+export function useListFriends<
+  TData = Awaited<ReturnType<typeof listFriends>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof listFriends>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getListFriendsQueryOptions(options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Add a friend by their 6-character invite code
+ */
+export const getAddFriendUrl = () => {
+  return `/api/friends`;
+};
+
+export const addFriend = async (
+  addFriendBody: AddFriendBody,
+  options?: RequestInit,
+): Promise<AddFriendResponse> => {
+  return customFetch<AddFriendResponse>(getAddFriendUrl(), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(addFriendBody),
+  });
+};
+
+export const getAddFriendMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof addFriend>>,
+    TError,
+    { data: BodyType<AddFriendBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof addFriend>>,
+  TError,
+  { data: BodyType<AddFriendBody> },
+  TContext
+> => {
+  const mutationKey = ["addFriend"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof addFriend>>,
+    { data: BodyType<AddFriendBody> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return addFriend(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type AddFriendMutationResult = NonNullable<
+  Awaited<ReturnType<typeof addFriend>>
+>;
+export type AddFriendMutationBody = BodyType<AddFriendBody>;
+export type AddFriendMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Add a friend by their 6-character invite code
+ */
+export const useAddFriend = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof addFriend>>,
+    TError,
+    { data: BodyType<AddFriendBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof addFriend>>,
+  TError,
+  { data: BodyType<AddFriendBody> },
+  TContext
+> => {
+  return useMutation(getAddFriendMutationOptions(options));
+};
+
+/**
+ * @summary Remove a friend (mutual)
+ */
+export const getRemoveFriendUrl = (friendId: string) => {
+  return `/api/friends/${friendId}`;
+};
+
+export const removeFriend = async (
+  friendId: string,
+  options?: RequestInit,
+): Promise<SuccessResponse> => {
+  return customFetch<SuccessResponse>(getRemoveFriendUrl(friendId), {
+    ...options,
+    method: "DELETE",
+  });
+};
+
+export const getRemoveFriendMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof removeFriend>>,
+    TError,
+    { friendId: string },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof removeFriend>>,
+  TError,
+  { friendId: string },
+  TContext
+> => {
+  const mutationKey = ["removeFriend"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof removeFriend>>,
+    { friendId: string }
+  > = (props) => {
+    const { friendId } = props ?? {};
+
+    return removeFriend(friendId, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type RemoveFriendMutationResult = NonNullable<
+  Awaited<ReturnType<typeof removeFriend>>
+>;
+
+export type RemoveFriendMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Remove a friend (mutual)
+ */
+export const useRemoveFriend = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof removeFriend>>,
+    TError,
+    { friendId: string },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof removeFriend>>,
+  TError,
+  { friendId: string },
+  TContext
+> => {
+  return useMutation(getRemoveFriendMutationOptions(options));
+};
+
+/**
+ * @summary Get the leaderboard for the caller and their friends
+ */
+export const getGetLeaderboardUrl = () => {
+  return `/api/leaderboard`;
+};
+
+export const getLeaderboard = async (
+  options?: RequestInit,
+): Promise<LeaderboardResponse> => {
+  return customFetch<LeaderboardResponse>(getGetLeaderboardUrl(), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetLeaderboardQueryKey = () => {
+  return [`/api/leaderboard`] as const;
+};
+
+export const getGetLeaderboardQueryOptions = <
+  TData = Awaited<ReturnType<typeof getLeaderboard>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof getLeaderboard>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getGetLeaderboardQueryKey();
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof getLeaderboard>>> = ({
+    signal,
+  }) => getLeaderboard({ signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof getLeaderboard>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetLeaderboardQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getLeaderboard>>
+>;
+export type GetLeaderboardQueryError = ErrorType<unknown>;
+
+/**
+ * @summary Get the leaderboard for the caller and their friends
+ */
+
+export function useGetLeaderboard<
+  TData = Awaited<ReturnType<typeof getLeaderboard>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof getLeaderboard>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetLeaderboardQueryOptions(options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Get monthly calendar data for the caller and their friends
+ */
+export const getGetCalendarUrl = (params: GetCalendarParams) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? "null" : value.toString());
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0
+    ? `/api/calendar?${stringifiedParams}`
+    : `/api/calendar`;
+};
+
+export const getCalendar = async (
+  params: GetCalendarParams,
+  options?: RequestInit,
+): Promise<CalendarResponse> => {
+  return customFetch<CalendarResponse>(getGetCalendarUrl(params), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetCalendarQueryKey = (params?: GetCalendarParams) => {
+  return [`/api/calendar`, ...(params ? [params] : [])] as const;
+};
+
+export const getGetCalendarQueryOptions = <
+  TData = Awaited<ReturnType<typeof getCalendar>>,
+  TError = ErrorType<unknown>,
+>(
+  params: GetCalendarParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getCalendar>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getGetCalendarQueryKey(params);
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof getCalendar>>> = ({
+    signal,
+  }) => getCalendar(params, { signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof getCalendar>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetCalendarQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getCalendar>>
+>;
+export type GetCalendarQueryError = ErrorType<unknown>;
+
+/**
+ * @summary Get monthly calendar data for the caller and their friends
+ */
+
+export function useGetCalendar<
+  TData = Awaited<ReturnType<typeof getCalendar>>,
+  TError = ErrorType<unknown>,
+>(
+  params: GetCalendarParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getCalendar>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetCalendarQueryOptions(params, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Get yearly training chart data for the caller and their friends
+ */
+export const getGetYearlyChartUrl = (params: GetYearlyChartParams) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? "null" : value.toString());
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0
+    ? `/api/yearly-chart?${stringifiedParams}`
+    : `/api/yearly-chart`;
+};
+
+export const getYearlyChart = async (
+  params: GetYearlyChartParams,
+  options?: RequestInit,
+): Promise<YearlyChartResponse> => {
+  return customFetch<YearlyChartResponse>(getGetYearlyChartUrl(params), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetYearlyChartQueryKey = (params?: GetYearlyChartParams) => {
+  return [`/api/yearly-chart`, ...(params ? [params] : [])] as const;
+};
+
+export const getGetYearlyChartQueryOptions = <
+  TData = Awaited<ReturnType<typeof getYearlyChart>>,
+  TError = ErrorType<unknown>,
+>(
+  params: GetYearlyChartParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getYearlyChart>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getGetYearlyChartQueryKey(params);
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof getYearlyChart>>> = ({
+    signal,
+  }) => getYearlyChart(params, { signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof getYearlyChart>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetYearlyChartQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getYearlyChart>>
+>;
+export type GetYearlyChartQueryError = ErrorType<unknown>;
+
+/**
+ * @summary Get yearly training chart data for the caller and their friends
+ */
+
+export function useGetYearlyChart<
+  TData = Awaited<ReturnType<typeof getYearlyChart>>,
+  TError = ErrorType<unknown>,
+>(
+  params: GetYearlyChartParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getYearlyChart>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetYearlyChartQueryOptions(params, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
 
 /**
  * @summary Update push token for a user

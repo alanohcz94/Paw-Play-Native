@@ -17,8 +17,10 @@ tags:
     description: Command library
   - name: sessions
     description: Training sessions
-  - name: family
-    description: Family management
+  - name: friends
+    description: Friends and social
+  - name: users
+    description: PawPlay user profile
   - name: achievements
     description: Achievement tracking
   - name: notifications
@@ -326,136 +328,22 @@ paths:
               schema:
                 $ref: '#/components/schemas/SessionsResponse'
 
-  /family:
-    post:
-      tags: [family]
-      operationId: createFamily
-      summary: Create a family
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/CreateFamilyBody'
-      responses:
-        '201':
-          description: Family created
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/FamilyResponse'
-
-  /family/join/{code}:
-    post:
-      tags: [family]
-      operationId: joinFamily
-      summary: Join a family by invite code
-      parameters:
-        - name: code
-          in: path
-          required: true
-          schema:
-            type: string
-      responses:
-        '200':
-          description: Joined family
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/FamilyResponse'
-
-  /family/{familyId}/leaderboard:
+  /users/me:
     get:
-      tags: [family]
-      operationId: getFamilyLeaderboard
-      summary: Get family leaderboard
-      parameters:
-        - name: familyId
-          in: path
-          required: true
-          schema:
-            type: string
+      tags: [users]
+      operationId: getMe
+      summary: Get the current PawPlay user (lazy-creates with an invite code)
       responses:
         '200':
-          description: Leaderboard data
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/LeaderboardResponse'
-
-  /family/{familyId}/calendar:
-    get:
-      tags: [family]
-      operationId: getFamilyCalendar
-      summary: Get family calendar data for a month
-      parameters:
-        - name: familyId
-          in: path
-          required: true
-          schema:
-            type: string
-        - name: month
-          in: query
-          required: true
-          schema:
-            type: integer
-        - name: year
-          in: query
-          required: true
-          schema:
-            type: integer
-      responses:
-        '200':
-          description: Calendar data
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/CalendarResponse'
-
-  /family/{familyId}/yearly-chart:
-    get:
-      tags: [family]
-      operationId: getFamilyYearlyChart
-      summary: Get yearly training chart data
-      parameters:
-        - name: familyId
-          in: path
-          required: true
-          schema:
-            type: string
-        - name: year
-          in: query
-          required: true
-          schema:
-            type: integer
-      responses:
-        '200':
-          description: Yearly chart data
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/YearlyChartResponse'
-
-  /users/{userId}:
-    get:
-      tags: [family]
-      operationId: getPawplayUser
-      summary: Get a PawPlay user profile
-      parameters:
-        - name: userId
-          in: path
-          required: true
-          schema:
-            type: string
-      responses:
-        '200':
-          description: User found
+          description: User found or created
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/PawplayUserResponse'
+
+  /users/{userId}:
     patch:
-      tags: [family]
+      tags: [users]
       operationId: updatePawplayUser
       summary: Update PawPlay user profile
       parameters:
@@ -477,6 +365,130 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/PawplayUserResponse'
+
+  /users/{userId}/dogs:
+    get:
+      tags: [dogs]
+      operationId: getUserDogs
+      summary: Get all dogs owned by a user (must be the caller)
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Dogs list
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DogsResponse'
+
+  /friends:
+    get:
+      tags: [friends]
+      operationId: listFriends
+      summary: List the caller's friends
+      responses:
+        '200':
+          description: Friends list
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FriendsListResponse'
+    post:
+      tags: [friends]
+      operationId: addFriend
+      summary: Add a friend by their 6-character invite code
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AddFriendBody'
+      responses:
+        '201':
+          description: Friend added
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AddFriendResponse'
+
+  /friends/{friendId}:
+    delete:
+      tags: [friends]
+      operationId: removeFriend
+      summary: Remove a friend (mutual)
+      parameters:
+        - name: friendId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Friend removed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+
+  /leaderboard:
+    get:
+      tags: [friends]
+      operationId: getLeaderboard
+      summary: Get the leaderboard for the caller and their friends
+      responses:
+        '200':
+          description: Leaderboard data
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LeaderboardResponse'
+
+  /calendar:
+    get:
+      tags: [friends]
+      operationId: getCalendar
+      summary: Get monthly calendar data for the caller and their friends
+      parameters:
+        - name: month
+          in: query
+          required: true
+          schema:
+            type: integer
+        - name: year
+          in: query
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Calendar data
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CalendarResponse'
+
+  /yearly-chart:
+    get:
+      tags: [friends]
+      operationId: getYearlyChart
+      summary: Get yearly training chart data for the caller and their friends
+      parameters:
+        - name: year
+          in: query
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Yearly chart data
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/YearlyChartResponse'
 
   /users/{userId}/push-token:
     patch:
@@ -622,11 +634,11 @@ components:
 
     DogResponse:
       type: object
-      required: [id, familyId, name, level, xp, createdAt]
+      required: [id, userId, name, level, xp, createdAt]
       properties:
         id:
           type: string
-        familyId:
+        userId:
           type: string
         name:
           type: string
@@ -643,13 +655,20 @@ components:
         createdAt:
           type: string
 
+    DogsResponse:
+      type: object
+      required: [dogs]
+      properties:
+        dogs:
+          type: array
+          items:
+            $ref: '#/components/schemas/DogResponse'
+
     CreateDogBody:
       type: object
-      required: [name, familyId]
+      required: [name]
       properties:
         name:
-          type: string
-        familyId:
           type: string
         age:
           type: number
@@ -792,28 +811,30 @@ components:
         completed:
           type: boolean
 
-    FamilyResponse:
+    AddFriendBody:
       type: object
-      required: [id, createdBy, inviteCode, memberIds, createdAt]
+      required: [code]
       properties:
-        id:
+        code:
           type: string
-        createdBy:
-          type: string
-        inviteCode:
-          type: string
-        memberIds:
+          minLength: 6
+          maxLength: 6
+
+    AddFriendResponse:
+      type: object
+      required: [friend]
+      properties:
+        friend:
+          $ref: '#/components/schemas/PawplayUserResponse'
+
+    FriendsListResponse:
+      type: object
+      required: [friends]
+      properties:
+        friends:
           type: array
           items:
-            type: string
-        createdAt:
-          type: string
-
-    CreateFamilyBody:
-      type: object
-      properties:
-        placeholder:
-          type: string
+            $ref: '#/components/schemas/PawplayUserResponse'
 
     LeaderboardEntry:
       type: object
@@ -893,7 +914,7 @@ components:
 
     PawplayUserResponse:
       type: object
-      required: [id]
+      required: [id, inviteCode]
       properties:
         id:
           type: string
@@ -901,10 +922,8 @@ components:
           type: [string, 'null']
         email:
           type: [string, 'null']
-        familyId:
-          type: [string, 'null']
-        role:
-          type: [string, 'null']
+        inviteCode:
+          type: string
         expoPushToken:
           type: [string, 'null']
 
@@ -912,8 +931,6 @@ components:
       type: object
       properties:
         displayName:
-          type: string
-        familyId:
           type: string
         expoPushToken:
           type: string

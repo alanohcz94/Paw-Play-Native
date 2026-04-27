@@ -5,11 +5,8 @@
  * PawPlay API specification
  * OpenAPI spec version: 0.1.0
  */
+import type { DogResponse } from "./dogResponse";
 
-export interface FamilyResponse {
-  id: string;
-  createdBy: string;
-  inviteCode: string;
-  memberIds: string[];
-  createdAt: string;
+export interface DogsResponse {
+  dogs: DogResponse[];
 }

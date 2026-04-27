@@ -8,7 +8,7 @@
 
 export interface DogResponse {
   id: string;
-  familyId: string;
+  userId: string;
   name: string;
   /** @nullable */
   age?: number | null;

@@ -12,10 +12,7 @@ export interface PawplayUserResponse {
   displayName?: string | null;
   /** @nullable */
   email?: string | null;
-  /** @nullable */
-  familyId?: string | null;
-  /** @nullable */
-  role?: string | null;
+  inviteCode: string;
   /** @nullable */
   expoPushToken?: string | null;
 }

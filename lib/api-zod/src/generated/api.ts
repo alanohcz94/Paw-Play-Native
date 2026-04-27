@@ -97,7 +97,6 @@ export const LogoutMobileSessionResponse = zod.object({
  */
 export const CreateDogBody = zod.object({
   name: zod.string(),
-  familyId: zod.string(),
   age: zod.number().optional(),
   breed: zod.string().optional(),
 });
@@ -111,7 +110,7 @@ export const GetDogParams = zod.object({
 
 export const GetDogResponse = zod.object({
   id: zod.string(),
-  familyId: zod.string(),
+  userId: zod.string(),
   name: zod.string(),
   age: zod.number().nullish(),
   breed: zod.string().nullish(),
@@ -137,7 +136,7 @@ export const UpdateDogBody = zod.object({
 
 export const UpdateDogResponse = zod.object({
   id: zod.string(),
-  familyId: zod.string(),
+  userId: zod.string(),
   name: zod.string(),
   age: zod.number().nullish(),
   breed: zod.string().nullish(),
@@ -252,35 +251,99 @@ export const GetSessionsResponse = zod.object({
 });
 
 /**
- * @summary Create a family
+ * @summary Get the current PawPlay user (lazy-creates with an invite code)
  */
-export const CreateFamilyBody = zod.object({
-  placeholder: zod.string().optional(),
-});
-
-/**
- * @summary Join a family by invite code
- */
-export const JoinFamilyParams = zod.object({
-  code: zod.coerce.string(),
-});
-
-export const JoinFamilyResponse = zod.object({
+export const GetMeResponse = zod.object({
   id: zod.string(),
-  createdBy: zod.string(),
+  displayName: zod.string().nullish(),
+  email: zod.string().nullish(),
   inviteCode: zod.string(),
-  memberIds: zod.array(zod.string()),
-  createdAt: zod.string(),
+  expoPushToken: zod.string().nullish(),
 });
 
 /**
- * @summary Get family leaderboard
+ * @summary Update PawPlay user profile
  */
-export const GetFamilyLeaderboardParams = zod.object({
-  familyId: zod.coerce.string(),
+export const UpdatePawplayUserParams = zod.object({
+  userId: zod.coerce.string(),
 });
 
-export const GetFamilyLeaderboardResponse = zod.object({
+export const UpdatePawplayUserBody = zod.object({
+  displayName: zod.string().optional(),
+  expoPushToken: zod.string().optional(),
+});
+
+export const UpdatePawplayUserResponse = zod.object({
+  id: zod.string(),
+  displayName: zod.string().nullish(),
+  email: zod.string().nullish(),
+  inviteCode: zod.string(),
+  expoPushToken: zod.string().nullish(),
+});
+
+/**
+ * @summary Get all dogs owned by a user (must be the caller)
+ */
+export const GetUserDogsParams = zod.object({
+  userId: zod.coerce.string(),
+});
+
+export const GetUserDogsResponse = zod.object({
+  dogs: zod.array(
+    zod.object({
+      id: zod.string(),
+      userId: zod.string(),
+      name: zod.string(),
+      age: zod.number().nullish(),
+      breed: zod.string().nullish(),
+      avatarUrl: zod.string().nullish(),
+      level: zod.number(),
+      xp: zod.number(),
+      createdAt: zod.string(),
+    }),
+  ),
+});
+
+/**
+ * @summary List the caller's friends
+ */
+export const ListFriendsResponse = zod.object({
+  friends: zod.array(
+    zod.object({
+      id: zod.string(),
+      displayName: zod.string().nullish(),
+      email: zod.string().nullish(),
+      inviteCode: zod.string(),
+      expoPushToken: zod.string().nullish(),
+    }),
+  ),
+});
+
+/**
+ * @summary Add a friend by their 6-character invite code
+ */
+export const addFriendBodyCodeMin = 6;
+export const addFriendBodyCodeMax = 6;
+
+export const AddFriendBody = zod.object({
+  code: zod.string().min(addFriendBodyCodeMin).max(addFriendBodyCodeMax),
+});
+
+/**
+ * @summary Remove a friend (mutual)
+ */
+export const RemoveFriendParams = zod.object({
+  friendId: zod.coerce.string(),
+});
+
+export const RemoveFriendResponse = zod.object({
+  success: zod.boolean(),
+});
+
+/**
+ * @summary Get the leaderboard for the caller and their friends
+ */
+export const GetLeaderboardResponse = zod.object({
   entries: zod.array(
     zod.object({
       userId: zod.string(),
@@ -293,18 +356,14 @@ export const GetFamilyLeaderboardResponse = zod.object({
 });
 
 /**
- * @summary Get family calendar data for a month
+ * @summary Get monthly calendar data for the caller and their friends
  */
-export const GetFamilyCalendarParams = zod.object({
-  familyId: zod.coerce.string(),
-});
-
-export const GetFamilyCalendarQueryParams = zod.object({
+export const GetCalendarQueryParams = zod.object({
   month: zod.coerce.number(),
   year: zod.coerce.number(),
 });
 
-export const GetFamilyCalendarResponse = zod.object({
+export const GetCalendarResponse = zod.object({
   days: zod.array(
     zod.object({
       date: zod.string(),
@@ -319,17 +378,13 @@ export const GetFamilyCalendarResponse = zod.object({
 });
 
 /**
- * @summary Get yearly training chart data
+ * @summary Get yearly training chart data for the caller and their friends
  */
-export const GetFamilyYearlyChartParams = zod.object({
-  familyId: zod.coerce.string(),
-});
-
-export const GetFamilyYearlyChartQueryParams = zod.object({
+export const GetYearlyChartQueryParams = zod.object({
   year: zod.coerce.number(),
 });
 
-export const GetFamilyYearlyChartResponse = zod.object({
+export const GetYearlyChartResponse = zod.object({
   months: zod.array(
     zod.object({
       month: zod.number(),
@@ -339,44 +394,6 @@ export const GetFamilyYearlyChartResponse = zod.object({
   ),
   totalHours: zod.number(),
   bestMonth: zod.string().nullable(),
-});
-
-/**
- * @summary Get a PawPlay user profile
- */
-export const GetPawplayUserParams = zod.object({
-  userId: zod.coerce.string(),
-});
-
-export const GetPawplayUserResponse = zod.object({
-  id: zod.string(),
-  displayName: zod.string().nullish(),
-  email: zod.string().nullish(),
-  familyId: zod.string().nullish(),
-  role: zod.string().nullish(),
-  expoPushToken: zod.string().nullish(),
-});
-
-/**
- * @summary Update PawPlay user profile
- */
-export const UpdatePawplayUserParams = zod.object({
-  userId: zod.coerce.string(),
-});
-
-export const UpdatePawplayUserBody = zod.object({
-  displayName: zod.string().optional(),
-  familyId: zod.string().optional(),
-  expoPushToken: zod.string().optional(),
-});
-
-export const UpdatePawplayUserResponse = zod.object({
-  id: zod.string(),
-  displayName: zod.string().nullish(),
-  email: zod.string().nullish(),
-  familyId: zod.string().nullish(),
-  role: zod.string().nullish(),
-  expoPushToken: zod.string().nullish(),
 });
 
 /**

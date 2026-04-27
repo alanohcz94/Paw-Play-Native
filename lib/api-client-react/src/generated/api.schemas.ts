@@ -56,7 +56,7 @@ export interface SuccessResponse {
 
 export interface DogResponse {
   id: string;
-  familyId: string;
+  userId: string;
   name: string;
   /** @nullable */
   age?: number | null;
@@ -69,9 +69,12 @@ export interface DogResponse {
   createdAt: string;
 }
 
+export interface DogsResponse {
+  dogs: DogResponse[];
+}
+
 export interface CreateDogBody {
   name: string;
-  familyId: string;
   age?: number;
   breed?: string;
 }
@@ -152,16 +155,31 @@ export interface CreateSessionBody {
   completed: boolean;
 }
 
-export interface FamilyResponse {
-  id: string;
-  createdBy: string;
-  inviteCode: string;
-  memberIds: string[];
-  createdAt: string;
+export interface AddFriendBody {
+  /**
+   * @minLength 6
+   * @maxLength 6
+   */
+  code: string;
 }
 
-export interface CreateFamilyBody {
-  placeholder?: string;
+export interface PawplayUserResponse {
+  id: string;
+  /** @nullable */
+  displayName?: string | null;
+  /** @nullable */
+  email?: string | null;
+  inviteCode: string;
+  /** @nullable */
+  expoPushToken?: string | null;
+}
+
+export interface AddFriendResponse {
+  friend: PawplayUserResponse;
+}
+
+export interface FriendsListResponse {
+  friends: PawplayUserResponse[];
 }
 
 export interface LeaderboardEntry {
@@ -204,23 +222,8 @@ export interface YearlyChartResponse {
   bestMonth: string | null;
 }
 
-export interface PawplayUserResponse {
-  id: string;
-  /** @nullable */
-  displayName?: string | null;
-  /** @nullable */
-  email?: string | null;
-  /** @nullable */
-  familyId?: string | null;
-  /** @nullable */
-  role?: string | null;
-  /** @nullable */
-  expoPushToken?: string | null;
-}
-
 export interface UpdatePawplayUserBody {
   displayName?: string;
-  familyId?: string;
   expoPushToken?: string;
 }
 
@@ -265,11 +268,11 @@ export type GetSessionsParams = {
   limit?: number;
 };
 
-export type GetFamilyCalendarParams = {
+export type GetCalendarParams = {
   month: number;
   year: number;
 };
 
-export type GetFamilyYearlyChartParams = {
+export type GetYearlyChartParams = {
   year: number;
 };

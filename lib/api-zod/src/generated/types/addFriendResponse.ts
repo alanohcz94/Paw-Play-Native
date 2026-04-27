@@ -5,8 +5,8 @@
  * PawPlay API specification
  * OpenAPI spec version: 0.1.0
  */
+import type { PawplayUserResponse } from "./pawplayUserResponse";
 
-export interface UpdatePawplayUserBody {
-  displayName?: string;
-  expoPushToken?: string;
+export interface AddFriendResponse {
+  friend: PawplayUserResponse;
 }

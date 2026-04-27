@@ -6,7 +6,7 @@
  * OpenAPI spec version: 0.1.0
  */
 
-export type GetFamilyCalendarParams = {
+export type GetCalendarParams = {
   month: number;
   year: number;
 };

@@ -6,6 +6,10 @@
  * OpenAPI spec version: 0.1.0
  */
 
-export interface CreateFamilyBody {
-  placeholder?: string;
+export interface AddFriendBody {
+  /**
+   * @minLength 6
+   * @maxLength 6
+   */
+  code: string;
 }

@@ -203,6 +203,7 @@ export default function SettingsScreen() {
         setFriendSuccess(`Added ${data.friend?.displayName ?? "friend"}!`);
         setFriendCodeInput("");
         setTimeout(() => setFriendSuccess(null), 3000);
+        await loadFriends();
       } else if (res.status === 404) {
         setFriendError("No one found with that code.");
       } else if (res.status === 409) {
