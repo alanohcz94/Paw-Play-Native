@@ -10,7 +10,7 @@ import {
   commandsTable,
   friendshipsTable,
 } from "@workspace/db";
-import { eq, inArray, or, sql } from "drizzle-orm";
+import { and, eq, inArray, or, sql } from "drizzle-orm";
 import { sessionsTable } from "@workspace/db";
 import { deleteSession, getSessionId } from "../lib/auth";
 
@@ -22,8 +22,40 @@ router.get("/users/:userId", async (req: Request, res: Response) => {
     return;
   }
   const userId = req.params.userId as string;
-  const [user] = await db
+
+  if (req.user.id === userId) {
+    const [user] = await db
+      .select()
+      .from(pawplayUsersTable)
+      .where(eq(pawplayUsersTable.id, userId));
+    if (!user) {
+      res.status(404).json({ error: "User not found" });
+      return;
+    }
+    res.json(user);
+    return;
+  }
+
+  const [friendship] = await db
     .select()
+    .from(friendshipsTable)
+    .where(
+      and(
+        eq(friendshipsTable.userId, req.user.id),
+        eq(friendshipsTable.friendId, userId),
+      ),
+    );
+  if (!friendship) {
+    res.status(403).json({ error: "Forbidden" });
+    return;
+  }
+
+  const [user] = await db
+    .select({
+      id: pawplayUsersTable.id,
+      displayName: pawplayUsersTable.displayName,
+      inviteCode: pawplayUsersTable.inviteCode,
+    })
     .from(pawplayUsersTable)
     .where(eq(pawplayUsersTable.id, userId));
   if (!user) {

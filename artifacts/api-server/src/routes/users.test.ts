@@ -39,11 +39,14 @@ vi.mock("drizzle-orm", () => {
   const or = (...ps: unknown[]): Pred => ({
     __pred: (row) => ps.some((p) => (isPred(p) ? p.__pred(row) : false)),
   });
+  const and = (...ps: unknown[]): Pred => ({
+    __pred: (row) => ps.every((p) => (isPred(p) ? p.__pred(row) : true)),
+  });
   const inArray = (col: Col, arr: unknown[]): Pred => ({
     __pred: (row) => arr.includes(row[col.__name]),
   });
   const sql = (..._args: unknown[]) => ({ __sql: true });
-  return { eq, or, inArray, sql };
+  return { eq, or, and, inArray, sql };
 });
 
 vi.mock("../lib/auth", () => ({
@@ -62,7 +65,7 @@ vi.mock("@workspace/db", () => {
   const usersTable = makeTable("auth_users", ["id"]);
   const sessionsTable = makeTable("auth_sessions", ["sid", "sess"]);
 
-  function makeSelectBuilder() {
+  function makeSelectBuilder(proj?: Record<string, { __name: string }>) {
     let table: { __table: string } | undefined;
     let where: unknown;
     const b = {
@@ -72,7 +75,16 @@ vi.mock("@workspace/db", () => {
       orderBy(_x: unknown) { return b; },
       then<R = Row[], E = never>(onF?: ((v: Row[]) => R | PromiseLike<R>) | null, onR?: ((e: unknown) => E | PromiseLike<E>) | null): PromiseLike<R | E> {
         try {
-          const arr = applyWhere(getStore(table!).slice(), where);
+          let arr = applyWhere(getStore(table!).slice(), where);
+          if (proj) {
+            arr = arr.map((row) => {
+              const out: Row = {};
+              for (const [alias, col] of Object.entries(proj)) {
+                out[alias] = row[col.__name];
+              }
+              return out;
+            });
+          }
           return Promise.resolve(onF ? onF(arr) : (arr as never));
         } catch (e) {
           return Promise.resolve(onR ? onR(e) : (undefined as never));
@@ -136,7 +148,7 @@ vi.mock("@workspace/db", () => {
 
   // transaction: execute the callback with a proxy of db itself
   const db: Record<string, unknown> = {
-    select: (_proj?: unknown) => makeSelectBuilder(),
+    select: (proj?: Record<string, { __name: string }>) => makeSelectBuilder(proj),
     insert: makeInsertBuilder,
     delete: makeDeleteBuilder,
     update: makeUpdateBuilder,
@@ -196,19 +208,78 @@ describe("GET /api/users/:userId", () => {
     expect(res.status).toBe(401);
   });
 
-  it("returns 404 when the user does not exist in the pawplay table", async () => {
+  it("returns 404 when the user does not exist in the pawplay table (self)", async () => {
     const app = await buildApp({ user: user("alice") });
     const res = await request(app).get("/api/users/alice");
     expect(res.status).toBe(404);
   });
 
-  it("returns the user when found", async () => {
+  it("returns the full record when fetching yourself", async () => {
     const app = await buildApp({ user: user("alice") });
-    seedUser("alice", { displayName: "Alice" });
+    seedUser("alice", {
+      displayName: "Alice",
+      email: "alice@test.com",
+      expoPushToken: "ExponentPushToken[secret]",
+      replitId: "replit-alice",
+    });
     const res = await request(app).get("/api/users/alice");
     expect(res.status).toBe(200);
     expect(res.body.id).toBe("alice");
     expect(res.body.displayName).toBe("Alice");
+    expect(res.body.email).toBe("alice@test.com");
+    expect(res.body.expoPushToken).toBe("ExponentPushToken[secret]");
+    expect(res.body.replitId).toBe("replit-alice");
+  });
+
+  it("returns 403 when fetching a stranger (not a friend)", async () => {
+    const app = await buildApp({ user: user("alice") });
+    seedUser("bob", {
+      displayName: "Bob",
+      email: "bob@test.com",
+      expoPushToken: "ExponentPushToken[bobsecret]",
+      replitId: "replit-bob",
+    });
+    const res = await request(app).get("/api/users/bob");
+    expect(res.status).toBe(403);
+    expect(res.body.email).toBeUndefined();
+    expect(res.body.expoPushToken).toBeUndefined();
+    expect(res.body.replitId).toBeUndefined();
+  });
+
+  it("returns 403 even when the target user does not exist (no enumeration)", async () => {
+    const app = await buildApp({ user: user("alice") });
+    const res = await request(app).get("/api/users/ghost");
+    expect(res.status).toBe(403);
+  });
+
+  it("returns only safe public fields when fetching a friend", async () => {
+    const app = await buildApp({ user: user("alice") });
+    seedUser("bob", {
+      displayName: "Bob",
+      email: "bob@test.com",
+      expoPushToken: "ExponentPushToken[bobsecret]",
+      replitId: "replit-bob",
+      inviteCode: "BOB123",
+    });
+    getStore({ __table: "friendships" }).push({ userId: "alice", friendId: "bob" });
+
+    const res = await request(app).get("/api/users/bob");
+    expect(res.status).toBe(200);
+    expect(res.body).toEqual({
+      id: "bob",
+      displayName: "Bob",
+      inviteCode: "BOB123",
+    });
+    expect(res.body.email).toBeUndefined();
+    expect(res.body.expoPushToken).toBeUndefined();
+    expect(res.body.replitId).toBeUndefined();
+  });
+
+  it("returns 404 when a friend's pawplay row is missing", async () => {
+    const app = await buildApp({ user: user("alice") });
+    getStore({ __table: "friendships" }).push({ userId: "alice", friendId: "bob" });
+    const res = await request(app).get("/api/users/bob");
+    expect(res.status).toBe(404);
   });
 });
 
