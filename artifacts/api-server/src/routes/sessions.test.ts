@@ -403,14 +403,22 @@ describe("GET /api/sessions", () => {
     expect(res.body.sessions.map((s: { id: string }) => s.id)).toEqual(["s1"]);
   });
 
-  it("returns empty array when filtering by an unowned dog", async () => {
+  it("returns 404 when filtering by an unowned dog", async () => {
     const app = await buildApp({ user: user("alice") });
+    seedDog("d2", "bob");
     getStore({ __table: "sessions_record" }).push(
       { id: "s2", userId: "bob", dogId: "d2", createdAt: new Date() },
     );
     const res = await request(app).get("/api/sessions?dogId=d2");
-    expect(res.status).toBe(200);
-    expect(res.body.sessions).toEqual([]);
+    expect(res.status).toBe(404);
+    expect(res.body.error).toMatch(/dog not found/i);
+  });
+
+  it("returns 404 when filtering by a nonexistent dog", async () => {
+    const app = await buildApp({ user: user("alice") });
+    const res = await request(app).get("/api/sessions?dogId=ghost");
+    expect(res.status).toBe(404);
+    expect(res.body.error).toMatch(/dog not found/i);
   });
 
   it("returns an empty array when the caller has no sessions", async () => {
