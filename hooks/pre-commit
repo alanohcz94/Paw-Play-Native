@@ -1,0 +1,38 @@
+#!/bin/sh
+# Pre-commit hook: run the API server test suite before every commit.
+# Install once with: git config core.hooksPath hooks
+
+set -e
+
+echo ""
+echo "┌──────────────────────────────────────┐"
+echo "│  Running tests before commit...      │"
+echo "└──────────────────────────────────────┘"
+
+# Run API server tests (vitest)
+cd artifacts/api-server
+if ! pnpm run test; then
+  echo ""
+  echo "✗ API tests FAILED — commit aborted."
+  echo "  Fix the failing tests and try again."
+  echo ""
+  exit 1
+fi
+cd ../..
+
+# Run Expo app tests (Jest) — only if jest.config.js exists and jest-expo is installed
+if [ -f "artifacts/pawplay/jest.config.js" ] && [ -f "artifacts/pawplay/node_modules/.bin/jest" ]; then
+  cd artifacts/pawplay
+  if ! pnpm run test; then
+    echo ""
+    echo "✗ Expo app tests FAILED — commit aborted."
+    echo "  Fix the failing tests and try again."
+    echo ""
+    exit 1
+  fi
+  cd ../..
+fi
+
+echo ""
+echo "✓ All tests passed. Proceeding with commit."
+echo ""
