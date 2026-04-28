@@ -6,6 +6,7 @@ import {
   ScrollView,
   TouchableOpacity,
   Switch,
+  Alert,
   Platform,
   Modal,
   Pressable,
@@ -139,8 +140,7 @@ export default function SettingsScreen() {
   }, [inviteCode, user?.id, setInviteCode]);
 
   const handleRemoveFriendFromList = useCallback(
-    async (friendId: string, displayName: string) => {
-      const message = `Remove ${displayName} from your friends?`;
+    (friendId: string, displayName: string) => {
       const performRemove = async () => {
         try {
           const { authedFetch } = await import("@/lib/authedFetch");
@@ -154,15 +154,10 @@ export default function SettingsScreen() {
           console.warn("Failed to remove friend:", e);
         }
       };
-      if (Platform.OS === "web") {
-        if (window.confirm(message)) await performRemove();
-      } else {
-        const { Alert } = await import("react-native");
-        Alert.alert("Remove Friend", message, [
-          { text: "Cancel", style: "cancel" },
-          { text: "Remove", style: "destructive", onPress: () => void performRemove() },
-        ]);
-      }
+      Alert.alert(`Remove ${displayName} from your friends?`, "", [
+        { text: "Cancel", style: "cancel" },
+        { text: "Remove", style: "destructive", onPress: () => void performRemove() },
+      ]);
     },
     [],
   );
