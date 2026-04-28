@@ -31,19 +31,11 @@ export default function ChallengeSetupScreen() {
     [commands],
   );
 
-  const generateHolds = useCallback(
-    (count: number) => Array.from({ length: count }, () => Math.floor(Math.random() * 8) + 1),
-    [],
-  );
-
   const [sequence, setSequence] = useState<string[]>(() => sampleWithReplacement(pool, getCommandCount("easy")));
-  const [holdDurations, setHoldDurations] = useState<number[]>(() => generateHolds(getCommandCount("easy")));
 
   const shuffle = useCallback(() => {
-    const count = getCommandCount(difficulty);
-    setSequence(sampleWithReplacement(pool, count));
-    setHoldDurations(generateHolds(count));
-  }, [difficulty, pool, generateHolds]);
+    setSequence(sampleWithReplacement(pool, getCommandCount(difficulty)));
+  }, [difficulty, pool]);
 
   useEffect(() => {
     shuffle();
@@ -101,14 +93,12 @@ export default function ChallengeSetupScreen() {
             <Text style={[styles.seqNum, { color: colors.mutedForeground, fontFamily: "Nunito_700Bold" }]}>#</Text>
             <Text style={[styles.seqCmd, { color: colors.mutedForeground, fontFamily: "Nunito_700Bold" }]}>Command</Text>
             <Text style={[styles.seqTime, { color: colors.mutedForeground, fontFamily: "Nunito_700Bold" }]}>Comply</Text>
-            <Text style={[styles.seqHold, { color: colors.mutedForeground, fontFamily: "Nunito_700Bold" }]}>Hold</Text>
           </View>
           {sequence.map((cmd, i) => (
             <View key={`${cmd}-${i}`} style={[styles.sequenceRow, i < sequence.length - 1 && { borderBottomWidth: 1, borderBottomColor: colors.border }]}>
               <Text style={[styles.seqNum, { color: colors.mutedForeground, fontFamily: "Nunito_700Bold" }]}>{i + 1}</Text>
               <Text style={[styles.seqCmd, { color: colors.dark, fontFamily: "Nunito_900Black" }]}>{cmd}</Text>
               <Text style={[styles.seqTime, { color: colors.peach, fontFamily: "Nunito_700Bold" }]}>{window}s</Text>
-              <Text style={[styles.seqHold, { color: colors.mint, fontFamily: "Nunito_700Bold" }]}>{holdDurations[i]}s</Text>
             </View>
           ))}
         </View>
@@ -150,7 +140,6 @@ const styles = StyleSheet.create({
   seqNum: { width: 20, fontSize: 14 },
   seqCmd: { flex: 1, fontSize: 16 },
   seqTime: { width: 50, fontSize: 14, textAlign: "center" as const },
-  seqHold: { width: 44, fontSize: 14, textAlign: "center" as const },
   actions: { flexDirection: "row", gap: 12 },
   shuffleBtn: { flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, borderWidth: 1.5, borderRadius: 16, paddingVertical: 16 },
   shuffleText: { fontSize: 16 },

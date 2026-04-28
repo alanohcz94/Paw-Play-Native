@@ -1,5 +1,6 @@
-import React, { useMemo, useCallback } from "react";
+import React, { useCallback } from "react";
 import { View, Text, StyleSheet, TouchableOpacity, Platform, Alert } from "react-native";
+import { Feather } from "@expo/vector-icons";
 import { useColors } from "@/hooks/useColors";
 import type { LeaderboardEntry } from "@/types/api";
 
@@ -24,13 +25,12 @@ function LeaderboardRow({
   const rankBg = RANK_COLORS[rank] ?? "transparent";
   const isTop3 = rank < 3;
 
-  const handlePress = useCallback(() => {
-    if (isMe || !onRemove) return;
-    onRemove(entry.userId, entry.displayName);
-  }, [isMe, onRemove, entry.userId, entry.displayName]);
+  const handleRemovePress = useCallback(() => {
+    if (onRemove) onRemove(entry.userId, entry.displayName);
+  }, [onRemove, entry.userId, entry.displayName]);
 
   return (
-    <TouchableOpacity
+    <View
       style={[
         styles.row,
         {
@@ -44,9 +44,6 @@ function LeaderboardRow({
           backgroundColor: isMe ? colors.peachLight : "transparent",
         },
       ]}
-      onPress={handlePress}
-      activeOpacity={isMe ? 1 : 0.7}
-      disabled={isMe || !onRemove}
     >
       <View style={{ position: "relative" }}>
         <View style={[styles.rankBadge, { backgroundColor: rankBg }]}>
@@ -107,7 +104,18 @@ function LeaderboardRow({
           points
         </Text>
       </View>
-    </TouchableOpacity>
+
+      {!isMe && onRemove && (
+        <TouchableOpacity
+          onPress={handleRemovePress}
+          activeOpacity={0.7}
+          style={styles.removeBtn}
+          hitSlop={{ top: 8, right: 8, bottom: 8, left: 8 }}
+        >
+          <Feather name="x" size={18} color={colors.mutedForeground} />
+        </TouchableOpacity>
+      )}
+    </View>
   );
 }
 
@@ -121,10 +129,6 @@ export default function FamilyLeaderboard({
   onRemoveFriend?: (friendId: string) => Promise<void> | void;
 }) {
   const colors = useColors();
-  const totalPoints = useMemo(
-    () => leaderboard.reduce((sum, e) => sum + e.totalPoints, 0),
-    [leaderboard],
-  );
 
   const handleRemove = useCallback(
     (friendId: string, displayName: string) => {
@@ -162,30 +166,7 @@ export default function FamilyLeaderboard({
         >
           Friends Leaderboard
         </Text>
-        <View
-          style={[styles.totalBadge, { backgroundColor: colors.lemonLight }]}
-        >
-          <Text
-            style={[
-              styles.totalBadgeText,
-              { color: colors.dark, fontFamily: "Nunito_900Black" },
-            ]}
-          >
-            {totalPoints} pts
-          </Text>
-        </View>
       </View>
-
-      {onRemoveFriend && leaderboard.length > 1 && (
-        <Text
-          style={[
-            styles.hint,
-            { color: colors.mutedForeground, fontFamily: "Nunito_400Regular" },
-          ]}
-        >
-          Tap a friend to remove them
-        </Text>
-      )}
 
       {leaderboard.map((entry, i) => (
         <LeaderboardRow
@@ -209,10 +190,8 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   cardTitle: { fontSize: 16, marginBottom: 8 },
-  hint: { fontSize: 12, marginBottom: 8 },
-  totalBadge: { paddingHorizontal: 8, paddingVertical: 3, borderRadius: 12 },
-  totalBadgeText: { fontSize: 13 },
   row: { flexDirection: "row", alignItems: "center", gap: 10 },
+  removeBtn: { padding: 4 },
   rankBadge: {
     width: 28,
     height: 28,

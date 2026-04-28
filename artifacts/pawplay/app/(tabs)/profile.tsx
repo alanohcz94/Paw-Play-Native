@@ -11,6 +11,7 @@ import {
   Image,
   Modal,
   Pressable,
+  RefreshControl,
 } from "react-native";
 import { router, useFocusEffect } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -193,6 +194,7 @@ export default function ProfileScreen() {
   const { dog, commands, streak, setDog, setCommands } = useApp();
   const { user } = useAuth();
   const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
+  const [refreshing, setRefreshing] = useState(false);
   const [editMode, setEditMode] = useState(false);
   const [releaseCue, setReleaseCue] = useState(dog?.releaseCue ?? "Free");
   const [markerCue, setMarkerCue] = useState(dog?.markerCue ?? "Yes");
@@ -208,29 +210,34 @@ export default function ProfileScreen() {
     ? `https://${process.env.EXPO_PUBLIC_DOMAIN}`
     : "";
 
-  useFocusEffect(useCallback(() => {
+  const loadProfileData = useCallback(async () => {
     if (!dog?.id) return;
-    const load = async () => {
-      try {
-        const { authedFetch } = await import("@/lib/authedFetch");
-        // Always refresh commands when profile is focused
-        const cmdsRes = await authedFetch(`/api/dogs/${dog.id}/commands`);
-        if (cmdsRes.ok) {
-          const { commands: cmds } = await cmdsRes.json();
-          setCommands(cmds);
-        }
-        // Load friends leaderboard members
-        const res = await authedFetch(`/api/leaderboard`);
-        if (res.ok) {
-          const { entries } = await res.json();
-          setLeaderboard(entries);
-        }
-      } catch (e) {
-        console.warn("Failed to load profile data:", e);
+    try {
+      const { authedFetch } = await import("@/lib/authedFetch");
+      const cmdsRes = await authedFetch(`/api/dogs/${dog.id}/commands`);
+      if (cmdsRes.ok) {
+        const { commands: cmds } = await cmdsRes.json();
+        setCommands(cmds);
       }
-    };
-    load();
-  }, [dog?.id]));
+      const res = await authedFetch(`/api/leaderboard`);
+      if (res.ok) {
+        const { entries } = await res.json();
+        setLeaderboard(entries);
+      }
+    } catch (e) {
+      console.warn("Failed to load profile data:", e);
+    }
+  }, [dog?.id, setCommands]);
+
+  const handleRefresh = useCallback(async () => {
+    setRefreshing(true);
+    await loadProfileData();
+    setRefreshing(false);
+  }, [loadProfileData]);
+
+  useFocusEffect(useCallback(() => {
+    loadProfileData();
+  }, [loadProfileData]));
 
   const level3Count = useMemo(
     () =>
@@ -468,6 +475,7 @@ export default function ProfileScreen() {
           },
         ]}
         showsVerticalScrollIndicator={false}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />}
       >
         <View style={styles.avatarSection}>
           <View style={styles.avatarWrapper}>
