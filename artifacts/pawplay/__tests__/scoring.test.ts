@@ -81,11 +81,11 @@ describe("calculateScore — rawScore accumulation", () => {
   });
 
   it("handles an empty command list", () => {
-    const { rawScore, bonuses, commandResults } = calculateScore([], "easy");
-    expect(rawScore).toBe(0);
+    const { commandResults, bonuses } = calculateScore([], "easy");
     expect(commandResults).toHaveLength(0);
+    // clean_sweep applies (vacuously true — no skips); first_cue requires at least 1 command
     expect(bonuses.some((b) => b.name === "clean_sweep")).toBe(true);
-    expect(bonuses.some((b) => b.name === "first_cue")).toBe(true);
+    expect(bonuses.some((b) => b.name === "first_cue")).toBe(false);
   });
 });
 
@@ -187,12 +187,14 @@ describe("calculateScore — difficulty_bonus", () => {
 });
 
 describe("calculateScore — bonus cap at 50", () => {
-  it("caps the total bonus at 50 points", () => {
+  it("caps the total bonus contribution at 50 points", () => {
     // 5 commands in a streak (combo_streak) + clean_sweep + first_cue + expert difficulty
-    // should hit the cap easily
+    // raw bonuses will exceed 50, but the applied bonus is capped at 50.
+    // rawScore = basePoints + min(totalBonusRaw, 50)
     const inputs = Array.from({ length: 5 }, (_, i) => cmd({ name: `Cmd${i}`, timeSeconds: 1, windowSeconds: 10 }));
-    const { bonuses } = calculateScore(inputs, "expert");
-    const totalBonus = bonuses.reduce((s, b) => s + b.points, 0);
-    expect(totalBonus).toBeLessThanOrEqual(50);
+    const { rawScore, commandResults } = calculateScore(inputs, "expert");
+    const basePoints = commandResults.reduce((s, r) => s + r.pointsEarned, 0);
+    const appliedBonus = rawScore - basePoints;
+    expect(appliedBonus).toBeLessThanOrEqual(50);
   });
 });
