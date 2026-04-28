@@ -345,34 +345,6 @@ export default function ProfileScreen() {
     }
   }, [dog, user, apiBase, releaseCue, markerCue, setDog]);
 
-  const handleRemoveFriend = useCallback(
-    async (friendId: string) => {
-      try {
-        const { authedFetch } = await import("@/lib/authedFetch");
-        const res = await authedFetch(`/api/friends/${friendId}`, {
-          method: "DELETE",
-        });
-        if (!res.ok) {
-          const body = await res.json().catch(() => ({}));
-          const msg = body.error ?? "Could not remove friend. Please try again.";
-          if (Platform.OS === "web") window.alert(msg);
-          else Alert.alert("Error", msg);
-          return;
-        }
-        const lbRes = await authedFetch(`/api/leaderboard`);
-        if (lbRes.ok) {
-          const { entries } = await lbRes.json();
-          setLeaderboard(entries);
-        }
-      } catch {
-        const msg = "Could not remove friend. Please try again.";
-        if (Platform.OS === "web") window.alert(msg);
-        else Alert.alert("Error", msg);
-      }
-    },
-    [],
-  );
-
   const handleRemoveCommand = useCallback(
     async (commandId: string) => {
       if (!dog?.id) return;
@@ -897,7 +869,6 @@ export default function ProfileScreen() {
         <FamilyLeaderboard
           leaderboard={leaderboard}
           currentUserId={user?.id}
-          onRemoveFriend={handleRemoveFriend}
         />
 
         <TouchableOpacity

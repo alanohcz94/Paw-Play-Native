@@ -1,6 +1,5 @@
-import React, { useCallback } from "react";
-import { View, Text, StyleSheet, TouchableOpacity, Platform, Alert } from "react-native";
-import { Feather } from "@expo/vector-icons";
+import React from "react";
+import { View, Text, StyleSheet } from "react-native";
 import { useColors } from "@/hooks/useColors";
 import type { LeaderboardEntry } from "@/types/api";
 
@@ -14,20 +13,14 @@ function LeaderboardRow({
   entry,
   rank,
   isMe,
-  onRemove,
 }: {
   entry: LeaderboardEntry;
   rank: number;
   isMe: boolean;
-  onRemove?: (friendId: string, displayName: string) => void;
 }) {
   const colors = useColors();
   const rankBg = RANK_COLORS[rank] ?? "transparent";
   const isTop3 = rank < 3;
-
-  const handleRemovePress = useCallback(() => {
-    if (onRemove) onRemove(entry.userId, entry.displayName);
-  }, [onRemove, entry.userId, entry.displayName]);
 
   return (
     <View
@@ -105,16 +98,6 @@ function LeaderboardRow({
         </Text>
       </View>
 
-      {!isMe && onRemove && (
-        <TouchableOpacity
-          onPress={handleRemovePress}
-          activeOpacity={0.7}
-          style={styles.removeBtn}
-          hitSlop={{ top: 8, right: 8, bottom: 8, left: 8 }}
-        >
-          <Feather name="x" size={18} color={colors.mutedForeground} />
-        </TouchableOpacity>
-      )}
     </View>
   );
 }
@@ -122,31 +105,11 @@ function LeaderboardRow({
 export default function FamilyLeaderboard({
   leaderboard,
   currentUserId,
-  onRemoveFriend,
 }: {
   leaderboard: LeaderboardEntry[];
   currentUserId?: string;
-  onRemoveFriend?: (friendId: string) => Promise<void> | void;
 }) {
   const colors = useColors();
-
-  const handleRemove = useCallback(
-    (friendId: string, displayName: string) => {
-      if (!onRemoveFriend) return;
-      const message = `Remove ${displayName} from your friends? You'll both stop seeing each other on the leaderboard.`;
-      if (Platform.OS === "web") {
-        if (window.confirm(message)) {
-          void onRemoveFriend(friendId);
-        }
-        return;
-      }
-      Alert.alert("Remove Friend", message, [
-        { text: "Cancel", style: "cancel" },
-        { text: "Remove", style: "destructive", onPress: () => void onRemoveFriend(friendId) },
-      ]);
-    },
-    [onRemoveFriend],
-  );
 
   if (leaderboard.length === 0) return null;
 
@@ -174,7 +137,6 @@ export default function FamilyLeaderboard({
           entry={entry}
           rank={i}
           isMe={entry.userId === currentUserId}
-          onRemove={handleRemove}
         />
       ))}
     </View>
@@ -191,7 +153,6 @@ const styles = StyleSheet.create({
   },
   cardTitle: { fontSize: 16, marginBottom: 8 },
   row: { flexDirection: "row", alignItems: "center", gap: 10 },
-  removeBtn: { padding: 4 },
   rankBadge: {
     width: 28,
     height: 28,
