@@ -1,8 +1,13 @@
 uploads = []
-outputs = []
 
 [[generated]]
 id = "RTXp6Y7vXvGojCabrUaU0"
 uri = "file://artifacts/pawplay/assets/images/mainIcon.png"
 type = "image"
 title = "pawplay app icon"
+
+[[outputs]]
+id = "FHSpp_Hh4uSI4k_bhXF0E"
+uri = "file://docs/APP_FEATURES_AND_SYSTEM_OVERVIEW.md"
+type = "text"
+title = "PawPlay — App Features & System Overview"

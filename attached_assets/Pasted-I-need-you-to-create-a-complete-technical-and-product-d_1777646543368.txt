@@ -1,0 +1,133 @@
+I need you to create a complete technical and product documentation file for this application.
+
+The goal is to help another AI coding tool, such as Claude Code or Cursor, understand exactly what this app currently does, what features already exist, how the code is structured, and what rules must be followed when making future changes.
+
+Please scan the entire codebase carefully and create a new markdown file:
+
+/docs/APP_FEATURES_AND_SYSTEM_OVERVIEW.md
+
+The document must be written clearly for both a developer and a product owner.
+
+Please include the following sections:
+
+# App Overview
+- What this application is
+- Who it is for
+- What problem it solves
+- The main objective of the app
+- The current product positioning
+
+# Feature Inventory
+For every completed or partially completed feature, document:
+
+## Feature Name
+- What the feature does
+- Why this feature exists
+- What user problem it solves
+- How the user interacts with it
+- How it works technically
+- Main files/components involved
+- Database tables/collections involved
+- APIs, services, hooks, or helper functions used
+- Current limitations or known issues
+- Whether the feature is complete, partially complete, or experimental
+
+# User Flows
+Document the major workflows in the app, including:
+- Onboarding flow
+- Login/signup flow
+- Main dashboard/home flow
+- Training/game/session flow
+- Family/account sharing flow, if applicable
+- Pet profile flow
+- Settings flow
+- Payment/subscription flow, if applicable
+- Any admin or internal flow, if applicable
+
+For each flow, explain:
+- Step-by-step user journey
+- What happens in the UI
+- What happens in the backend/database
+- Important validation rules
+- Edge cases
+
+# Database / Data Model Overview
+Create a clear explanation of all database tables, collections, schemas, or models.
+
+For each table/collection/model, include:
+- Name
+- Purpose
+- Fields/columns
+- Data type if known
+- Meaning of each field
+- Primary keys / IDs
+- Foreign key relationships or references
+- How the table is used by features
+- Any security or privacy considerations
+
+# Code Architecture
+Explain:
+- Main folder structure
+- Important files
+- Important components
+- Important hooks
+- Important services
+- Important utility/helper functions
+- State management approach
+- Routing/navigation approach
+- Authentication approach
+- Backend/API structure
+- Error handling approach
+- Logging approach, if any
+
+# Business Logic Rules
+Document all important business logic rules found in the codebase.
+
+Examples:
+- How points are calculated
+- How streaks are calculated
+- How randomization works
+- How families are created/joined/left
+- How permissions are checked
+- How training sessions are saved
+- How user progress is tracked
+- Any subscription or feature gating rules
+
+# Known Bugs / Risk Areas
+Identify areas that look fragile, incomplete, duplicated, risky, or likely to break.
+
+For each item:
+- What the issue/risk is
+- Where in the code it appears
+- Why it matters
+- Suggested future fix, if obvious
+
+# Future AI Coding Rules
+Create a section called “Rules for Future AI Code Changes”.
+
+Include these rules:
+
+1. Before making any code change, read this documentation file first.
+2. After making any code change, update this documentation file.
+3. If a new feature is added, add it to the Feature Inventory section.
+4. If an existing feature is changed, update its purpose, behaviour, files, and data model details.
+5. If database schema changes are made, update the Database / Data Model Overview section.
+6. If business logic changes, update the Business Logic Rules section.
+7. If a known bug is fixed, move it from Known Bugs / Risk Areas into a short changelog entry.
+8. Do not remove documentation unless the related code or feature was actually removed.
+9. Keep the documentation factual and based only on the actual codebase.
+10. If unsure how something works, mark it clearly as “Needs verification” instead of guessing.
+
+# Changelog
+At the bottom of the file, add a changelog section.
+
+Format:
+## YYYY-MM-DD
+- Initial documentation generated from current codebase.
+- Summary of what was documented.
+
+Important:
+- Do not invent features that do not exist in the code.
+- Do not only describe the folder structure. I need actual feature-level understanding.
+- Be detailed enough that Claude Code can use this file as project context before editing the application.
+- Use clear markdown headings and tables where helpful.
