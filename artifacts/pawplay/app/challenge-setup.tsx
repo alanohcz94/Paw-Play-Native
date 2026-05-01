@@ -37,6 +37,16 @@ export default function ChallengeSetupScreen() {
     setSequence(sampleWithReplacement(pool, getCommandCount(difficulty)));
   }, [difficulty, pool]);
 
+  const reshuffleAt = useCallback((index: number) => {
+    setSequence(prev => {
+      const current = prev[index];
+      const others = pool.filter(p => p !== current);
+      const pick = others.length > 0 ? others : pool;
+      const next = pick[Math.floor(Math.random() * pick.length)];
+      return prev.map((cmd, i) => (i === index ? next : cmd));
+    });
+  }, [pool]);
+
   useEffect(() => {
     shuffle();
   }, [shuffle]);
@@ -99,6 +109,9 @@ export default function ChallengeSetupScreen() {
               <Text style={[styles.seqNum, { color: colors.mutedForeground, fontFamily: "Nunito_700Bold" }]}>{i + 1}</Text>
               <Text style={[styles.seqCmd, { color: colors.dark, fontFamily: "Nunito_900Black" }]}>{cmd}</Text>
               <Text style={[styles.seqTime, { color: colors.peach, fontFamily: "Nunito_700Bold" }]}>{window}s</Text>
+              <TouchableOpacity onPress={() => reshuffleAt(i)} hitSlop={8} activeOpacity={0.6} style={styles.rowShuffleBtn}>
+                <Feather name="refresh-cw" size={14} color={colors.mutedForeground} />
+              </TouchableOpacity>
             </View>
           ))}
         </View>
@@ -140,6 +153,7 @@ const styles = StyleSheet.create({
   seqNum: { width: 20, fontSize: 14 },
   seqCmd: { flex: 1, fontSize: 16 },
   seqTime: { width: 50, fontSize: 14, textAlign: "center" as const },
+  rowShuffleBtn: { width: 24, alignItems: "center" },
   actions: { flexDirection: "row", gap: 12 },
   shuffleBtn: { flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, borderWidth: 1.5, borderRadius: 16, paddingVertical: 16 },
   shuffleText: { fontSize: 16 },

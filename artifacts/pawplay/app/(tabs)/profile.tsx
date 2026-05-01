@@ -22,6 +22,7 @@ import { useAuth } from "@/lib/auth";
 import { ALL_COMMANDS } from "@/utils/scoring";
 import FamilyLeaderboard from "@/components/FamilyLeaderboard";
 import type { LeaderboardEntry } from "@/types/api";
+import { ACHIEVEMENT_TYPES } from "@/lib/achievements";
 
 type MasteryLevel = "added" | "learning" | "reliable";
 
@@ -85,14 +86,6 @@ function CommandChip({
   );
 }
 
-const ACHIEVEMENT_TYPES = [
-  { type: "first_session" },
-  { type: "streak_7" },
-  { type: "streak_30" },
-  { type: "reliable_handler" },
-  { type: "family_champion" },
-  { type: "month_pawfect" },
-];
 
 const PRESET_SUGGESTIONS = [
   "Shake", "Hi-5", "Hop/Over", "Up", "Home",

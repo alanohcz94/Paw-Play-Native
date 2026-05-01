@@ -109,9 +109,7 @@ export default function DashboardScreen() {
     try {
       const { authedFetch } = await import("@/lib/authedFetch");
 
-      const res = await authedFetch(
-        `/api/sessions?dogId=${dog.id}&limit=50`,
-      );
+      const res = await authedFetch(`/api/sessions?dogId=${dog.id}&limit=50`);
       if (res.ok) {
         const { sessions: s } = await res.json();
         setSessions(s);
@@ -141,21 +139,6 @@ export default function DashboardScreen() {
       console.error(e);
     }
   };
-
-  const handleRemoveFriend = useCallback(
-    async (friendId: string) => {
-      try {
-        const { authedFetch } = await import("@/lib/authedFetch");
-        const res = await authedFetch(`/api/friends/${friendId}`, { method: "DELETE" });
-        if (res.ok) {
-          await loadLeaderboard();
-        }
-      } catch (e) {
-        console.error("Failed to remove friend:", e);
-      }
-    },
-    [loadLeaderboard],
-  );
 
   useFocusEffect(
     useCallback(() => {
@@ -301,7 +284,11 @@ export default function DashboardScreen() {
             todaySessions.map((s: Session, i: number) => {
               const isQB = s.mode === "quickbites";
               const isBlitz = s.mode === "blitz";
-              const modeLabel = isQB ? "Quick Bites" : isBlitz ? "Blitz" : "Training";
+              const modeLabel = isQB
+                ? "Quick Bites"
+                : isBlitz
+                  ? "Blitz"
+                  : "Training";
               const modeIcon = isQB ? "zap" : isBlitz ? "zap" : "book-open";
               const cmdName =
                 !isQB && !isBlitz && s.commandsUsed?.[0]?.name
@@ -311,9 +298,10 @@ export default function DashboardScreen() {
                 !isQB && !isBlitz && s.durationSeconds
                   ? Math.round(s.durationSeconds / 30)
                   : null;
-              const trainerName = s.userId === user?.id
-                ? null
-                : (userDisplayMap[s.userId] ?? null);
+              const trainerName =
+                s.userId === user?.id
+                  ? null
+                  : (userDisplayMap[s.userId] ?? null);
               return (
                 <View
                   key={s.id ?? i}
@@ -357,7 +345,10 @@ export default function DashboardScreen() {
                       <Text
                         style={[
                           styles.historyMeta,
-                          { color: colors.lavender, fontFamily: "Nunito_700Bold" },
+                          {
+                            color: colors.lavender,
+                            fontFamily: "Nunito_700Bold",
+                          },
                         ]}
                       >
                         {trainerName}
@@ -501,11 +492,7 @@ export default function DashboardScreen() {
           </Text>
         </TouchableOpacity>
 
-        <FamilyLeaderboard
-          leaderboard={leaderboard}
-          currentUserId={user?.id}
-          onRemoveFriend={handleRemoveFriend}
-        />
+        <FamilyLeaderboard leaderboard={leaderboard} currentUserId={user?.id} />
       </ScrollView>
 
       <TouchableOpacity

@@ -12,66 +12,8 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Feather } from "@expo/vector-icons";
 import { useColors } from "@/hooks/useColors";
 import { useApp } from "@/context/AppContext";
+import { ACHIEVEMENT_TYPES } from "@/lib/achievements";
 import type { FeatherIconName } from "@/types/api";
-
-const ACHIEVEMENT_TYPES = [
-  {
-    type: "first_session",
-    label: "Starter",
-    icon: "star",
-    description: "Completed your first training session",
-    unlock: "Complete 1 Quick Bites or Training session",
-  },
-  {
-    type: "streak_7",
-    label: "7-Day Streak",
-    icon: "zap",
-    description: "Trained with your dog 7 days in a row",
-    unlock: "Train every day for 7 consecutive days",
-  },
-  {
-    type: "streak_30",
-    label: "30-Day Streak",
-    icon: "award",
-    description: "A month of consistent daily training",
-    unlock: "Train every day for 30 consecutive days",
-  },
-  {
-    type: "amazing_student",
-    label: "Amazing Student",
-    icon: "book",
-    description: "100 reps on any single command — your dog is a natural!",
-    unlock: "Reach 100 combined reps on any one command",
-  },
-  {
-    type: "distinction_student",
-    label: "Distinction Student",
-    icon: "book-open",
-    description: "100 reps on every basic command — top of the class!",
-    unlock: "Reach 100 combined reps on all 7 basic commands",
-  },
-  {
-    type: "family_champion",
-    label: "Family Champ",
-    icon: "trophy",
-    description: "Top of the family leaderboard",
-    unlock: "Beat all family members' session scores",
-  },
-  {
-    type: "reliable_handler",
-    label: "Reliable Handler",
-    icon: "shield",
-    description: "Your first command reached Reliable level",
-    unlock: "Get any command to Level 3 — Reliable",
-  },
-  {
-    type: "month_pawfect",
-    label: "Month Pawfect",
-    icon: "calendar",
-    description: "Trained every single day this month",
-    unlock: "Complete a session every day in a calendar month",
-  },
-];
 
 const BASIC_COMMANDS = [
   "Sit",
@@ -100,6 +42,11 @@ function getProgress(
       return {
         pct: Math.min(100, Math.round((streak / 7) * 100)),
         hint: `${streak}/7 days`,
+      };
+    case "streak_14":
+      return {
+        pct: Math.min(100, Math.round((streak / 14) * 100)),
+        hint: `${streak}/14 days`,
       };
     case "streak_30":
       return {
@@ -130,31 +77,46 @@ export default function AchievementsScreen() {
   const insets = useSafeAreaInsets();
   const { commands, streak, dog } = useApp();
 
-  const { level3Count, hasAnySessions, maxCommandReps, basicCommandsAt100, unlockedSet, unlockedCount } =
-    useMemo(() => {
-      const level3Count = commands.filter(
-        (c) => c.level >= 3 || (c.qbSuccessesCount >= 10 && c.qbSessionsWithSuccess >= 3),
-      ).length;
-      const hasAnySessions = commands.some(
-        (c) => c.trainingSessionsCount > 0 || c.qbSuccessesCount > 0,
-      );
-      const maxCommandReps = commands.reduce((max, c) => {
-        const total = c.trainingSessionsCount + c.qbSuccessesCount;
-        return total > max ? total : max;
-      }, 0);
-      const basicCommandsAt100 = BASIC_COMMANDS.filter((name) => {
-        const cmd = commands.find((c) => c.name === name);
-        return cmd && cmd.trainingSessionsCount + cmd.qbSuccessesCount >= 100;
-      }).length;
-      const unlockedSet = new Set<string>();
-      if (hasAnySessions) unlockedSet.add("first_session");
-      if (streak >= 7) unlockedSet.add("streak_7");
-      if (streak >= 30) unlockedSet.add("streak_30");
-      if (level3Count >= 1) unlockedSet.add("reliable_handler");
-      if (maxCommandReps >= 100) unlockedSet.add("amazing_student");
-      if (basicCommandsAt100 >= 7) unlockedSet.add("distinction_student");
-      return { level3Count, hasAnySessions, maxCommandReps, basicCommandsAt100, unlockedSet, unlockedCount: unlockedSet.size };
-    }, [commands, streak]);
+  const {
+    level3Count,
+    hasAnySessions,
+    maxCommandReps,
+    basicCommandsAt100,
+    unlockedSet,
+    unlockedCount,
+  } = useMemo(() => {
+    const level3Count = commands.filter(
+      (c) =>
+        c.level >= 3 ||
+        (c.qbSuccessesCount >= 10 && c.qbSessionsWithSuccess >= 3),
+    ).length;
+    const hasAnySessions = commands.some(
+      (c) => c.trainingSessionsCount > 0 || c.qbSuccessesCount > 0,
+    );
+    const maxCommandReps = commands.reduce((max, c) => {
+      const total = c.trainingSessionsCount + c.qbSuccessesCount;
+      return total > max ? total : max;
+    }, 0);
+    const basicCommandsAt100 = BASIC_COMMANDS.filter((name) => {
+      const cmd = commands.find((c) => c.name === name);
+      return cmd && cmd.trainingSessionsCount + cmd.qbSuccessesCount >= 100;
+    }).length;
+    const unlockedSet = new Set<string>();
+    if (hasAnySessions) unlockedSet.add("first_session");
+    if (streak >= 7) unlockedSet.add("streak_7");
+    if (streak >= 30) unlockedSet.add("streak_30");
+    if (level3Count >= 1) unlockedSet.add("reliable_handler");
+    if (maxCommandReps >= 100) unlockedSet.add("amazing_student");
+    if (basicCommandsAt100 >= 7) unlockedSet.add("distinction_student");
+    return {
+      level3Count,
+      hasAnySessions,
+      maxCommandReps,
+      basicCommandsAt100,
+      unlockedSet,
+      unlockedCount: unlockedSet.size,
+    };
+  }, [commands, streak]);
 
   return (
     <ScrollView
@@ -215,7 +177,14 @@ export default function AchievementsScreen() {
         const unlocked = unlockedSet.has(ach.type);
         const { pct, hint } = unlocked
           ? { pct: 100, hint: "Unlocked!" }
-          : getProgress(ach.type, streak, level3Count, hasAnySessions, maxCommandReps, basicCommandsAt100);
+          : getProgress(
+              ach.type,
+              streak,
+              level3Count,
+              hasAnySessions,
+              maxCommandReps,
+              basicCommandsAt100,
+            );
 
         return (
           <View
@@ -280,18 +249,31 @@ export default function AchievementsScreen() {
               </Text>
 
               <View style={styles.progressRow}>
-                <View style={[styles.progressTrack, { backgroundColor: colors.muted }]}>
+                <View
+                  style={[
+                    styles.progressTrack,
+                    { backgroundColor: colors.muted },
+                  ]}
+                >
                   <View
                     style={[
                       styles.progressFill,
-                      { width: `${pct}%`, backgroundColor: unlocked ? colors.mint : colors.lavender },
+                      {
+                        width: `${pct}%`,
+                        backgroundColor: unlocked
+                          ? colors.mint
+                          : colors.lavender,
+                      },
                     ]}
                   />
                 </View>
                 <Text
                   style={[
                     styles.progressHint,
-                    { color: unlocked ? colors.mint : colors.mutedForeground, fontFamily: "Nunito_700Bold" },
+                    {
+                      color: unlocked ? colors.mint : colors.mutedForeground,
+                      fontFamily: "Nunito_700Bold",
+                    },
                   ]}
                 >
                   {hint}
@@ -353,7 +335,12 @@ const styles = StyleSheet.create({
   },
   cardLabel: { fontSize: 15 },
   cardDesc: { fontSize: 13, lineHeight: 18 },
-  progressRow: { flexDirection: "row", alignItems: "center", gap: 8, marginTop: 8 },
+  progressRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    marginTop: 8,
+  },
   progressTrack: { flex: 1, height: 6, borderRadius: 3, overflow: "hidden" },
   progressFill: { height: "100%", borderRadius: 3 },
   progressHint: { fontSize: 11, minWidth: 60, textAlign: "right" },
