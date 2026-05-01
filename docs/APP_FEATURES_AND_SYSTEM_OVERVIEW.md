@@ -887,6 +887,11 @@ anywhere in the codebase. All features are free.
 
 ### 2026-05-01
 
+- Added `docs/AI_CODING_RULES.md` — project policy for AI coding tools
+  working on this repository, including the requirement that every
+  meaningful code change must also update this overview file and add a
+  Changelog entry. Added a top-of-repo `README.md` pointing developers
+  and AI tools to both files first.
 - Initial documentation generated from the current codebase.
 - Captured the post–family-removal architecture: per-user dogs, mutual
   `friendships` table, personal 6-character `invite_code` per user,

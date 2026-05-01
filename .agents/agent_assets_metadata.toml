@@ -11,3 +11,15 @@ id = "FHSpp_Hh4uSI4k_bhXF0E"
 uri = "file://docs/APP_FEATURES_AND_SYSTEM_OVERVIEW.md"
 type = "text"
 title = "PawPlay — App Features & System Overview"
+
+[[outputs]]
+id = "VC-xmnCqoXLXqZyrG7Yyj"
+uri = "file://docs/AI_CODING_RULES.md"
+type = "text"
+title = "AI Coding Rules"
+
+[[outputs]]
+id = "EMZB0XWB0p8zHZwa4jwvt"
+uri = "file://README.md"
+type = "text"
+title = "README (root)"
