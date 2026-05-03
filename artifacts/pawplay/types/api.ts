@@ -19,6 +19,11 @@ export interface Session {
 export interface LeaderboardEntry {
   userId: string;
   displayName: string;
+  dogName: string | null;
   totalPoints: number;
   sessionCount: number;
+  daysTrainedThisWeek: number;
+  tier: "paw" | "bronze" | "silver" | "gold";
+  streak: number;
+  profileImageUrl: string | null;
 }

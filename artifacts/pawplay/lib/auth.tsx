@@ -1,4 +1,11 @@
-import React, { createContext, useContext, useState, useEffect, useCallback, type ReactNode } from "react";
+import React, {
+  createContext,
+  useContext,
+  useState,
+  useEffect,
+  useCallback,
+  type ReactNode,
+} from "react";
 import { Platform } from "react-native";
 import * as AuthSession from "expo-auth-session";
 import * as WebBrowser from "expo-web-browser";
@@ -10,7 +17,8 @@ import { authedFetch, setSessionExpiredHandler } from "./authedFetch";
 WebBrowser.maybeCompleteAuthSession();
 
 const AUTH_TOKEN_KEY = "auth_session_token";
-const ISSUER_URL = process.env.EXPO_PUBLIC_ISSUER_URL ?? "https://replit.com/oidc";
+const ISSUER_URL =
+  process.env.EXPO_PUBLIC_ISSUER_URL ?? "https://replit.com/oidc";
 const MOBILE_RETURN_SCHEME = "pawplay://auth-callback";
 
 // Use the new server-bridged flow only in standalone native builds
@@ -107,14 +115,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const handleSessionExpired = useCallback(async () => {
     try {
       await SecureStore.deleteItemAsync(AUTH_TOKEN_KEY);
-    } catch {
-    }
+    } catch {}
     setUser(null);
     setLoginError(SESSION_EXPIRED);
     try {
       router.replace("/home");
-    } catch {
-    }
+    } catch {}
   }, []);
 
   const fetchUser = useCallback(async () => {
@@ -185,17 +191,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           return;
         }
 
-        const exchangeRes = await fetch(`${apiBase}/api/mobile-auth/token-exchange`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            code,
-            code_verifier: request.codeVerifier,
-            redirect_uri: redirectUri,
-            state,
-            nonce: request.nonce,
-          }),
-        });
+        const exchangeRes = await fetch(
+          `${apiBase}/api/mobile-auth/token-exchange`,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              code,
+              code_verifier: request.codeVerifier,
+              redirect_uri: redirectUri,
+              state,
+              // nonce: request.nonce,
+            }),
+          },
+        );
 
         if (!exchangeRes.ok) {
           console.error("Token exchange failed:", exchangeRes.status);

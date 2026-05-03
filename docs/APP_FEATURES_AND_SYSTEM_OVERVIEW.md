@@ -263,16 +263,36 @@ it works in code, and any known gaps.
   yourself; duplicate add returns 409.
 - **Status.** Complete.
 
-### Leaderboard
+### Leaderboard (`components/FamilyLeaderboard.tsx`, `GET /api/leaderboard`)
 
-- **What.** Ranks the caller and all friends by `participationPoints`
-  summed across `sessions_record`.
-- **API.** `GET /api/leaderboard` → `{ entries: [{userId, displayName,
-  totalPoints, sessionCount, profileImageUrl}] }`.
+- **What.** Ranks the caller and all friends by points earned during the
+  **current ISO week** (Monday 00:00 → Sunday 23:59). Displays in a card
+  on the Dashboard. Two tabs: **Points** (default, sorted by weekly
+  `totalPoints`) and **Streak** (sorted by consecutive-day streak).
+- **Why.** Lifetime totals reward time-in-app over consistency and demotivate
+  lower-ranked users. Weekly resets give everyone a fresh start every Monday.
+- **User interaction.** Tap **Points** / **Streak** tab to switch views.
+  Rows show "Max (Sarah)" format (dog name + owner). A tier badge emoji
+  (`🐾 🥉 🥈 🥇`) appears next to the name.
+- **Tech.**
+  - Backend: `artifacts/api-server/src/routes/friends.ts` — `GET /leaderboard`.
+  - UI: `artifacts/pawplay/components/FamilyLeaderboard.tsx`.
+  - Types: `artifacts/pawplay/types/api.ts` → `LeaderboardEntry`.
+- **API.** `GET /api/leaderboard` → `{ entries: [LeaderboardEntry] }` where:
+  ```
+  LeaderboardEntry {
+    userId, displayName, dogName,
+    totalPoints,          // weekly points only
+    sessionCount,         // sessions this week
+    daysTrainedThisWeek,  // distinct calendar days this week
+    tier,                 // "paw" | "bronze" | "silver" | "gold"
+    streak,               // consecutive days (past 60-day window)
+    profileImageUrl       // from auth users table
+  }
+  ```
 - **Privacy.** Only returns the caller and the caller's direct friends —
-  never strangers. `profileImageUrl` is currently always `null` (see Known
-  Bugs).
-- **Status.** Complete (with the caveats above).
+  never strangers.
+- **Status.** Complete.
 
 ### Push Notifications (skeleton)
 
@@ -345,7 +365,8 @@ Same shape as Quick Bites but `mode: "blitz"` and successes accumulate into
    `POST /api/friends` validates the code, blocks self-add, blocks
    duplicates, then inserts both `(me, them)` and `(them, me)` rows.
 3. **See them on the leaderboard.** `GET /api/leaderboard` immediately
-   includes the new friend; ranking is by lifetime `participationPoints`.
+   includes the new friend; ranking is by `participationPoints` earned
+   during the **current ISO week** (resets every Monday).
 4. **Remove a friend.** Tap their row on the dashboard or profile
    leaderboard → confirm in `Alert` / `window.confirm` → `DELETE
    /api/friends/{friendId}` removes both directions.
@@ -753,6 +774,46 @@ Mastery colour mapping (UI):
 Achievements are evaluated client-side from `AppContext`; the
 `achievements` DB table is currently unused.
 
+### Leaderboard Ranking (`routes/friends.ts` — `GET /leaderboard`)
+
+**Weekly window.** `weekStart` = most recent Monday at 00:00 local server
+time `((now.getDay() + 6) % 7)` days before today. `weekEnd` = `weekStart + 7 days`.
+Only `sessions_record` rows with `created_at ∈ [weekStart, weekEnd)` are
+counted.
+
+**Points.** `totalPoints` = `SUM(participation_points)` for the user's sessions
+this week.
+
+**Days trained.** `daysTrainedThisWeek` = `COUNT(DISTINCT date(created_at))`
+over this week's sessions. Cannot be gamed by multiple sessions per day.
+
+**Tier system** (based on `daysTrainedThisWeek`):
+
+| Tier | Condition | Badge |
+|------|-----------|-------|
+| `paw` | 1–2 days (or 0) | 🐾 |
+| `bronze` | 3–4 days | 🥉 |
+| `silver` | 5–6 days | 🥈 |
+| `gold` | 7 days | 🥇 |
+
+**Dog name.** For each user, the dog is selected from the `dogs` table by
+matching the `dog_id` of their most recent session this week. Falls back to
+the user's first dog if they have no sessions this week.
+
+**Streak.** Computed from the past 60 days of sessions. Consecutive days
+going backward from today (or yesterday if today has no session). A gap of
+more than 1 day resets the count to 0.
+
+**`profileImageUrl`.** Joined from the auth `users` table
+(`users.profile_image_url`) — no longer hardcoded `null`.
+
+**Sort order.** Default (Points tab): descending `totalPoints`. Streak tab:
+sorted client-side in `FamilyLeaderboard.tsx` by descending `streak`.
+
+**Queries per request.** Five parallel queries via `Promise.all`:
+`pawplay_users`, `users` (auth, for profileImageUrl), `sessions_record`
+(week-scoped), `sessions_record` (60-day window for streak), `dogs`.
+
 ### Friendship Rules
 
 - Adding by code: code is normalised (`trim().toUpperCase()`), must be
@@ -801,43 +862,45 @@ anywhere in the codebase. All features are free.
 2. **`family_champion` and `month_pawfect` achievements** are listed in
    `ACHIEVEMENT_DEFS` but no code path unlocks them — they will never
    appear unlocked.
-3. **Leaderboard `profileImageUrl` is hard-coded `null`.** `routes/friends.ts`
-   `/leaderboard` returns `profileImageUrl: null` for every entry even
-   though `users.profile_image_url` exists.
-4. **Mastery level miscount.** In `routes/sessions.ts` `evaluateCommandLevel`
+3. **Mastery level miscount.** In `routes/sessions.ts` `evaluateCommandLevel`
    is called with `qbSuccessesCount: newQbSuccesses + newBlitzSuccesses`,
    which combines two distinct counts. This is consistent with the
    client-side achievement check but is misleading — the column in the DB
    is named `qb_successes_count`, not "qb+blitz successes".
-5. **Per-dog vs. per-user streak ambiguity.** `AppContext` tracks per-dog
+4. **Per-dog vs. per-user streak ambiguity.** `AppContext` tracks per-dog
    streaks but exposes a single `streak` value. There is no server source
-   of truth for streaks, so a fresh install loses streak history.
-6. **No DB-level FKs.** Schema files declare logical relationships
+   of truth for streaks, so a fresh install loses streak history. Note:
+   the leaderboard streak (`GET /api/leaderboard`) computes from
+   `sessions_record` (60-day window) but the dashboard streak pill reads
+   from `AppContext` — these two values may diverge.
+5. **No DB-level FKs.** Schema files declare logical relationships
    (`user_id`, `dog_id`) but no Postgres FOREIGN KEY constraints. Cleanup
    on deletion relies entirely on the application-level cascade in
    `DELETE /api/users/:userId`. Risk: an orphaned row is possible if a
    future code path forgets the cascade.
-7. **`pawplay_users.invite_code` allocation retries on collision** (6
+6. **`pawplay_users.invite_code` allocation retries on collision** (6
    attempts, hex-uppercase 3-byte → ~16.7M space). Adequate today, but
    could become hot under heavy concurrent signups.
-8. **`commands` table has no UNIQUE on `(dog_id, name)`.** `POST
+7. **`commands` table has no UNIQUE on `(dog_id, name)`.** `POST
    /api/dogs/:dogId/commands` could insert duplicates. Updates use
    `WHERE dog_id = ? AND name = ?` which would silently update one of
    them.
-9. **Pre-existing TS errors (untouched).** `app/blitz-active.tsx`,
-   `components/DogPicker.tsx`, and `lib/auth.tsx` have residual TypeScript
-   errors carried over from prior tasks. They do not block runtime but
-   make the editor noisy.
-10. **Push notifications are stubbed.** `push_tokens` and `expoPushToken`
-    plumbing exist but **no server code actually sends a push**. Reminder
-    time in Settings is local-only.
-11. **Calendar / yearly-chart pull all sessions for caller + friends into
-    memory** and filter in JS. Fine at current scale; will need a
-    `GROUP BY date` SQL roll-up when a user has many friends with long
-    histories.
-12. **`FamilyLeaderboard.tsx` name is historical.** It is the *friends*
+8. **Push notifications are stubbed.** `push_tokens` and `expoPushToken`
+   plumbing exist but **no server code actually sends a push**. Reminder
+   time in Settings is local-only.
+9. **Calendar / yearly-chart pull all sessions for caller + friends into
+   memory** and filter in JS. Fine at current scale; will need a
+   `GROUP BY date` SQL roll-up when a user has many friends with long
+   histories.
+10. **`FamilyLeaderboard.tsx` name is historical.** It is the *friends*
     leaderboard. Renaming the file is purely cosmetic but will reduce
     future confusion.
+11. **`GET /api/leaderboard` OpenAPI spec not updated (MPPD-84).** The
+    response shape now returns `dogName`, `daysTrainedThisWeek`, `tier`,
+    `streak`, and a real `profileImageUrl` but `lib/api-spec/openapi.yaml`
+    has not been regenerated. The generated Zod schemas and React Query
+    hooks are stale. Run `pnpm --filter @workspace/api-spec run codegen`
+    after updating the spec.
 
 ---
 
@@ -884,6 +947,29 @@ anywhere in the codebase. All features are free.
 ---
 
 ## Changelog
+
+### 2026-05-03
+
+#### MPPD-86 — Fix pre-existing TypeScript errors in `blitz-active.tsx`, `DogPicker.tsx`, `lib/auth.tsx`
+
+- **What changed.** Three TS-only fixes; zero runtime behaviour change.
+  - `app/blitz-active.tsx` — removed unused `import colors from "@/constants/colors"` (shadowed by `useColors()` hook; the only StyleSheet use of `colors.mint` was already replaced with `"#3DB884"`).
+  - `components/DogPicker.tsx` — removed `style={styles.container}` from the wrapper `<View>` (key `container` did not exist in `StyleSheet.create`).
+  - `lib/auth.tsx` — commented out `nonce: request.nonce` (line was unreachable past the existing `codeVerifier` guard and caused "Object is possibly null" due to optional-chain narrowing limitation).
+- **Why.** MPPD-86: type safety must be enforced before further Blitz development.
+- **Files affected.** `app/blitz-active.tsx`, `components/DogPicker.tsx`, `lib/auth.tsx`.
+- **Bug fixed.** Removes Known Bug #9 (pre-existing TS errors in those three files).
+
+#### MPPD-84 — Friends leaderboard redesign (weekly window, tiers, Dog vs Dog, streak tab)
+
+- **What changed.**
+  - `GET /api/leaderboard` (`routes/friends.ts`): now filters to the current ISO week (Monday 00:00 → +7 days) instead of lifetime. Returns `daysTrainedThisWeek`, `tier` (`paw/bronze/silver/gold`), `dogName` (from most recent session this week, falling back to first dog), `streak` (consecutive days from 60-day history), and real `profileImageUrl` (joined from auth `users` table).
+  - `artifacts/pawplay/types/api.ts` — `LeaderboardEntry` extended with `dogName`, `daysTrainedThisWeek`, `tier`, `streak`, `profileImageUrl`.
+  - `components/FamilyLeaderboard.tsx` — redesigned: Points / Streak tab toggle; rows display "Max (Sarah)" dog-vs-dog format; tier emoji badge; subtitle shows days trained (Points tab) or streak days (Streak tab).
+- **Why.** MPPD-84: absolute lifetime leaderboards demotivate lower-ranked users and reward time-in-app over consistency.
+- **Files affected.** `artifacts/api-server/src/routes/friends.ts`, `artifacts/pawplay/types/api.ts`, `artifacts/pawplay/components/FamilyLeaderboard.tsx`.
+- **Endpoints affected.** `GET /api/leaderboard` (response shape changed — see Known Bug #11 for OpenAPI follow-up needed).
+- **Bug fixed.** Removes Known Bug #3 (`profileImageUrl` hardcoded `null`).
 
 ### 2026-05-01
 

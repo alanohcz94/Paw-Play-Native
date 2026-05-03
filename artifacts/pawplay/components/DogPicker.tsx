@@ -95,7 +95,7 @@ function DogPicker() {
   if (dogs.length === 0) return null;
 
   return (
-    <View style={styles.container}>
+    <View>
       <ScrollView
         horizontal
         showsHorizontalScrollIndicator={false}
