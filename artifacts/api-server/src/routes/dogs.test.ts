@@ -41,7 +41,7 @@ vi.mock("drizzle-orm", () => {
 });
 
 vi.mock("@workspace/db", () => {
-  const dogsTable = makeTable("dogs", ["id", "userId", "name", "age", "breed", "avatarUrl", "releaseCue", "markerCue", "level", "xp", "createdAt"]);
+  const dogsTable = makeTable("dogs", ["id", "userId", "name", "age", "breed", "avatarUrl", "releaseCue", "markerCue", "createdAt"]);
 
   function makeSelectBuilder() {
     let table: { __table: string } | undefined;

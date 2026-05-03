@@ -64,8 +64,6 @@ export interface DogResponse {
   breed?: string | null;
   /** @nullable */
   avatarUrl?: string | null;
-  level: number;
-  xp: number;
   createdAt: string;
 }
 

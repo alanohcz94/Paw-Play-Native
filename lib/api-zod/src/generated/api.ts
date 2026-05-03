@@ -115,8 +115,6 @@ export const GetDogResponse = zod.object({
   age: zod.number().nullish(),
   breed: zod.string().nullish(),
   avatarUrl: zod.string().nullish(),
-  level: zod.number(),
-  xp: zod.number(),
   createdAt: zod.string(),
 });
 
@@ -141,8 +139,6 @@ export const UpdateDogResponse = zod.object({
   age: zod.number().nullish(),
   breed: zod.string().nullish(),
   avatarUrl: zod.string().nullish(),
-  level: zod.number(),
-  xp: zod.number(),
   createdAt: zod.string(),
 });
 
@@ -297,8 +293,6 @@ export const GetUserDogsResponse = zod.object({
       age: zod.number().nullish(),
       breed: zod.string().nullish(),
       avatarUrl: zod.string().nullish(),
-      level: zod.number(),
-      xp: zod.number(),
       createdAt: zod.string(),
     }),
   ),

@@ -11,8 +11,6 @@ export interface Dog {
   age?: number | null;
   breed?: string | null;
   avatarUrl?: string | null;
-  level: number;
-  xp: number;
   releaseCue?: string;
   markerCue?: string;
 }

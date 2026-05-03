@@ -6,24 +6,43 @@
 >
 > These rules are project policy. Following them is part of the definition
 > of "done" for every change. A change is **not complete** until the
-> documentation has been updated alongside the code.
+> feature overview has been updated **after** the code is done — see
+> **Order of work** below.
 
 ---
 
-## The Two Files You Must Always Touch
+## Order of work (mandatory)
+
+1. **Read this file first** — `docs/AI_CODING_RULES.md` (this file). **Do not**
+   skip this step before writing or editing code.
+2. **Read** [`docs/APP_FEATURES_AND_SYSTEM_OVERVIEW.md`](./APP_FEATURES_AND_SYSTEM_OVERVIEW.md)
+   for product context, the feature you are touching, data model, and business
+   rules (see Rule 1).
+3. **Implement and test** — make code changes, run the relevant tests and
+   checks, and confirm behaviour is correct.
+4. **Only then** — **update** `docs/APP_FEATURES_AND_SYSTEM_OVERVIEW.md` and add
+   a Changelog entry for any change that affects features, flows, data,
+   business logic, or known issues. The overview is updated **last**, not in
+   parallel with unverified code.
+
+---
+
+## The Two Core Docs
 
 | File | What it is | When to touch it |
 |---|---|---|
-| [`docs/APP_FEATURES_AND_SYSTEM_OVERVIEW.md`](./APP_FEATURES_AND_SYSTEM_OVERVIEW.md) | The single source of truth for what the app does, how it is structured, and what rules govern its behaviour. | **Read** before any change. **Update** after any change that affects features, flows, data, business logic, or known issues. |
-| `docs/AI_CODING_RULES.md` (this file) | The rules of engagement for AI coding tools on this project. | Update only when project policy changes. |
+| `docs/AI_CODING_RULES.md` (this file) | Process, gate rules, and project policy. | **Read first** before any code change. Update only when project policy changes. |
+| [`docs/APP_FEATURES_AND_SYSTEM_OVERVIEW.md`](./APP_FEATURES_AND_SYSTEM_OVERVIEW.md) | The single source of truth for what the app does, how it is structured, and what rules govern its behaviour. | **Read** after this file, before you edit code. **Update only after** implementation is done, tested, and confirmed working. |
 
 ---
 
 ## The Seven Rules
 
-### 1. Read `APP_FEATURES_AND_SYSTEM_OVERVIEW.md` before making changes
+### 1. Read `AI_CODING_RULES.md`, then `APP_FEATURES_AND_SYSTEM_OVERVIEW.md`, before making changes
 
-Before writing or editing any code, open
+**First** read this file (`docs/AI_CODING_RULES.md`).
+
+**Then**, before writing or editing any code, open
 `docs/APP_FEATURES_AND_SYSTEM_OVERVIEW.md` and read at minimum:
 
 - **App Overview** — to understand product positioning.
@@ -51,9 +70,12 @@ Do not start editing on the basis of the doc alone. Confirm by reading:
 If the doc and the code disagree, **the code is the ground truth**. Fix
 the doc as part of your change.
 
-### 3. Update `APP_FEATURES_AND_SYSTEM_OVERVIEW.md` after every code change
+### 3. Update `APP_FEATURES_AND_SYSTEM_OVERVIEW.md` only after code is done, tested, and confirmed
 
-A change is **not done** until the doc reflects it. Specifically:
+Do **not** update the feature overview as a first step, or “in advance” of
+untested code. A change is **not done** until the doc reflects it **and** the
+code has been implemented and verified (tests, manual checks, or both, as
+appropriate for the change). Specifically, when you update the overview:
 
 - New feature → add a new **Feature Inventory** entry using the same
   subheadings as the existing entries (What / Why / User interaction /
@@ -121,7 +143,8 @@ Names, types, defaults, units, and edge cases all matter. Vague entries
 ### 7. Keep documentation synchronized with the codebase
 
 The doc and the code must always agree at the time of every commit /
-checkpoint.
+checkpoint. The **order** is: implement and verify code first, then update
+`APP_FEATURES_AND_SYSTEM_OVERVIEW.md` (see **Order of work** above).
 
 - If you find drift, fix it as part of whatever change you are making —
   do not leave it for "later".
@@ -174,12 +197,14 @@ this project:
 
 Use this as a final gate before declaring a change done:
 
+- [ ] I read `docs/AI_CODING_RULES.md` **first** (this file).
 - [ ] I read the relevant sections of
-      `docs/APP_FEATURES_AND_SYSTEM_OVERVIEW.md` before editing.
+      `docs/APP_FEATURES_AND_SYSTEM_OVERVIEW.md` before editing code.
 - [ ] I confirmed behaviour by reading the actual code, not just the
       doc.
-- [ ] My code change is implemented and tested where applicable.
-- [ ] I updated every affected section of
+- [ ] My code change is **implemented, tested, and confirmed working**
+      where applicable.
+- [ ] **Then** I updated every affected section of
       `APP_FEATURES_AND_SYSTEM_OVERVIEW.md` (Feature Inventory, User
       Flows, Database, Code Architecture, Business Logic, Known Bugs).
 - [ ] I added a Changelog entry under today's date describing what,

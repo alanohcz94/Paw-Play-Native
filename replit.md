@@ -64,7 +64,7 @@ PawPlay is a gamified dog training mobile app for families. Built as a pnpm work
 - `users` — auth users (Replit Auth)
 - `pawplay_users` — extended user profile (familyId, role, expoPushToken)
 - `families` — family groups with 6-char invite code
-- `dogs` — dog profiles per family (name, breed, age, level, xp, release_cue, marker_cue, avatar_url); multiple dogs per family supported
+- `dogs` — dog profiles per family (name, breed, age, release_cue, marker_cue, avatar_url); multiple dogs per family supported
 - `commands` — command library per dog (with level tracking)
 - `sessions_record` — training session history with scoring
 - `achievements` — dog/user achievement records

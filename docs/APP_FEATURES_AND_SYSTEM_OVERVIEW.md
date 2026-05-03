@@ -1,8 +1,7 @@
 # PawPlay — App Features & System Overview
 
 > Authoritative reference for AI coding tools (Claude Code, Cursor, Replit Agent, etc.).
-> Read this file **before** making any change. Update it **after** any change. See
-> [Rules for Future AI Code Changes](#rules-for-future-ai-code-changes) at the bottom.
+> **Required order:** read [`docs/AI_CODING_RULES.md`](./AI_CODING_RULES.md) **first**, then read this file before editing code. Update **this** overview **only after** code is implemented, tested, and confirmed working — see [Rules for Future AI Code Changes](#rules-for-future-ai-code-changes).
 
 ---
 
@@ -226,6 +225,12 @@ it works in code, and any known gaps.
   the release cue and marker cue and upload an avatar; lists the command
   library with the mastery colour system (Gray Added → Yellow Learning →
   Green Practising → Blue Reliable). Also embeds the friends leaderboard.
+- **Note.** Player-facing dog **level tier labels** (the old `LEVEL_TITLES`
+  map) were **removed**. Legacy **`dogs.level`** / **`dogs.xp`** columns and
+  API fields were **dropped** — they were never advanced by gameplay; skill
+  progression is **`commands.level`** (mastery per cue) only. Apply
+  `docs/migrations/002_remove_dogs_level_xp.sql` to existing databases. See
+  Changelog (2026-05-03).
 - **API.** `GET /api/dogs/{dogId}/commands`, `PATCH /api/dogs/{dogId}`,
   `POST /api/dogs/{dogId}/commands`, `GET /api/leaderboard`, `DELETE
   /api/friends/{friendId}` (tap-to-remove on leaderboard row).
@@ -454,8 +459,6 @@ Each dog is owned by exactly one user. There is no shared ownership.
 | `avatar_url` | `varchar` | Photo URL. |
 | `release_cue` | `varchar` default `Free` | Word the handler uses to release the dog. |
 | `marker_cue` | `varchar` default `Yes` | Marker word ("yes", "good", clicker substitute). |
-| `level` | `integer` NOT NULL default `1` | Dog-level XP tier (currently not actively incremented). |
-| `xp` | `integer` NOT NULL default `0` | Dog-level XP (currently not actively incremented). |
 | `created_at` | `timestamp` | Audit. |
 
 **Used by:** every command/session route asserts ownership via
@@ -843,34 +846,37 @@ anywhere in the codebase. All features are free.
 
 ## Rules for Future AI Code Changes
 
-1. **Read this file first.** Before any code change, scan the relevant
-   sections (Feature Inventory, Database, Business Logic) so you don't
-   re-derive existing behaviour.
-2. **Update this file after every change.** A change isn't done until the
-   doc reflects it.
-3. **New feature → add a Feature Inventory entry.** Include all the
+1. **Read `docs/AI_CODING_RULES.md` first.** That file defines mandatory process
+   (including reading this overview before code, and updating this overview **after**
+   implementation is tested).
+2. **Read this file second.** Before any code change, scan the relevant sections
+   (Feature Inventory, Database, Business Logic) so you don't re-derive existing
+   behaviour.
+3. **Update this file last.** A change isn't done until the doc reflects it, **after**
+   the code is implemented and verified — not before tests pass.
+4. **New feature → add a Feature Inventory entry.** Include all the
    subheadings used by the existing entries.
-4. **Existing feature changed → update its purpose, behaviour, files,
+5. **Existing feature changed → update its purpose, behaviour, files,
    APIs, and data model details.** Don't leave stale prose.
-5. **DB schema change → update Database / Data Model Overview.** Include
+6. **DB schema change → update Database / Data Model Overview.** Include
    every new column with type and meaning. Update `lib/db/src/schema/`
    and run `pnpm --filter @workspace/db push-force` (dev) /
    migrations as appropriate.
-6. **Business logic change → update Business Logic Rules.** Especially
+7. **Business logic change → update Business Logic Rules.** Especially
    scoring constants, bonus rules, level thresholds, ownership rules, and
    privacy rules.
-7. **Bug fix → move the entry from Known Bugs into the Changelog.**
-8. **Don't delete documentation** unless the underlying code or feature
+8. **Bug fix → move the entry from Known Bugs into the Changelog.**
+9. **Don't delete documentation** unless the underlying code or feature
    was actually removed.
-9. **Stay factual.** Document only what the code does, not what you wish
+10. **Stay factual.** Document only what the code does, not what you wish
    it did.
-10. **If unsure, write "Needs verification".** Do not invent behaviour.
-11. **API contract is OpenAPI-first.** Edit `lib/api-spec/openapi.yaml`,
+11. **If unsure, write "Needs verification".** Do not invent behaviour.
+12. **API contract is OpenAPI-first.** Edit `lib/api-spec/openapi.yaml`,
     then run `pnpm --filter @workspace/api-spec run codegen`. Never
     hand-edit `lib/api-zod/src` or `lib/api-client-react/src`.
-12. **Server logging.** Never use `console.log` in server code — use
+13. **Server logging.** Never use `console.log` in server code — use
     `req.log` in handlers and the singleton `logger` for non-request code.
-13. **Ownership and privacy guards are non-negotiable.** Any new route
+14. **Ownership and privacy guards are non-negotiable.** Any new route
     that touches `dogs`, `commands`, `sessions_record`, `friendships`, or
     `pawplay_users` must:
     - call `assertDogOwned` (or equivalent) for dog-scoped data,
@@ -878,12 +884,46 @@ anywhere in the codebase. All features are free.
     - return **403** for cross-user `users/:id` access (no enumeration),
     - never leak `email`, `replit_id`, or `expo_push_token` outside the
       caller's own row.
-14. **Don't reintroduce the "family" model.** Friendships are mutual,
+15. **Don't reintroduce the "family" model.** Friendships are mutual,
     per-user, and bidirectional. Dogs are owned by exactly one user.
 
 ---
 
 ## Changelog
+
+### 2026-05-03
+
+#### Profile — remove `LEVEL_TITLES` / dog level display strings
+
+- **What changed.** Removed the local `LEVEL_TITLES` map and the profile UI
+  that showed a dog “level” label (e.g. `Lv.{n} · {title}`) next to the dog
+  header.
+- **Why.** That surface was **not meaningfully in use**: dog-level XP and the
+  `dogs.level` field are not advanced by current gameplay, the strings did not
+  tie into achievements, leaderboard, or any other flow, so they did not
+  benefit users or the product — only added noise.
+- **Files affected.** `artifacts/pawplay/app/(tabs)/profile.tsx`.
+
+#### Remove `dogs.level` and `dogs.xp` (schema, API, client)
+
+- **What changed.** Dropped **`level`** and **`xp`** from the `dogs` table
+  (`lib/db/src/schema/pawplay.ts`), **`DogResponse`** in OpenAPI, codegen
+  (`lib/api-zod`, `lib/api-client-react`), **`Dog`** in `AppContext`, and test
+  mocks. Added **`docs/migrations/002_remove_dogs_level_xp.sql`** for deploys.
+- **Why.** Those fields were never updated by routes or sessions; mastery lives
+  on **`commands.level`** only.
+- **Files affected.** `lib/db/src/schema/pawplay.ts`, `lib/api-spec/openapi.yaml`,
+  generated packages under `lib/api-zod/` and `lib/api-client-react/`,
+  `artifacts/pawplay/context/AppContext.tsx`,
+  `artifacts/api-server/src/routes/dogs.test.ts`,
+  `artifacts/api-server/src/routes/friends.test.ts`, this overview.
+
+#### Docs — mandatory read order and “overview last” workflow
+
+- **What changed.** `docs/AI_CODING_RULES.md` now requires reading **that file
+  first**, then this overview before code; **`APP_FEATURES_AND_SYSTEM_OVERVIEW.md`
+  is updated only after** implementation is tested and confirmed. This file’s
+  intro and “Rules for Future AI Code Changes” were aligned with that process.
 
 ### 2026-05-01
 

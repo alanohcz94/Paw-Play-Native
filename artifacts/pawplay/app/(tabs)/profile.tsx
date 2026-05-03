@@ -260,17 +260,6 @@ export default function ProfileScreen() {
     return s;
   }, [hasAnySessions, streak, level3Count]);
 
-  const LEVEL_TITLES: Record<number, string> = {
-    1: "Puppy Pal",
-    2: "Reward Chaser",
-    3: "Good Pup",
-    4: "Reliable Rover",
-    5: "Champion Chaser",
-  };
-
-  const level = dog?.level ?? 1;
-  const levelTitle = LEVEL_TITLES[Math.min(level, 5)] ?? "Champion";
-
   const handleAvatarPick = useCallback(async () => {
     try {
       const ImagePicker = await import("expo-image-picker");
@@ -495,18 +484,6 @@ export default function ProfileScreen() {
               {dog.breed}
             </Text>
           )}
-          <View
-            style={[styles.levelBadge, { backgroundColor: colors.lavLight }]}
-          >
-            <Text
-              style={[
-                styles.levelText,
-                { color: colors.lavender, fontFamily: "Nunito_900Black" },
-              ]}
-            >
-              Lv.{level} · {levelTitle}
-            </Text>
-          </View>
         </View>
 
         <View style={styles.statsRow}>

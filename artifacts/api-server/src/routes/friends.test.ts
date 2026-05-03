@@ -91,8 +91,6 @@ vi.mock("@workspace/db", () => {
     "avatarUrl",
     "releaseCue",
     "markerCue",
-    "level",
-    "xp",
     "createdAt",
   ]);
   const friendshipsTable = makeTable("friendships", [

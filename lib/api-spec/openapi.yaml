@@ -634,7 +634,7 @@ components:
 
     DogResponse:
       type: object
-      required: [id, userId, name, level, xp, createdAt]
+      required: [id, userId, name, createdAt]
       properties:
         id:
           type: string
@@ -648,10 +648,6 @@ components:
           type: [string, 'null']
         avatarUrl:
           type: [string, 'null']
-        level:
-          type: integer
-        xp:
-          type: integer
         createdAt:
           type: string
 
