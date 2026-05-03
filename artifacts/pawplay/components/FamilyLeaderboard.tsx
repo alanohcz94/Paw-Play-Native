@@ -1,5 +1,5 @@
-import React from "react";
-import { View, Text, StyleSheet } from "react-native";
+import React, { useState, useMemo } from "react";
+import { View, Text, StyleSheet, TouchableOpacity } from "react-native";
 import { useColors } from "@/hooks/useColors";
 import type { LeaderboardEntry } from "@/types/api";
 
@@ -9,18 +9,36 @@ const RANK_COLORS: Record<number, string> = {
   2: "#CD7F32",
 };
 
+const TIER_EMOJI: Record<string, string> = {
+  gold: "🥇",
+  silver: "🥈",
+  bronze: "🥉",
+  paw: "🐾",
+};
+
+type Tab = "points" | "streak";
+
 function LeaderboardRow({
   entry,
   rank,
   isMe,
+  tab,
 }: {
   entry: LeaderboardEntry;
   rank: number;
   isMe: boolean;
+  tab: Tab;
 }) {
   const colors = useColors();
   const rankBg = RANK_COLORS[rank] ?? "transparent";
   const isTop3 = rank < 3;
+  const nameLabel = entry.dogName
+    ? `${entry.dogName} (${entry.displayName})`
+    : entry.displayName;
+  const subtitle =
+    tab === "streak"
+      ? `${entry.streak}d streak`
+      : `${entry.daysTrainedThisWeek} day${entry.daysTrainedThisWeek !== 1 ? "s" : ""} this week`;
 
   return (
     <View
@@ -60,44 +78,70 @@ function LeaderboardRow({
       </View>
 
       <View style={[styles.memberInfo, { marginLeft: 10 }]}>
-        <Text
-          style={[
-            styles.memberName,
-            { color: colors.dark, fontFamily: "Nunito_700Bold" },
-          ]}
-        >
-          {entry.displayName}
-          {isMe ? " (you)" : ""}
-        </Text>
+        <View style={styles.nameRow}>
+          <Text
+            style={[
+              styles.memberName,
+              { color: colors.dark, fontFamily: "Nunito_700Bold" },
+            ]}
+            numberOfLines={1}
+          >
+            {nameLabel}
+            {isMe ? " (you)" : ""}
+          </Text>
+          <Text style={styles.tierEmoji}>{TIER_EMOJI[entry.tier]}</Text>
+        </View>
         <Text
           style={[
             styles.memberStreak,
             { color: colors.mutedForeground, fontFamily: "Nunito_400Regular" },
           ]}
         >
-          {entry.sessionCount} session{entry.sessionCount === 1 ? "" : "s"}
+          {subtitle}
         </Text>
       </View>
 
       <View style={styles.pointsContainer}>
-        <Text
-          style={[
-            styles.memberPoints,
-            { color: colors.dark, fontFamily: "Nunito_900Black" },
-          ]}
-        >
-          {entry.totalPoints.toLocaleString()}
-        </Text>
-        <Text
-          style={[
-            styles.pointsLabel,
-            { color: colors.mutedForeground, fontFamily: "Nunito_400Regular" },
-          ]}
-        >
-          points
-        </Text>
+        {tab === "points" ? (
+          <>
+            <Text
+              style={[
+                styles.memberPoints,
+                { color: colors.dark, fontFamily: "Nunito_900Black" },
+              ]}
+            >
+              {entry.totalPoints.toLocaleString()}
+            </Text>
+            <Text
+              style={[
+                styles.pointsLabel,
+                { color: colors.mutedForeground, fontFamily: "Nunito_400Regular" },
+              ]}
+            >
+              pts
+            </Text>
+          </>
+        ) : (
+          <>
+            <Text
+              style={[
+                styles.memberPoints,
+                { color: colors.dark, fontFamily: "Nunito_900Black" },
+              ]}
+            >
+              {entry.streak}
+            </Text>
+            <Text
+              style={[
+                styles.pointsLabel,
+                { color: colors.mutedForeground, fontFamily: "Nunito_400Regular" },
+              ]}
+            >
+              days
+            </Text>
+          </>
+        )}
       </View>
-
     </View>
   );
 }
@@ -110,6 +154,14 @@ export default function FamilyLeaderboard({
   currentUserId?: string;
 }) {
   const colors = useColors();
+  const [tab, setTab] = useState<Tab>("points");
+
+  const sorted = useMemo(() => {
+    if (tab === "streak") {
+      return [...leaderboard].sort((a, b) => b.streak - a.streak);
+    }
+    return leaderboard;
+  }, [leaderboard, tab]);
 
   if (leaderboard.length === 0) return null;
 
@@ -129,14 +181,61 @@ export default function FamilyLeaderboard({
         >
           Friends Leaderboard
         </Text>
+        <View style={[styles.tabRow, { backgroundColor: colors.muted }]}>
+          <TouchableOpacity
+            style={[
+              styles.tabBtn,
+              tab === "points" && { backgroundColor: colors.card },
+            ]}
+            onPress={() => setTab("points")}
+            activeOpacity={0.8}
+          >
+            <Text
+              style={[
+                styles.tabText,
+                {
+                  color:
+                    tab === "points" ? colors.dark : colors.mutedForeground,
+                  fontFamily:
+                    tab === "points" ? "Nunito_700Bold" : "Nunito_400Regular",
+                },
+              ]}
+            >
+              Points
+            </Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[
+              styles.tabBtn,
+              tab === "streak" && { backgroundColor: colors.card },
+            ]}
+            onPress={() => setTab("streak")}
+            activeOpacity={0.8}
+          >
+            <Text
+              style={[
+                styles.tabText,
+                {
+                  color:
+                    tab === "streak" ? colors.dark : colors.mutedForeground,
+                  fontFamily:
+                    tab === "streak" ? "Nunito_700Bold" : "Nunito_400Regular",
+                },
+              ]}
+            >
+              Streak
+            </Text>
+          </TouchableOpacity>
+        </View>
       </View>
 
-      {leaderboard.map((entry, i) => (
+      {sorted.map((entry, i) => (
         <LeaderboardRow
           key={entry.userId}
           entry={entry}
           rank={i}
           isMe={entry.userId === currentUserId}
+          tab={tab}
         />
       ))}
     </View>
@@ -149,9 +248,21 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    marginBottom: 4,
+    marginBottom: 12,
   },
-  cardTitle: { fontSize: 16, marginBottom: 8 },
+  cardTitle: { fontSize: 16 },
+  tabRow: {
+    flexDirection: "row",
+    borderRadius: 10,
+    padding: 3,
+    gap: 2,
+  },
+  tabBtn: {
+    paddingHorizontal: 12,
+    paddingVertical: 5,
+    borderRadius: 8,
+  },
+  tabText: { fontSize: 13 },
   row: { flexDirection: "row", alignItems: "center", gap: 10 },
   rankBadge: {
     width: 28,
@@ -169,7 +280,9 @@ const styles = StyleSheet.create({
   },
   crownText: { fontSize: 18, lineHeight: 22 },
   memberInfo: { flex: 1 },
-  memberName: { fontSize: 15 },
+  nameRow: { flexDirection: "row", alignItems: "center", gap: 4 },
+  memberName: { fontSize: 14, flexShrink: 1 },
+  tierEmoji: { fontSize: 13 },
   memberStreak: { fontSize: 12, marginTop: 1 },
   pointsContainer: { alignItems: "flex-end" },
   memberPoints: { fontSize: 16 },
