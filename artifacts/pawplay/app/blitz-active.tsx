@@ -25,7 +25,6 @@ import Animated, {
 import * as Haptics from "expo-haptics";
 import { useColors } from "@/hooks/useColors";
 import { useApp } from "@/context/AppContext";
-import colors from "@/constants/colors";
 
 const SCREEN_WIDTH = Dimensions.get("window").width;
 
@@ -568,7 +567,7 @@ const styles = StyleSheet.create({
   scorePill: { paddingHorizontal: 14, paddingVertical: 6, borderRadius: 20 },
   scoreText: { fontSize: 15 },
   flashWrap: { position: "absolute", top: -28, right: 0 },
-  flashText: { fontSize: 22, color: colors.mint },
+  flashText: { fontSize: 22, color: "#3DB884" },
   repText: { fontSize: 13, marginBottom: 20 },
   cmdWrap: { width: "100%", alignItems: "center", marginBottom: 32 },
   cmdText: { fontSize: 52, textAlign: "center" },

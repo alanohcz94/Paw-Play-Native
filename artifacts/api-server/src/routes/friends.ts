@@ -6,6 +6,8 @@ import {
   pawplayUsersTable,
   friendshipsTable,
   sessionsRecordTable,
+  dogsTable,
+  usersTable,
 } from "@workspace/db";
 
 const router: IRouter = Router();
@@ -177,6 +179,51 @@ router.delete("/friends/:friendId", async (req: Request, res: Response) => {
   res.json({ success: true });
 });
 
+function getIsoWeekWindow(): { weekStart: Date; weekEnd: Date } {
+  const now = new Date();
+  const weekStart = new Date(now);
+  weekStart.setDate(now.getDate() - ((now.getDay() + 6) % 7));
+  weekStart.setHours(0, 0, 0, 0);
+  const weekEnd = new Date(weekStart);
+  weekEnd.setDate(weekStart.getDate() + 7);
+  return { weekStart, weekEnd };
+}
+
+function computeStreak(sessionDates: Date[]): number {
+  if (sessionDates.length === 0) return 0;
+  const uniqueDays = Array.from(
+    new Set(sessionDates.map((d) => d.toDateString())),
+  )
+    .map((s) => new Date(s))
+    .sort((a, b) => b.getTime() - a.getTime());
+
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const yesterday = new Date(today);
+  yesterday.setDate(today.getDate() - 1);
+
+  // Streak must start from today or yesterday
+  if (
+    uniqueDays[0].getTime() !== today.getTime() &&
+    uniqueDays[0].getTime() !== yesterday.getTime()
+  ) {
+    return 0;
+  }
+
+  let streak = 1;
+  for (let i = 1; i < uniqueDays.length; i++) {
+    const diff =
+      (uniqueDays[i - 1].getTime() - uniqueDays[i].getTime()) /
+      (1000 * 60 * 60 * 24);
+    if (Math.round(diff) === 1) {
+      streak++;
+    } else {
+      break;
+    }
+  }
+  return streak;
+}
+
 router.get("/leaderboard", async (req: Request, res: Response) => {
   if (!req.isAuthenticated()) {
     res.status(401).json({ error: "Unauthorized" });
@@ -188,35 +235,117 @@ router.get("/leaderboard", async (req: Request, res: Response) => {
     req.user.firstName ?? null,
     req.user.email ?? null,
   );
+
   const friendRows = await db
     .select()
     .from(friendshipsTable)
     .where(eq(friendshipsTable.userId, userId));
   const ids = [userId, ...friendRows.map((r) => r.friendId)];
-  const users = await db
-    .select()
-    .from(pawplayUsersTable)
-    .where(inArray(pawplayUsersTable.id, ids));
-  const sessions = await db
-    .select()
-    .from(sessionsRecordTable)
-    .where(inArray(sessionsRecordTable.userId, ids));
-  const entries = users
+
+  const { weekStart, weekEnd } = getIsoWeekWindow();
+
+  // Past 60 days for streak calculation
+  const streakStart = new Date();
+  streakStart.setDate(streakStart.getDate() - 60);
+  streakStart.setHours(0, 0, 0, 0);
+
+  const [pawUsers, rawAuthUsers, weekSessions, streakSessions, allDogs] =
+    await Promise.all([
+      db
+        .select()
+        .from(pawplayUsersTable)
+        .where(inArray(pawplayUsersTable.id, ids)),
+      db
+        .select({ id: usersTable.id, profileImageUrl: usersTable.profileImageUrl })
+        .from(usersTable)
+        .where(inArray(usersTable.id, ids)),
+      db
+        .select()
+        .from(sessionsRecordTable)
+        .where(
+          and(
+            inArray(sessionsRecordTable.userId, ids),
+            gte(sessionsRecordTable.createdAt, weekStart),
+            lte(sessionsRecordTable.createdAt, weekEnd),
+          ),
+        ),
+      db
+        .select()
+        .from(sessionsRecordTable)
+        .where(
+          and(
+            inArray(sessionsRecordTable.userId, ids),
+            gte(sessionsRecordTable.createdAt, streakStart),
+          ),
+        ),
+      db.select().from(dogsTable).where(inArray(dogsTable.userId, ids)),
+    ]);
+
+  type AuthUserRow = { id: string; profileImageUrl: string | null };
+  const authUsers = rawAuthUsers as AuthUserRow[];
+  const authUserMap = new Map(authUsers.map((u) => [u.id, u]));
+  const dogsByUser = new Map<string, typeof allDogs>();
+  for (const dog of allDogs) {
+    const list = dogsByUser.get(dog.userId) ?? [];
+    list.push(dog);
+    dogsByUser.set(dog.userId, list);
+  }
+
+  const entries = pawUsers
     .map((u) => {
-      const userSessions = sessions.filter((s) => s.userId === u.id);
-      const totalPoints = userSessions.reduce(
+      const userWeekSessions = weekSessions.filter((s) => s.userId === u.id);
+      const totalPoints = userWeekSessions.reduce(
         (sum, s) => sum + (s.participationPoints || 0),
         0,
       );
+      const daySet = new Set(
+        userWeekSessions
+          .map((s) => (s.createdAt ? new Date(s.createdAt).toDateString() : null))
+          .filter(Boolean),
+      );
+      const daysTrainedThisWeek = daySet.size;
+      const tier =
+        daysTrainedThisWeek >= 7
+          ? "gold"
+          : daysTrainedThisWeek >= 5
+            ? "silver"
+            : daysTrainedThisWeek >= 3
+              ? "bronze"
+              : "paw";
+
+      // Dog name: prefer dog from most recent session this week, fall back to first dog
+      const latestSession = userWeekSessions
+        .filter((s) => s.createdAt)
+        .sort(
+          (a, b) =>
+            new Date(b.createdAt!).getTime() - new Date(a.createdAt!).getTime(),
+        )[0];
+      const userDogs = dogsByUser.get(u.id) ?? [];
+      const activeDog = latestSession
+        ? (userDogs.find((d) => d.id === latestSession.dogId) ?? userDogs[0])
+        : userDogs[0];
+      const dogName = activeDog?.name ?? null;
+
+      // Streak
+      const userStreakSessions = streakSessions
+        .filter((s) => s.userId === u.id && s.createdAt)
+        .map((s) => new Date(s.createdAt!));
+      const streak = computeStreak(userStreakSessions);
+
       return {
         userId: u.id,
         displayName: u.displayName || "User",
+        dogName,
         totalPoints,
-        sessionCount: userSessions.length,
-        profileImageUrl: null as string | null,
+        sessionCount: userWeekSessions.length,
+        daysTrainedThisWeek,
+        tier,
+        streak,
+        profileImageUrl: authUserMap.get(u.id)?.profileImageUrl ?? null,
       };
     })
     .sort((a, b) => b.totalPoints - a.totalPoints);
+
   res.json({ entries });
 });
 
